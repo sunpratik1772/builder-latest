@@ -1,0 +1,91 @@
+type_id: IF
+description: "Route workflow conditionally based on comparison operations. Evaluates conditions and sends data to 'true' or 'false' output."
+
+ui:
+  color: "#FF6D5A"
+  icon: GitBranch
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 1
+
+input_ports:
+  - name: input
+    type: object
+    description: "Input items to evaluate against conditions"
+    optional: false
+
+output_ports:
+  - name: true
+    type: object
+    description: "Items that match the conditions"
+  - name: false
+    type: object
+    description: "Items that do not match the conditions"
+
+params:
+  - name: conditions
+    type: array
+    description: "List of comparison conditions to evaluate"
+    required: true
+    default: []
+    schema:
+      items:
+        type: object
+        properties:
+          data_type:
+            type: string
+            enum: [string, number, boolean, date_time, array, object]
+            description: "Type of data to compare"
+          field_name:
+            type: string
+            description: "Field name to evaluate (use dot notation for nested fields)"
+          operation:
+            type: string
+            description: "Comparison operation (depends on data_type)"
+          compare_value:
+            type: any
+            description: "Value to compare against"
+            
+  - name: combine_operation
+    type: string
+    description: "How to combine multiple conditions"
+    enum: [AND, OR]
+    default: AND
+    required: false
+
+  - name: options
+    type: object
+    description: "Additional options"
+    required: false
+    default: {}
+    schema:
+      properties:
+        ignore_case:
+          type: boolean
+          description: "Ignore letter case when comparing strings"
+          default: false
+        less_strict_type_validation:
+          type: boolean
+          description: "Attempt to convert value types based on operator"
+          default: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "At least one condition must be defined"
+  - "Items matching all/any conditions go to 'true' output, others to 'false' output"
+  - "Empty input results in empty outputs on both branches"
+  
+operations:
+  string: [exists, does_not_exist, is_empty, is_not_empty, equals, not_equals, contains, not_contains, starts_with, not_starts_with, ends_with, not_ends_with, regex, not_regex]
+  number: [exists, does_not_exist, is_empty, is_not_empty, equals, not_equals, greater_than, less_than, greater_equal, less_equal]
+  boolean: [exists, does_not_exist, is_empty, is_not_empty, is_true, is_false, equals, not_equals]
+  date_time: [exists, does_not_exist, is_empty, is_not_empty, equals, not_equals, after, before, after_equal, before_equal]
+  array: [exists, does_not_exist, is_empty, is_not_empty, contains, not_contains, length_equals, length_not_equals, length_greater, length_less, length_greater_equal, length_less_equal]
+  object: [exists, does_not_exist, is_empty, is_not_empty]
