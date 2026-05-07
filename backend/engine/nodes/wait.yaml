@@ -1,0 +1,47 @@
+type_id: WAIT
+description: "Wait/delay execution"
+
+ui:
+  color: "#6B7280"
+  icon: Clock
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 6
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to pass through after waiting"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Items (unchanged)"
+
+params:
+  - name: amount
+    type: integer
+    description: "Amount of time to wait"
+    default: 1
+    required: true
+    
+  - name: unit
+    type: string
+    description: "Time unit"
+    enum: [seconds, minutes, hours]
+    default: seconds
+    required: true
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Pauses execution for specified duration"
+  - "Items pass through unchanged"
+  - "Useful for rate limiting or scheduling"

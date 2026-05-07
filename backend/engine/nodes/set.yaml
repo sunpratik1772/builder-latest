@@ -1,0 +1,82 @@
+type_id: SET
+description: "Add, remove, or modify fields in items"
+
+ui:
+  color: "#0EA5E9"
+  icon: PenTool
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 10
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to transform"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Transformed items"
+
+params:
+  - name: mode
+    type: string
+    description: "How to set fields"
+    enum: [manual, json]
+    default: manual
+    required: true
+    
+  - name: fields
+    type: array
+    description: "Fields to set (manual mode)"
+    default: []
+    required: false
+    schema:
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            description: "Field name (supports dot notation)"
+          value:
+            type: any
+            description: "Value to set"
+          type:
+            type: string
+            enum: [string, number, boolean, object, array]
+            
+  - name: json_data
+    type: object
+    description: "JSON object to merge (json mode)"
+    default: {}
+    required: false
+    
+  - name: options
+    type: object
+    description: "Additional options"
+    default: {}
+    required: false
+    schema:
+      properties:
+        keep_only_set:
+          type: boolean
+          description: "Keep only the fields being set"
+          default: false
+        dot_notation:
+          type: boolean
+          description: "Support dot notation for nested fields"
+          default: true
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Manual mode sets individual fields one by one"
+  - "JSON mode merges entire JSON object into each item"
+  - "Dot notation allows setting nested fields like user.name"

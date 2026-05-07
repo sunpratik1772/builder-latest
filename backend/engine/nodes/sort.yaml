@@ -1,0 +1,60 @@
+type_id: SORT
+description: "Sort items by field values"
+
+ui:
+  color: "#7C3AED"
+  icon: ArrowUpDown
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 13
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to sort"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Sorted items"
+
+params:
+  - name: sort_by
+    type: array
+    description: "Fields to sort by"
+    required: true
+    default: []
+    schema:
+      items:
+        type: object
+        properties:
+          field_name:
+            type: string
+            description: "Field to sort by"
+          direction:
+            type: string
+            enum: [asc, desc]
+            default: asc
+            
+  - name: options
+    type: object
+    default: {}
+    required: false
+    schema:
+      properties:
+        dot_notation:
+          type: boolean
+          default: true
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Items are sorted by first field, then second, etc."
+  - "Supports nested field access with dot notation"

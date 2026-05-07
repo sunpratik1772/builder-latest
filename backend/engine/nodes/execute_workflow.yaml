@@ -1,0 +1,45 @@
+type_id: EXECUTE_WORKFLOW
+description: "Execute another workflow as sub-workflow"
+
+ui:
+  color: "#8B5CF6"
+  icon: Workflow
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 7
+
+input_ports:
+  - name: input
+    type: object
+    description: "Data to pass to sub-workflow"
+    optional: true
+
+output_ports:
+  - name: output
+    type: object
+    description: "Sub-workflow output"
+
+params:
+  - name: workflow_id
+    type: string
+    description: "ID of workflow to execute"
+    required: true
+    
+  - name: wait_for_completion
+    type: boolean
+    description: "Wait for sub-workflow to complete"
+    default: true
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Executes specified workflow with input data"
+  - "Returns output from sub-workflow"
+  - "Can be used to modularize complex workflows"

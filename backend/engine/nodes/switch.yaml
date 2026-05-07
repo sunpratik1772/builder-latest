@@ -1,0 +1,72 @@
+type_id: SWITCH
+description: "Route items to different outputs based on rules"
+
+ui:
+  color: "#F59E0B"
+  icon: GitBranch
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 2
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to route"
+    optional: false
+
+output_ports:
+  - name: output0
+    type: object
+    description: "Output 0"
+  - name: output1
+    type: object
+    description: "Output 1"
+  - name: output2
+    type: object
+    description: "Output 2"
+  - name: output3
+    type: object
+    description: "Output 3"
+
+params:
+  - name: mode
+    type: string
+    description: "Routing mode"
+    enum: [rules, expression]
+    default: rules
+    required: true
+    
+  - name: rules
+    type: array
+    description: "Routing rules (rules mode)"
+    default: []
+    required: false
+    schema:
+      items:
+        type: object
+        properties:
+          output:
+            type: integer
+            description: "Output index (0-3)"
+          conditions:
+            type: array
+            description: "Conditions for this output"
+            
+  - name: fallback_output
+    type: integer
+    description: "Output index for items that don't match any rule"
+    default: 0
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Each item is routed to one output only"
+  - "Rules are evaluated in order, first match wins"
+  - "Items not matching any rule go to fallback output"

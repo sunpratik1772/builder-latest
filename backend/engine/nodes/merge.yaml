@@ -1,0 +1,72 @@
+type_id: MERGE
+description: "Combine data from multiple inputs using various merge strategies"
+
+ui:
+  color: "#FF6D5A"
+  icon: Combine
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 3
+
+input_ports:
+  - name: input1
+    type: object
+    description: "First input data stream"
+    optional: false
+  - name: input2
+    type: object
+    description: "Second input data stream"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Merged data"
+
+params:
+  - name: mode
+    type: string
+    description: "How to merge the data"
+    enum: [append, combine, choose_branch]
+    default: append
+    required: true
+    
+  - name: combine_by
+    type: string
+    description: "How to combine when mode=combine"
+    enum: [matching_fields, position, all_combinations]
+    default: matching_fields
+    required: false
+    
+  - name: fields_to_match
+    type: array
+    description: "Field names to match on (for matching_fields mode)"
+    default: []
+    required: false
+    
+  - name: output_type
+    type: string
+    description: "What to keep when combining"
+    enum: [keep_matches, keep_non_matches, keep_everything, enrich_input1, enrich_input2]
+    default: keep_matches
+    required: false
+
+  - name: clash_handling
+    type: string
+    description: "Which input to prioritize on field clash"
+    enum: [prefer_input1, prefer_input2, add_input_number]
+    default: prefer_input2
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Append mode concatenates all items from both inputs"
+  - "Combine mode merges items based on combine_by setting"
+  - "Choose branch mode outputs data from one input only"

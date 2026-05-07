@@ -1,0 +1,49 @@
+type_id: WEBHOOK
+description: "Receive data via webhook"
+
+ui:
+  color: "#8B5CF6"
+  icon: Webhook
+  palette:
+    section:
+      id: trigger
+      label: Triggers
+      order: 1
+      color: "#EF4444"
+    node_order: 2
+
+input_ports: []
+
+output_ports:
+  - name: output
+    type: object
+    description: "Webhook payload"
+
+params:
+  - name: path
+    type: string
+    description: "Webhook path (auto-generated if empty)"
+    required: false
+    
+  - name: method
+    type: string
+    description: "HTTP method to accept"
+    enum: [GET, POST, PUT, DELETE, ANY]
+    default: POST
+    required: false
+    
+  - name: response_mode
+    type: string
+    description: "How to respond to webhook"
+    enum: [on_received, last_node, response_node]
+    default: on_received
+    required: false
+
+semantics:
+  requires: []
+  provides: [webhook_data]
+
+constraints:
+  - "Triggers workflow when webhook is called"
+  - "Returns webhook body as items"
+  - "Generates unique webhook URL"

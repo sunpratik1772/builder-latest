@@ -1,0 +1,56 @@
+type_id: FILTER
+description: "Keep only items that match conditions"
+
+ui:
+  color: "#FF6D5A"
+  icon: Filter
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 12
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to filter"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Filtered items"
+
+params:
+  - name: conditions
+    type: array
+    description: "Filter conditions"
+    required: true
+    default: []
+    schema:
+      items:
+        type: object
+        properties:
+          field_name:
+            type: string
+          operation:
+            type: string
+          value:
+            type: any
+            
+  - name: combine_operation
+    type: string
+    description: "How to combine multiple conditions"
+    enum: [AND, OR]
+    default: AND
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Only items matching the conditions are kept"
+  - "Empty conditions means keep all items"

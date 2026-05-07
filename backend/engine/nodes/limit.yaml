@@ -1,0 +1,46 @@
+type_id: LIMIT
+description: "Limit the number of items"
+
+ui:
+  color: "#F59E0B"
+  icon: Scissors
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 14
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to limit"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Limited items"
+
+params:
+  - name: max_items
+    type: integer
+    description: "Maximum number of items to output"
+    default: 1
+    required: true
+    
+  - name: keep
+    type: string
+    description: "Which items to keep"
+    enum: [first, last]
+    default: first
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Returns at most max_items items"
+  - "If input has fewer items than max_items, returns all"

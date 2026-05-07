@@ -1,0 +1,60 @@
+type_id: AGGREGATE
+description: "Group items and perform aggregations"
+
+ui:
+  color: "#7C3AED"
+  icon: Layers
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 16
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to aggregate"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Aggregated results"
+
+params:
+  - name: group_by
+    type: array
+    description: "Fields to group by"
+    default: []
+    required: false
+    
+  - name: aggregations
+    type: array
+    description: "Aggregation operations"
+    required: true
+    default: []
+    schema:
+      items:
+        type: object
+        properties:
+          field:
+            type: string
+            description: "Field to aggregate"
+          operation:
+            type: string
+            enum: [count, sum, avg, min, max, first, last]
+            description: "Aggregation operation"
+          output_field:
+            type: string
+            description: "Name for output field"
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "group_by empty means aggregate all items together"
+  - "Each aggregation creates one output field"
+  - "count operation doesn't require a field name"

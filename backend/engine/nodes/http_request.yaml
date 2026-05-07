@@ -1,0 +1,72 @@
+type_id: HTTP_REQUEST
+description: "Make HTTP API requests"
+
+ui:
+  color: "#10B981"
+  icon: Globe
+  palette:
+    section:
+      id: integration
+      label: Integration
+      order: 30
+      color: "#10B981"
+    node_order: 20
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to process"
+    optional: true
+
+output_ports:
+  - name: output
+    type: object
+    description: "HTTP response data"
+
+params:
+  - name: method
+    type: string
+    description: "HTTP method"
+    enum: [GET, POST, PUT, DELETE, PATCH]
+    default: GET
+    required: true
+    
+  - name: url
+    type: string
+    description: "URL to request"
+    required: true
+    
+  - name: headers
+    type: object
+    description: "HTTP headers"
+    default: {}
+    required: false
+    
+  - name: body
+    type: object
+    description: "Request body (for POST/PUT/PATCH)"
+    default: {}
+    required: false
+    
+  - name: options
+    type: object
+    default: {}
+    required: false
+    schema:
+      properties:
+        timeout:
+          type: integer
+          default: 30
+        response_format:
+          type: string
+          enum: [json, text]
+          default: json
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Executes HTTP request for each input item"
+  - "Use {{field}} syntax to interpolate values from items"
+  - "Returns response as items"

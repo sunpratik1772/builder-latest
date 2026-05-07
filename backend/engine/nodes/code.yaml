@@ -1,0 +1,47 @@
+type_id: CODE
+description: "Execute custom Python code"
+
+ui:
+  color: "#8B5CF6"
+  icon: Code2
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 15
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to process"
+    optional: true
+
+output_ports:
+  - name: output
+    type: object
+    description: "Processed items"
+
+params:
+  - name: code
+    type: code
+    description: "Python code to execute. Access items via 'items' variable"
+    required: true
+    default: "# Access input items\n# items = input['items']\n# Process and return\nreturn items"
+    
+  - name: mode
+    type: string
+    description: "Execution mode"
+    enum: [run_once_for_all, run_once_for_each]
+    default: run_once_for_all
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Code must return items list or dict"
+  - "run_once_for_all processes all items together"
+  - "run_once_for_each runs code for each item separately"

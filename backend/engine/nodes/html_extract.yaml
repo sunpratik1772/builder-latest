@@ -1,0 +1,60 @@
+type_id: HTML_EXTRACT
+description: "Extract data from HTML"
+
+ui:
+  color: "#F59E0B"
+  icon: FileCode
+  palette:
+    section:
+      id: integration
+      label: Integration
+      order: 30
+      color: "#10B981"
+    node_order: 22
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items containing HTML"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Extracted data"
+
+params:
+  - name: source_field
+    type: string
+    description: "Field containing HTML"
+    default: html
+    required: false
+    
+  - name: extraction_values
+    type: array
+    description: "Values to extract"
+    default: []
+    required: true
+    schema:
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+            description: "Output field name"
+          css_selector:
+            type: string
+            description: "CSS selector"
+          extraction_method:
+            type: string
+            enum: [text, attribute, html]
+            default: text
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Uses CSS selectors to extract data from HTML"
+  - "Returns extracted values as new fields"
+  - "Useful for web scraping"

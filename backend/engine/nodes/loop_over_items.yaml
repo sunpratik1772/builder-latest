@@ -1,0 +1,40 @@
+type_id: LOOP_OVER_ITEMS
+description: "Execute once for each item in input"
+
+ui:
+  color: "#10B981"
+  icon: Repeat
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 5
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to loop over"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Current item"
+
+params:
+  - name: batch_size
+    type: integer
+    description: "Number of items to process together"
+    default: 1
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Executes downstream nodes once per item"
+  - "batch_size > 1 processes multiple items together"
+  - "Use with care - can cause many executions"

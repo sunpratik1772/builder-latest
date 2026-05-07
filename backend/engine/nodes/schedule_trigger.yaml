@@ -1,0 +1,48 @@
+type_id: SCHEDULE_TRIGGER
+description: "Trigger workflow on schedule"
+
+ui:
+  color: "#EF4444"
+  icon: Calendar
+  palette:
+    section:
+      id: trigger
+      label: Triggers
+      order: 1
+      color: "#EF4444"
+    node_order: 1
+
+input_ports: []
+
+output_ports:
+  - name: output
+    type: object
+    description: "Trigger data with timestamp"
+
+params:
+  - name: mode
+    type: string
+    description: "Schedule mode"
+    enum: [interval, cron]
+    default: interval
+    required: true
+    
+  - name: interval
+    type: integer
+    description: "Interval in minutes (interval mode)"
+    default: 60
+    required: false
+    
+  - name: cron_expression
+    type: string
+    description: "Cron expression (cron mode)"
+    required: false
+
+semantics:
+  requires: []
+  provides: [trigger_time]
+
+constraints:
+  - "Triggers workflow at specified intervals or cron schedule"
+  - "interval mode runs every N minutes"
+  - "cron mode uses standard cron syntax"

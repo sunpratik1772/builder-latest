@@ -1,0 +1,51 @@
+type_id: SPLIT_IN_BATCHES
+description: "Split items into batches for processing"
+
+ui:
+  color: "#F59E0B"
+  icon: Package
+  palette:
+    section:
+      id: control
+      label: Control Flow
+      order: 5
+      color: "#FF6D5A"
+    node_order: 4
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to batch"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Batch of items"
+
+params:
+  - name: batch_size
+    type: integer
+    description: "Number of items per batch"
+    default: 10
+    required: true
+    
+  - name: options
+    type: object
+    default: {}
+    required: false
+    schema:
+      properties:
+        reset:
+          type: boolean
+          description: "Reset batching between executions"
+          default: true
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Splits input into batches of batch_size items"
+  - "Last batch may have fewer items"
+  - "Node executes multiple times until all batches are processed"
