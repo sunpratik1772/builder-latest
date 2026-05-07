@@ -247,19 +247,24 @@ export default function DocsPage() {
             color: '#6B5D4F',
           }}
         >
-          <a
-            href="/dashboard"
+          <button
+            onClick={() => navigate('/dashboard')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
               color: '#D27D46',
-              textDecoration: 'none',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
               fontWeight: 500,
+              fontSize: 11.5,
+              padding: 0,
+              fontFamily: 'inherit',
             }}
           >
             ← Back to Studio
-          </a>
+          </button>
         </div>
       </aside>
 

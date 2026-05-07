@@ -11,6 +11,7 @@
  * "Workflow" is the canvas and is always selected by default.
  */
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   LayoutGrid,
   LayoutTemplate,
@@ -287,10 +288,8 @@ export default function LeftNav() {
           }}
         />
         <NavRow item={settingsItem} showLabels={showLabels} state={navState} />
-        <a
-          href="/docs"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/docs"
           className="flex items-center gap-2 px-3 py-2 rounded-md transition-all"
           style={{
             color: 'var(--text-2)',
@@ -312,7 +311,7 @@ export default function LeftNav() {
           <BookOpen size={16} style={{ flexShrink: 0 }} />
           {showLabels && <span className="flex-1 min-w-0">Docs</span>}
           {showLabels && <ArrowUpRight size={14} style={{ flexShrink: 0, opacity: 0.5 }} />}
-        </a>
+        </Link>
       </nav>
 
       {/* Sidebar control */}
