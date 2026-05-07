@@ -21,10 +21,8 @@ def handle_if(node: dict, ctx: RunContext) -> None:
     cfg = node.get("config", {})
     node_id = node.get("id", "if")
     
-    # Get input items from context
-    input_items = ctx.get("items", [])
-    if not input_items:
-        input_items = []
+    # Get input items from context — auto-wired key first, fall back to legacy `items`.
+    input_items = ctx.get(f"{node_id}_input") or ctx.get("items") or []
     
     # Get configuration
     conditions = cfg.get("conditions", [])

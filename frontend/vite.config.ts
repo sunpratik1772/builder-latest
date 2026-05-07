@@ -5,6 +5,7 @@ import path from 'node:path'
 // Keep aliases here in sync with compilerOptions.paths in tsconfig.json.
 export default defineConfig({
   plugins: [react()],
+  envPrefix: ['VITE_', 'REACT_APP_'],
   resolve: {
     alias: {
       '@nodes': path.resolve(__dirname, 'src/nodes'),

@@ -1,0 +1,73 @@
+type_id: LLM_BASIC
+description: "Run a prompt through an LLM (Emergent Universal Key) per item"
+
+ui:
+  color: "#7C3AED"
+  icon: Sparkles
+  palette:
+    section:
+      id: ai
+      label: AI
+      order: 25
+      color: "#A78BFA"
+    node_order: 1
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to summarize / transform"
+    optional: true
+
+output_ports:
+  - name: output
+    type: object
+    description: "Items with the LLM response attached at output_field"
+
+params:
+  - name: prompt
+    type: string
+    description: "Prompt template — use {{ $json.field }} to interpolate item fields"
+    required: true
+    default: "Summarize the following content:\n\n{{ $json.body }}"
+    widget: textarea
+
+  - name: system_prompt
+    type: string
+    description: "System prompt"
+    required: false
+    default: "You are a concise, accurate summarizer."
+    widget: textarea
+
+  - name: model
+    type: string
+    description: "Model id"
+    enum: [gemini-2.5-flash, gemini-2.5-pro, gpt-4o-mini, gpt-4o, claude-sonnet-4-5]
+    default: gemini-2.5-flash
+    required: false
+
+  - name: output_field
+    type: string
+    description: "Field name to store the LLM response on each item"
+    default: response
+    required: false
+
+  - name: temperature
+    type: number
+    description: "Sampling temperature (0.0 - 1.0)"
+    default: 0.2
+    required: false
+
+  - name: max_chars
+    type: integer
+    description: "Truncate the resolved prompt to this many chars (0 = no limit)"
+    default: 60000
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "Runs once per input item"
+  - "Uses Emergent Universal LLM key (EMERGENT_LLM_KEY)"
+  - "Default model is gemini-2.5-flash"

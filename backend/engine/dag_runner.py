@@ -302,6 +302,56 @@ def topological_sort(nodes: list[dict], edges: list[dict]) -> list[str]:
     return order
 
 
+def _wire_inputs(node: dict, edges: list[dict], ctx: RunContext) -> None:
+    """
+    Auto-wire upstream node outputs into the destination node's
+    conventional input keys. New n8n-style nodes read from
+    ``{node_id}_input`` (or ``_input1`` / ``_input2`` for MERGE).
+    Source side: IF emits ``{src}_true`` / ``{src}_false``; SWITCH emits
+    ``{src}_outputN``; everything else emits ``{src}_output``.
+
+    Edges may carry ``sourceHandle`` (e.g. "true", "false", "0") and
+    ``targetHandle`` (e.g. "input1", "input2") to disambiguate.
+    """
+    dst = node.get("id")
+    if not dst:
+        return
+    incoming = []
+    for edge in edges:
+        src, tgt = _edge_endpoints(edge)
+        if tgt != dst:
+            continue
+        incoming.append((src, edge.get("sourceHandle"), edge.get("targetHandle")))
+
+    if not incoming:
+        return
+
+    # Group by target handle. Default target: "input".
+    by_target: dict[str, list] = {}
+    for src, src_handle, tgt_handle in incoming:
+        key = tgt_handle or "input"
+        by_target.setdefault(key, []).append((src, src_handle))
+
+    for tgt_handle, srcs in by_target.items():
+        merged: list = []
+        for src, src_handle in srcs:
+            if src_handle in ("true", "false"):
+                upstream = ctx.get(f"{src}_{src_handle}")
+            elif src_handle and src_handle.startswith("output"):
+                upstream = ctx.get(f"{src}_{src_handle}")
+            elif src_handle and src_handle.isdigit():
+                upstream = ctx.get(f"{src}_output{src_handle}")
+            else:
+                upstream = ctx.get(f"{src}_output")
+            if upstream is None:
+                continue
+            if isinstance(upstream, list):
+                merged.extend(upstream)
+            else:
+                merged.append(upstream)
+        ctx.set(f"{dst}_{tgt_handle}", merged)
+
+
 def execute_nodes(nodes: list[dict], edges: list[dict], ctx: RunContext) -> None:
     """
     Run a set of nodes against an existing RunContext.
@@ -322,6 +372,7 @@ def execute_nodes(nodes: list[dict], edges: list[dict], ctx: RunContext) -> None
             raise ValueError(f"Unknown node type '{node_type}' on node '{node_id}'")
         label = node.get("label", node_type)
         logger.info("  → [%s] %s", node_id, label)
+        _wire_inputs(node, edges, ctx)
         input_issues = check_input_port_schema(node, ctx)
         if input_issues:
             raise ValueError(
@@ -711,6 +762,7 @@ def run_workflow_stream(
 
         node_t0 = time.perf_counter()
         try:
+            _wire_inputs(node, edges, ctx)
             input_issues = check_input_port_schema(node, ctx)
             if input_issues:
                 raise ValueError(

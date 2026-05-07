@@ -1,0 +1,119 @@
+{
+  "workflow_id": "paul_graham_essay_summarizer",
+  "name": "Paul Graham Essay Summarizer",
+  "description": "Scrape paulgraham.com/articles.html, pick the first essay, fetch it, and summarize via Emergent LLM (gemini-2.5-flash).",
+  "nodes": [
+    {
+      "id": "fetch_index",
+      "type": "HTTP_REQUEST",
+      "label": "Fetch articles index",
+      "config": {
+        "method": "GET",
+        "url": "http://www.paulgraham.com/articles.html",
+        "options": { "response_format": "text", "timeout": 30 }
+      }
+    },
+    {
+      "id": "extract_links",
+      "type": "HTML_EXTRACT",
+      "label": "Extract essay links",
+      "config": {
+        "source_field": "body",
+        "extraction_values": [
+          {
+            "key": "links",
+            "css_selector": "table a",
+            "extraction_method": "href",
+            "return_array": true
+          },
+          {
+            "key": "titles",
+            "css_selector": "table a",
+            "extraction_method": "text",
+            "return_array": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "expand_links",
+      "type": "CODE",
+      "label": "Pair link + title",
+      "config": {
+        "mode": "run_once_for_all",
+        "code": "out=[]\nfor it in items:\n    hrefs = it.get('links') or []\n    titles = it.get('titles') or []\n    for i, href in enumerate(hrefs):\n        if not href: continue\n        title = (titles[i] if i < len(titles) else '').strip()\n        if not title: continue\n        if href in ('index.html','rss.html','articles.html'): continue\n        out.append({'href': href, 'title': title})\nresult = out"
+      }
+    },
+    {
+      "id": "filter_essays",
+      "type": "FILTER",
+      "label": "Keep only essay pages",
+      "config": {
+        "combine_operation": "AND",
+        "conditions": [
+          { "field_name": "href", "operation": "contains", "value": ".html" }
+        ]
+      }
+    },
+    {
+      "id": "limit_one",
+      "type": "LIMIT",
+      "label": "Take first essay",
+      "config": { "max_items": 1, "keep": "first" }
+    },
+    {
+      "id": "build_url",
+      "type": "CODE",
+      "label": "Build absolute URL",
+      "config": {
+        "mode": "run_once_for_each",
+        "code": "href = item.get('href','')\nif href.startswith('http'):\n    item['essay_url'] = href\nelse:\n    item['essay_url'] = 'http://www.paulgraham.com/' + href.lstrip('/')\nresult = item"
+      }
+    },
+    {
+      "id": "fetch_essay",
+      "type": "HTTP_REQUEST",
+      "label": "Fetch the essay",
+      "config": {
+        "method": "GET",
+        "url": "{{ $json.essay_url }}",
+        "options": { "response_format": "text", "timeout": 30 }
+      }
+    },
+    {
+      "id": "extract_essay",
+      "type": "HTML_EXTRACT",
+      "label": "Extract essay text",
+      "config": {
+        "source_field": "body",
+        "extraction_values": [
+          { "key": "page_title", "css_selector": "title", "extraction_method": "text" },
+          { "key": "essay_text", "css_selector": "table table font", "extraction_method": "text" }
+        ]
+      }
+    },
+    {
+      "id": "summarize",
+      "type": "LLM_BASIC",
+      "label": "Summarize essay",
+      "config": {
+        "model": "gemini-2.5-flash",
+        "system_prompt": "You are a sharp essayist's assistant. Produce concise, faithful summaries.",
+        "prompt": "Summarize the Paul Graham essay below in 5-7 bullet points, then add a one-sentence takeaway.\n\nTitle: {{ $json.page_title }}\n\nEssay:\n{{ $json.essay_text }}",
+        "output_field": "summary",
+        "temperature": 0.2,
+        "max_chars": 60000
+      }
+    }
+  ],
+  "edges": [
+    { "from": "fetch_index", "to": "extract_links" },
+    { "from": "extract_links", "to": "expand_links" },
+    { "from": "expand_links", "to": "filter_essays" },
+    { "from": "filter_essays", "to": "limit_one" },
+    { "from": "limit_one", "to": "build_url" },
+    { "from": "build_url", "to": "fetch_essay" },
+    { "from": "fetch_essay", "to": "extract_essay" },
+    { "from": "extract_essay", "to": "summarize" }
+  ]
+}

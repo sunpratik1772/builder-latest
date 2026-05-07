@@ -28,50 +28,68 @@ def handle_code(node: dict, ctx: RunContext) -> None:
 
 def _execute_code_all(code: str, items: List[Dict]) -> List[Dict]:
     """Execute code once for all items"""
-    # Create safe execution environment
-    local_vars = {
+    env = {
         "items": items,
         "len": len,
         "sum": sum,
         "min": min,
         "max": max,
         "sorted": sorted,
+        "range": range,
+        "map": map,
+        "filter": filter,
+        "list": list,
+        "dict": dict,
+        "str": str,
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "enumerate": enumerate,
+        "zip": zip,
+        "any": any,
+        "all": all,
+        "abs": abs,
+        "round": round,
+        "isinstance": isinstance,
+        "print": print,
     }
-    
-    # Execute code
-    exec(code, {}, local_vars)
-    
-    # Return result
-    if "result" in local_vars:
-        return local_vars["result"]
-    elif "items" in local_vars:
-        return local_vars["items"]
-    
-    return items
+    # Use the same dict for globals + locals so list comprehensions /
+    # nested scopes can see `items` and any helper assignments.
+    exec(code, env)
+    if "result" in env:
+        return env["result"]
+    return env.get("items", items)
 
 
 def _execute_code_each(code: str, items: List[Dict]) -> List[Dict]:
     """Execute code for each item"""
     result = []
-    
     for item in items:
-        local_vars = {
+        env = {
             "item": item,
             "len": len,
             "sum": sum,
             "min": min,
             "max": max,
+            "sorted": sorted,
+            "range": range,
+            "map": map,
+            "filter": filter,
+            "list": list,
+            "dict": dict,
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "enumerate": enumerate,
+            "zip": zip,
+            "isinstance": isinstance,
         }
-        
-        exec(code, {}, local_vars)
-        
-        if "result" in local_vars:
-            result.append(local_vars["result"])
-        elif "item" in local_vars:
-            result.append(local_vars["item"])
+        exec(code, env)
+        if "result" in env:
+            result.append(env["result"])
         else:
-            result.append(item)
-    
+            result.append(env.get("item", item))
     return result
 
 
