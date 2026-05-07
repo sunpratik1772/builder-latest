@@ -151,11 +151,20 @@ export default function WorkflowDrawer() {
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-4"
-          style={{ height: 48, borderBottom: '1px solid var(--border)' }}
+          className="flex items-center justify-between px-5"
+          style={{ height: 52, borderBottom: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-2">
-            <span className="eyebrow" style={{ color: 'var(--text-0)' }}>
+            <span 
+              className="font-mono" 
+              style={{ 
+                fontSize: 10.5, 
+                fontWeight: 600, 
+                color: 'var(--text-0)',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
               Templates
             </span>
           </div>
@@ -164,76 +173,94 @@ export default function WorkflowDrawer() {
             aria-label="Close drawer"
             className="lift flex items-center justify-center"
             style={{
-              width: 26, height: 26, borderRadius: 6,
+              width: 28, height: 28, borderRadius: 6,
               background: 'transparent',
-              color: 'var(--text-2)',
+              color: 'var(--text-3)',
               border: '1px solid transparent',
+              transition: 'all 120ms',
             }}
             onMouseEnter={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-2)'
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-soft)'
               ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-0)'
             }}
             onMouseLeave={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-2)'
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-3)'
             }}
           >
-            <XIcon size={14} strokeWidth={2} />
+            <XIcon size={15} strokeWidth={2.5} />
           </button>
         </div>
 
         {/* New button + Search */}
-        <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="px-4 py-4" style={{ borderBottom: '1px solid var(--border-soft)' }}>
           <button
             onClick={handleNew}
             className="flex items-center justify-center gap-2 w-full"
             data-testid="new-workflow-btn"
             style={{
-              padding: '7px 12px',
-              borderRadius: 6,
+              padding: '9px 14px',
+              borderRadius: 7,
               background: 'var(--bg-2)',
               color: 'var(--text-0)',
-              border: '1px solid var(--border)',
-              fontSize: 12.5,
-              fontWeight: 500,
-              letterSpacing: '-0.005em',
+              border: '1px solid var(--border-strong)',
+              fontSize: 13,
+              fontWeight: 530,
+              letterSpacing: '-0.01em',
               cursor: 'pointer',
               fontFamily: 'inherit',
-              transition: 'background 120ms, border-color 120ms',
+              transition: 'all 140ms cubic-bezier(0.4, 0, 0.2, 1)',
             }}
             onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-3)'
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-strong)'
+              ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--text-0)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--bg-0)'
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--text-0)'
+              ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
             }}
             onMouseLeave={(e) => {
               ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-2)'
-              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-0)'
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-strong)'
+              ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
             }}
           >
-            <FilePlus2 size={13} strokeWidth={2} />
+            <FilePlus2 size={14} strokeWidth={2.5} />
             <span>New workflow</span>
           </button>
 
           <div
-            className="flex items-center gap-2 mt-2.5 px-2"
+            className="flex items-center gap-2.5 mt-3 px-3"
             style={{
-              height: 28,
-              borderRadius: 6,
+              height: 34,
+              borderRadius: 7,
               background: 'var(--bg-2)',
               border: '1px solid var(--border)',
+              transition: 'border-color 140ms, background 140ms',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-strong)'
+              e.currentTarget.style.background = 'var(--bg-1)'
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border)'
+              e.currentTarget.style.background = 'var(--bg-2)'
             }}
           >
-            <Search size={12} strokeWidth={2} style={{ color: 'var(--text-3)' }} />
+            <Search size={13} strokeWidth={2} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${tab}`}
+              placeholder="Search saved"
               className="flex-1 outline-none"
               style={{
-                fontSize: 12,
+                fontSize: 12.5,
                 background: 'transparent',
                 color: 'var(--text-0)',
                 border: 'none',
+                fontWeight: 400,
+                letterSpacing: '-0.003em',
               }}
               spellCheck={false}
             />
@@ -244,21 +271,21 @@ export default function WorkflowDrawer() {
         <div
           className="flex items-stretch shrink-0"
           style={{
-            borderBottom: '1px solid var(--border)',
-            height: 36,
+            borderBottom: '1px solid var(--border-soft)',
+            height: 38,
             background: 'var(--bg-0)',
           }}
         >
           <TabButton
             label="Saved"
-            icon={<FileJson2 size={12} strokeWidth={2} />}
+            icon={<FileJson2 size={12} strokeWidth={2.5} />}
             active={tab === 'saved'}
             count={savedCount}
             onClick={() => setTab('saved')}
           />
           <TabButton
             label="Drafts"
-            icon={<FileClock size={12} strokeWidth={2} />}
+            icon={<FileClock size={12} strokeWidth={2.5} />}
             active={tab === 'drafts'}
             count={draftsCount}
             onClick={() => setTab('drafts')}
@@ -266,7 +293,7 @@ export default function WorkflowDrawer() {
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto px-3 py-2">
           {items === null && !error && (
             <div
               className="flex items-center justify-center gap-2 py-10"
@@ -328,10 +355,15 @@ export default function WorkflowDrawer() {
 
         {/* Footer hint */}
         <div
-          className="px-3 py-2 flex items-center justify-between"
-          style={{ borderTop: '1px solid var(--border)', fontSize: 10, color: 'var(--text-3)' }}
+          className="px-4 py-2.5 flex items-center justify-between"
+          style={{ 
+            borderTop: '1px solid var(--border-soft)', 
+            fontSize: 10.5, 
+            color: 'var(--text-3)',
+            fontWeight: 500,
+          }}
         >
-          <span>
+          <span className="font-mono" style={{ letterSpacing: '0.01em' }}>
             {tab === 'saved'
               ? saved
                 ? `${saved.length} saved`
@@ -340,7 +372,7 @@ export default function WorkflowDrawer() {
                 ? `${drafts.length} draft${drafts.length === 1 ? '' : 's'}`
                 : '—'}
           </span>
-          <span className="num">Esc · close</span>
+          <span className="font-mono" style={{ letterSpacing: '0.08em', fontSize: 10 }}>Esc · close</span>
         </div>
       </aside>
     </>
@@ -367,29 +399,43 @@ function TabButton({
       style={{
         background: active ? 'var(--bg-1)' : 'transparent',
         color: active ? 'var(--text-0)' : 'var(--text-2)',
-        borderBottom: active ? '2px solid var(--text-0)' : '2px solid transparent',
+        borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
         fontSize: 11,
-        fontWeight: 500,
-        letterSpacing: '0.06em',
+        fontWeight: 580,
+        letterSpacing: '0.08em',
         textTransform: 'uppercase',
         borderRight: '1px solid var(--border-soft)',
         cursor: 'pointer',
         fontFamily: 'inherit',
+        transition: 'all 140ms',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-0)'
+          ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-2)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-2)'
+          ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+        }
       }}
     >
       {icon}
       <span>{label}</span>
       {count != null && (
         <span
-          className="num"
+          className="font-mono"
           style={{
-            fontSize: 9.5,
+            fontSize: 10,
             color: active ? 'var(--text-1)' : 'var(--text-3)',
-            background: 'var(--bg-2)',
-            border: '1px solid var(--border)',
-            padding: '1px 5px',
+            background: active ? 'var(--bg-3)' : 'var(--bg-2)',
+            border: `1px solid ${active ? 'var(--border)' : 'var(--border-soft)'}`,
+            padding: '1px 6px',
             borderRadius: 999,
-            letterSpacing: 0,
+            letterSpacing: '0.02em',
+            fontWeight: 500,
           }}
         >
           {count}
@@ -419,43 +465,46 @@ function DrawerItem({
   const Icon = tab === 'saved' ? FileJson2 : FileClock
   return (
     <div
-      className="relative flex items-start gap-2.5 p-2.5 rounded-md mb-1"
+      className="relative flex items-start gap-3 px-3 py-3 rounded-lg mb-1.5"
       data-testid={`workflow-item-${w.filename}`}
       style={{
         background: active ? 'var(--bg-2)' : 'transparent',
         border: active ? '1px solid var(--border-strong)' : '1px solid transparent',
         cursor: loading ? 'progress' : 'pointer',
-        transition: 'background 120ms, border-color 120ms',
+        transition: 'all 140ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
       onClick={loading || deleting ? undefined : onOpen}
       onMouseEnter={(e) => {
-        if (!active) {
+        if (!active && !loading && !deleting) {
           ;(e.currentTarget as HTMLDivElement).style.background = 'var(--bg-2)'
-          ;(e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-soft)'
+          ;(e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'
+          ;(e.currentTarget as HTMLDivElement).style.transform = 'translateX(2px)'
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
           ;(e.currentTarget as HTMLDivElement).style.borderColor = 'transparent'
+          ;(e.currentTarget as HTMLDivElement).style.transform = 'translateX(0)'
         }
       }}
     >
       <Icon
-        size={13}
-        strokeWidth={1.85}
-        style={{ marginTop: 3, color: active ? 'var(--text-1)' : 'var(--text-3)' }}
+        size={14}
+        strokeWidth={2}
+        style={{ marginTop: 2, color: active ? 'var(--text-0)' : 'var(--text-3)', flexShrink: 0 }}
       />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-baseline justify-between gap-2 mb-1">
           <div
             className="truncate"
             style={{
-              fontSize: 12.5,
-              fontWeight: 500,
+              fontSize: 13,
+              fontWeight: 530,
               color: 'var(--text-0)',
-              letterSpacing: '-0.005em',
+              letterSpacing: '-0.01em',
+              lineHeight: 1.3,
             }}
           >
             {w.name || w.filename}
@@ -465,7 +514,8 @@ function DrawerItem({
             style={{
               fontSize: 10,
               color: 'var(--text-3)',
-              letterSpacing: 0,
+              letterSpacing: '0.01em',
+              fontWeight: 500,
             }}
           >
             {w.node_count}n
@@ -474,10 +524,11 @@ function DrawerItem({
         {w.description && (
           <div
             style={{
-              marginTop: 2,
-              fontSize: 11,
+              marginTop: 3,
+              fontSize: 11.5,
               color: 'var(--text-2)',
-              lineHeight: 1.45,
+              lineHeight: 1.5,
+              letterSpacing: '-0.003em',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
@@ -487,13 +538,13 @@ function DrawerItem({
             {w.description}
           </div>
         )}
-        <div className="flex items-center justify-between" style={{ marginTop: 4 }}>
+        <div className="flex items-center justify-between" style={{ marginTop: 6 }}>
           <span
             className="font-mono truncate"
             style={{
-              fontSize: 9.5,
+              fontSize: 10,
               color: 'var(--text-3)',
-              letterSpacing: 0,
+              letterSpacing: '0.01em',
               flex: 1,
               minWidth: 0,
             }}
@@ -502,8 +553,8 @@ function DrawerItem({
           </span>
           {w.modified_ms != null && (
             <span
-              className="font-mono shrink-0 ml-2"
-              style={{ fontSize: 9.5, color: 'var(--text-3)' }}
+              className="font-mono shrink-0 ml-3"
+              style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 500 }}
             >
               {relativeTime(w.modified_ms)}
             </span>
@@ -521,38 +572,47 @@ function DrawerItem({
         title="Delete"
         className="flex items-center justify-center rounded"
         style={{
-          width: 22, height: 22,
+          width: 24, height: 24,
           background: 'transparent',
           color: 'var(--text-3)',
           border: '1px solid transparent',
-          opacity: 0.55,
+          opacity: 0,
           cursor: loading || deleting ? 'wait' : 'pointer',
-          transition: 'background 120ms, color 120ms',
+          transition: 'all 140ms',
+          flexShrink: 0,
         }}
         onMouseEnter={(e) => {
           ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--danger)'
-          ;(e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--danger) 8%, transparent)'
+          ;(e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--danger) 10%, transparent)'
+          ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, var(--danger) 30%, transparent)'
           ;(e.currentTarget as HTMLButtonElement).style.opacity = '1'
         }}
         onMouseLeave={(e) => {
           ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-3)'
           ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-          ;(e.currentTarget as HTMLButtonElement).style.opacity = '0.55'
+          ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent'
+          ;(e.currentTarget as HTMLButtonElement).style.opacity = '0'
+        }}
+        onMouseOver={(e) => {
+          const parent = e.currentTarget.parentElement
+          if (parent) {
+            ;(e.currentTarget as HTMLButtonElement).style.opacity = '1'
+          }
         }}
       >
         {deleting ? (
-          <Loader2 size={11} strokeWidth={2} className="animate-spin" />
+          <Loader2 size={12} strokeWidth={2.5} className="animate-spin" />
         ) : (
-          <Trash2 size={11} strokeWidth={2} />
+          <Trash2 size={12} strokeWidth={2.5} />
         )}
       </button>
 
       {loading && (
         <Loader2
-          size={12}
-          strokeWidth={2}
+          size={13}
+          strokeWidth={2.5}
           className="animate-spin shrink-0"
-          style={{ color: 'var(--text-2)', marginTop: 3 }}
+          style={{ color: 'var(--accent)', marginTop: 2 }}
         />
       )}
     </div>
