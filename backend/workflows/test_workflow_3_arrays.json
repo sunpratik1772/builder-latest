@@ -1,0 +1,46 @@
+{
+  "workflow_name": "Test 3: Array Operations",
+  "description": "Tests ITEM_LISTS, CODE, AGGREGATE",
+  "nodes": [
+    {
+      "id": "http1",
+      "type": "HTTP_REQUEST",
+      "position": {"x": 100, "y": 100},
+      "config": {
+        "method": "GET",
+        "url": "https://api.example.com/data"
+      }
+    },
+    {
+      "id": "json1",
+      "type": "JSON",
+      "position": {"x": 300, "y": 100},
+      "config": {
+        "operation": "parse"
+      }
+    },
+    {
+      "id": "items1",
+      "type": "ITEM_LISTS",
+      "position": {"x": 500, "y": 100},
+      "config": {
+        "operation": "unique",
+        "field_name": "category"
+      }
+    },
+    {
+      "id": "code1",
+      "type": "CODE",
+      "position": {"x": 700, "y": 100},
+      "config": {
+        "code": "items = [{'count': len(items), 'processed': True}]",
+        "mode": "run_once_for_all"
+      }
+    }
+  ],
+  "edges": [
+    {"from": "http1", "from_port": "output", "to": "json1", "to_port": "input"},
+    {"from": "json1", "from_port": "output", "to": "items1", "to_port": "input"},
+    {"from": "items1", "from_port": "output", "to": "code1", "to_port": "input"}
+  ]
+}

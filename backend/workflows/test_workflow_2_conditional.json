@@ -1,0 +1,92 @@
+{
+  "workflow_name": "Test 2: Conditional Logic",
+  "description": "Tests IF, SWITCH, MERGE, AGGREGATE, CODE",
+  "nodes": [
+    {
+      "id": "http1",
+      "type": "HTTP_REQUEST",
+      "position": {"x": 100, "y": 200},
+      "config": {
+        "method": "GET",
+        "url": "https://api.example.com/orders"
+      }
+    },
+    {
+      "id": "if1",
+      "type": "IF",
+      "position": {"x": 300, "y": 200},
+      "config": {
+        "conditions": [
+          {
+            "data_type": "string",
+            "field_name": "status",
+            "operation": "equals",
+            "compare_value": "pending"
+          }
+        ],
+        "combine_operation": "AND"
+      }
+    },
+    {
+      "id": "set_true",
+      "type": "SET",
+      "position": {"x": 500, "y": 100},
+      "config": {
+        "mode": "manual",
+        "fields": [
+          {
+            "name": "priority",
+            "value": "high",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "set_false",
+      "type": "SET",
+      "position": {"x": 500, "y": 300},
+      "config": {
+        "mode": "manual",
+        "fields": [
+          {
+            "name": "priority",
+            "value": "low",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "merge1",
+      "type": "MERGE",
+      "position": {"x": 700, "y": 200},
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "agg1",
+      "type": "AGGREGATE",
+      "position": {"x": 900, "y": 200},
+      "config": {
+        "group_by": ["priority"],
+        "aggregations": [
+          {
+            "field": "id",
+            "operation": "count",
+            "output_field": "count"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {"from": "http1", "from_port": "output", "to": "if1", "to_port": "input"},
+    {"from": "if1", "from_port": "true", "to": "set_true", "to_port": "input"},
+    {"from": "if1", "from_port": "false", "to": "set_false", "to_port": "input"},
+    {"from": "set_true", "from_port": "output", "to": "merge1", "to_port": "input1"},
+    {"from": "set_false", "from_port": "output", "to": "merge1", "to_port": "input2"},
+    {"from": "merge1", "from_port": "output", "to": "agg1", "to_port": "input"}
+  ]
+}

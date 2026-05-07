@@ -1,0 +1,85 @@
+{
+  "workflow_name": "Test 1: Data Pipeline",
+  "description": "Tests HTTP_REQUEST, JSON, FILTER, SORT, LIMIT, SET",
+  "nodes": [
+    {
+      "id": "http1",
+      "type": "HTTP_REQUEST",
+      "position": {"x": 100, "y": 100},
+      "config": {
+        "method": "GET",
+        "url": "https://api.example.com/users",
+        "options": {
+          "response_format": "json"
+        }
+      }
+    },
+    {
+      "id": "json1",
+      "type": "JSON",
+      "position": {"x": 300, "y": 100},
+      "config": {
+        "operation": "parse"
+      }
+    },
+    {
+      "id": "filter1",
+      "type": "FILTER",
+      "position": {"x": 500, "y": 100},
+      "config": {
+        "conditions": [
+          {
+            "field_name": "age",
+            "operation": "greater_than",
+            "value": 25
+          }
+        ],
+        "combine_operation": "AND"
+      }
+    },
+    {
+      "id": "sort1",
+      "type": "SORT",
+      "position": {"x": 700, "y": 100},
+      "config": {
+        "sort_by": [
+          {
+            "field_name": "name",
+            "direction": "asc"
+          }
+        ]
+      }
+    },
+    {
+      "id": "limit1",
+      "type": "LIMIT",
+      "position": {"x": 900, "y": 100},
+      "config": {
+        "max_items": 10,
+        "keep": "first"
+      }
+    },
+    {
+      "id": "set1",
+      "type": "SET",
+      "position": {"x": 1100, "y": 100},
+      "config": {
+        "mode": "manual",
+        "fields": [
+          {
+            "name": "processed",
+            "value": true,
+            "type": "boolean"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {"from": "http1", "from_port": "output", "to": "json1", "to_port": "input"},
+    {"from": "json1", "from_port": "output", "to": "filter1", "to_port": "input"},
+    {"from": "filter1", "from_port": "output", "to": "sort1", "to_port": "input"},
+    {"from": "sort1", "from_port": "output", "to": "limit1", "to_port": "input"},
+    {"from": "limit1", "from_port": "output", "to": "set1", "to_port": "input"}
+  ]
+}
