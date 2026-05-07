@@ -1,0 +1,99 @@
+type_id: EXECUTION_DATA_COLLECTOR
+description: "Query Solr for client orders, executions, trades, and quotes"
+
+ui:
+  color: "#2563EB"
+  icon: ArrowLeftRight
+  config_tags: [source, output_name]
+  palette:
+    section:
+      id: integrations
+      label: Integrations
+      order: 10
+      color: "#00E5FF"
+    node_order: 11
+  display_name: Solr Data Collector
+
+input_ports:
+  - name: context
+    type: object
+    description: "Context keys referenced in query_template as {context.xxx}"
+    optional: true
+  - name: window
+    type: object
+    description: "Optional TIME_WINDOW output (start_time, end_time) — filters rows to the window when window_key is set."
+    optional: true
+
+output_ports:
+  - name: executions
+    type: dataframe
+    store_at: "ctx.datasets[{output_name}]"
+    description: "Order/execution rows. Stored in ctx.datasets under the configured output_name."
+  - name: row_count
+    type: scalar
+    store_at: "ctx.values[{output_name}_count]"
+    description: "Integer row count. Stored in ctx.values as {output_name}_count."
+    optional: true
+
+params:
+  - name: source
+    type: enum
+    description: "Which Solr collection to query. Values are derived from data_sources/metadata/trades.yaml at runtime."
+    enum: [hs_client_order, hs_execution, hs_trades, hs_orders_and_executions, hs_quotes]
+    default: hs_client_order
+    required: true
+  - name: query_template
+    type: string
+    description: "Solr query; use {context.xxx} placeholders for alert fields."
+    required: true
+    widget: textarea
+  - name: output_name
+    type: string
+    description: "Dataset name in ctx.datasets."
+    default: execution_data
+    required: true
+  - name: window_key
+    type: string
+    description: "ctx.values key holding the window dict. Used when a TIME_WINDOW node is wired upstream."
+    default: window
+    required: false
+  - name: trader_filter_key
+    type: string
+    description: "ctx.values key whose value filters trader_id when present. Empty = no trader filter."
+    default: trader_id
+    required: false
+  - name: loop_over_books
+    type: boolean
+    description: "Repeat the query for each book in the books list."
+    default: false
+    required: false
+  - name: books
+    type: string_list
+    description: "Book names when loop_over_books=true."
+    default: []
+    required: false
+  - name: mock_csv_path
+    type: string
+    description: >-
+      Demo-mode override: path to a CSV used verbatim instead of the synthetic
+      generator. Ignored if the file is missing. CSV columns are not
+      re-checked against the lists below; synthetic rows are.
+    default: ""
+    required: false
+
+# Per `params.source` — populated from data_sources/metadata/trades.yaml
+# in execution_data_collector.py so the UI dropdown and runtime contracts
+# track YAML metadata without regenerating frontend code.
+extras:
+  # dag_runner: bind output_columns_by_source to the dataframe port below
+  source_keyed_schema_port: executions
+  source_param_for_schema: source
+  source_schema_default: hs_client_order
+  output_columns_by_source: {}
+
+semantics:
+  requires: [trader, time]
+
+constraints:
+  - "When source reads versioned trades/fills, trade_version:1 MUST be hard-coded in query_template — never from context."
+  - "Output DataFrame will always include trade_version=1 for hs_execution, hs_trades, and hs_orders_and_executions synthetic reads."

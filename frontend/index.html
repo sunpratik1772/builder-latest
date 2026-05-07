@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dbSherpa Studio — AI workflow builder</title>
+    <link rel="icon" type="image/png" href="/brand/dbsherpa-logo-light.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" href="/brand/dbsherpa-logo-dark.png" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" href="/brand/dbsherpa-logo-light.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Geist (Vercel) is the primary type. Inter remains as a fallback so
+         existing inline `font-family` literals still resolve cleanly. -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body, #root { height: 100%; overflow: hidden; }
+      body {
+        background: #08090a;
+        color: #ededee;
+        font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      code, pre, .font-mono { font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

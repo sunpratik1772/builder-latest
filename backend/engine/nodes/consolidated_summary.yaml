@@ -1,0 +1,74 @@
+type_id: CONSOLIDATED_SUMMARY
+description: "LLM executive summary across all sections"
+
+ui:
+  color: "#B45309"
+  icon: FileStack
+  palette:
+    section:
+      id: narrative
+      label: Narrative
+      order: 50
+      color: "#F472B6"
+    node_order: 51
+
+input_ports:
+  - name: sections
+    type: object
+    description: >-
+      All section objects produced by upstream SECTION_SUMMARY nodes
+      (context.sections).
+
+output_ports:
+  - name: executive_summary
+    type: text
+    store_at: "ctx.executive_summary"
+    description: "Multi-paragraph executive summary. Stored as context.executive_summary."
+
+params:
+  - name: llm_prompt_template
+    type: string
+    description: >-
+      Custom prompt with {section_text}, {trader_id}, {currency_pair},
+      {disposition}, {flag_count} placeholders, plus any vars defined
+      under prompt_context.vars and (when mode=dataset|mixed) {dataset}.
+      Cross-dataset refs like {executions.notional.sum} resolve inline.
+      Falls back to the built-in template when empty.
+    required: false
+    widget: textarea
+  - name: system_prompt
+    type: string
+    description: >-
+      System instruction for the executive-summary LLM. Rendered with
+      {section_text}, alert context, prompt_context vars, and context refs.
+    required: false
+    widget: textarea
+  - name: prompt_context
+    type: object
+    description: >-
+      Optional structured slot block: {mode: template|dataset|mixed,
+      vars: {name: ref_expr, ...}, dataset: {ref, format, max_rows,
+      columns}}. Same shape as SECTION_SUMMARY.prompt_context.
+    default: {}
+    required: false
+  - name: model
+    type: string
+    description: "Optional LLM model override."
+    required: false
+  - name: temperature
+    type: number
+    description: "LLM temperature."
+    default: 0.2
+    required: false
+  - name: max_output_tokens
+    type: integer
+    description: "Maximum response tokens."
+    default: 1000
+    required: false
+
+semantics:
+  requires: []
+
+constraints:
+  - "Default max_output_tokens: 1000."
+  - "Must run after all SECTION_SUMMARY nodes."

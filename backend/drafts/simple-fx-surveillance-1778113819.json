@@ -1,0 +1,198 @@
+{
+  "workflow_id": "simple_fx_surveillance",
+  "name": "Simple FX Surveillance",
+  "schema_version": "1.0",
+  "description": "A basic workflow for FX surveillance, focusing on Front-Running detection.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "ALERT_TRIGGER",
+      "label": "Alert Trigger",
+      "config": {
+        "alert_fields": {
+          "trader_id": "string",
+          "book": "string",
+          "alert_date": "date",
+          "currency_pair": "string",
+          "alert_id": "string"
+        }
+      }
+    },
+    {
+      "id": "n02",
+      "type": "TIME_WINDOW",
+      "label": "Define Surveillance Window",
+      "config": {
+        "event_time_key": "alert_date",
+        "pre_minutes": 60,
+        "post_minutes": 60,
+        "output_name": "surveillance_window"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "EXECUTION_DATA_COLLECTOR",
+      "label": "Collect Executions",
+      "config": {
+        "source": "hs_execution",
+        "query_template": "trader_id:{context.trader_id} AND currency_pair:{context.currency_pair} AND exec_time:[{context.surveillance_window.start_time} TO {context.surveillance_window.end_time}] AND trade_version:1",
+        "output_name": "executions",
+        "window_key": "surveillance_window"
+      }
+    },
+    {
+      "id": "n04",
+      "type": "SIGNAL_CALCULATOR",
+      "label": "Calculate Front-Running Signals",
+      "config": {
+        "mode": "configure",
+        "signal_type": "FRONT_RUNNING",
+        "input_name": "executions",
+        "output_name": "fro_signals",
+        "params": {
+          "window_minutes": 5,
+          "price_move_threshold": 0.0003
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "DATA_HIGHLIGHTER",
+      "label": "Highlight FRO Signals",
+      "config": {
+        "input_name": "fro_signals",
+        "output_name": "fro_signals_highlighted",
+        "rules": [
+          {
+            "condition": "_signal_flag == True",
+            "colour": "#FF4444",
+            "label": "FRO SIGNAL"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n06",
+      "type": "DECISION_RULE",
+      "label": "Determine Disposition",
+      "config": {
+        "input_name": "fro_signals",
+        "escalate_threshold": 5,
+        "review_threshold": 1
+      }
+    },
+    {
+      "id": "n07",
+      "type": "SECTION_SUMMARY",
+      "label": "Execution Analysis Section",
+      "config": {
+        "section_name": "execution_analysis",
+        "input_name": "executions",
+        "mode": "templated",
+        "field_bindings": [
+          {
+            "field": "notional_usd",
+            "agg": "sum"
+          },
+          {
+            "field": "exec_quantity",
+            "agg": "sum"
+          },
+          {
+            "field": "exec_id",
+            "agg": "count"
+          }
+        ],
+        "llm_prompt_template": "Review of executions for trader {context.trader_id} in {context.currency_pair}:\nTotal notional: {stats.notional_usd_sum}\nTotal quantity: {stats.exec_quantity_sum}\nNumber of executions: {stats.exec_id_count}"
+      }
+    },
+    {
+      "id": "n08",
+      "type": "SECTION_SUMMARY",
+      "label": "Signal Summary Section",
+      "config": {
+        "section_name": "signal_summary",
+        "input_name": "fro_signals",
+        "mode": "templated",
+        "field_bindings": [
+          {
+            "field": "_signal_flag",
+            "agg": "sum"
+          }
+        ],
+        "llm_prompt_template": "Front-Running signal summary for trader {context.trader_id}:\nTotal FRO signal flags: {stats._signal_flag_sum}"
+      }
+    },
+    {
+      "id": "n09",
+      "type": "CONSOLIDATED_SUMMARY",
+      "label": "Executive Summary",
+      "config": {}
+    },
+    {
+      "id": "n10",
+      "type": "REPORT_OUTPUT",
+      "label": "Generate Report",
+      "config": {
+        "output_path": "output/fx_surveillance_report_{context.alert_id}.xlsx",
+        "tabs": [
+          {
+            "name": "Executions",
+            "dataset": "executions"
+          },
+          {
+            "name": "FRO Signals",
+            "dataset": "fro_signals_highlighted",
+            "include_highlights": true
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n04",
+      "to": "n06"
+    },
+    {
+      "from": "n03",
+      "to": "n07"
+    },
+    {
+      "from": "n05",
+      "to": "n08"
+    },
+    {
+      "from": "n07",
+      "to": "n09"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n06",
+      "to": "n10"
+    }
+  ]
+}

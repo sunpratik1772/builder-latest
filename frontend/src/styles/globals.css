@@ -1,0 +1,510 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   dbSherpa Studio — Linear/Railway-inspired neutral premium aesthetic
+   Design tokens deliberately echo Linear's monochrome restraint, Railway's
+   sharp surfaces, and Supabase's clean panels. The palette is intentionally
+   muted; accents are used sparingly to draw the eye to one thing at a time.
+   ========================================================================= */
+:root {
+  color-scheme: dark;
+
+  /* — Foundation ----------------------------------------------------- */
+  --bg-base: #08090a;
+  --bg-deep: #050506;
+
+  /* — Solid surfaces ------------------------------------------------- */
+  --bg-0: #08090a;
+  --bg-1: rgba(15, 16, 18, 0.92);
+  --bg-2: #101113;
+  --bg-3: #16171a;
+  --bg-node: #101113;
+  --bg-node-elev: #17181c;
+
+  --panel-glass-bg: rgba(13, 14, 16, 0.88);
+
+  /* Borders are kept whisper-thin and biased to white over black to
+     make them survive the neutral background regardless of theme. */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --border-soft: rgba(255, 255, 255, 0.035);
+  --border-solid: #1f2024;
+
+  --text-0: #ededee;
+  --text-1: #b5b5bc;
+  --text-2: #8b8b94;
+  --text-3: #5d5d66;
+
+  /* Single restrained accent — kept as a near-neutral off-white so the
+     interface reads as monochrome. Used for focus rings and the most
+     important active state, never as a fill on large surfaces. */
+  --accent: #d4d4d8;
+  --accent-soft: rgba(255, 255, 255, 0.06);
+  --accent-hi: #e4e4e7;
+  --accent-lo: #a1a1aa;
+
+  /* Cyan reserved for "running/streaming" affordances. */
+  --accent-cyan: #38bdf8;
+
+  --running: #38bdf8;
+  --running-lo: #0ea5e9;
+  --success: #3ecf8e;          /* Supabase emerald */
+  --success-lo: #2eb87a;
+  --danger: #f87171;
+  --danger-lo: #ef4444;
+  --info: #60a5fa;
+  --warning: #f59e0b;
+
+  /* Port colors deliberately kept distinguishable but desaturated. */
+  --port-dataframe: #f59e0b;
+  --port-object: #38bdf8;
+  --port-scalar: #3ecf8e;
+  --port-string-list: #7c83ff;
+  --port-workflow: #f472b6;
+
+  --minimap-mask: rgba(8, 9, 10, 0.78);
+
+  --atmo-gradient: none;
+  --grain-blend: overlay;
+  --grain-opacity: 0;
+  --dots-color: rgba(255, 255, 255, 0.04);
+
+  --fs-micro: 10.5px;
+  --fs-caption: 11.5px;
+  --fs-body: 12.5px;
+  --fs-h: 13.5px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.83, 0, 0.17, 1);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-base: #fafafa;
+  --bg-deep: #f4f4f5;
+
+  --bg-0: #fafafa;
+  --bg-1: rgba(255, 255, 255, 0.94);
+  --bg-2: #ffffff;
+  --bg-3: #f1f1f4;
+  --bg-node: #ffffff;
+  --bg-node-elev: #f7f7f8;
+
+  --panel-glass-bg: rgba(255, 255, 255, 0.92);
+
+  --border: rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --border-soft: rgba(0, 0, 0, 0.06);
+  --border-solid: #d4d4d8;
+
+  --text-0: #09090b;
+  --text-1: #27272a;
+  --text-2: #52525b;
+  --text-3: #6b6b73;
+
+  --accent: #18181b;
+  --accent-soft: rgba(0, 0, 0, 0.05);
+  --accent-hi: #27272a;
+  --accent-lo: #09090b;
+  --accent-cyan: #0284c7;
+
+  --running: #0284c7;
+  --running-lo: #0369a1;
+  --success: #16a34a;
+  --success-lo: #15803d;
+  --danger: #dc2626;
+  --danger-lo: #b91c1c;
+  --info: #2563eb;
+  --warning: #d97706;
+
+  --port-dataframe: #d97706;
+  --port-object: #0284c7;
+  --port-scalar: #16a34a;
+  --port-string-list: #5b6cff;
+  --port-workflow: #be185d;
+
+  --minimap-mask: rgba(244, 244, 245, 0.84);
+
+  --grain-blend: multiply;
+  --grain-opacity: 0;
+  --dots-color: rgba(0, 0, 0, 0.05);
+}
+
+/* -------------------------------------------------------------------------
+   Studio backdrop — refined, minimal: a faint dot grid with a single
+   spotlight at the top. No animated cosmic blobs (Linear ethos).
+   ------------------------------------------------------------------------- */
+.studio-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.studio-backdrop__wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%,
+      color-mix(in srgb, var(--accent) 7%, transparent) 0%,
+      transparent 70%),
+    linear-gradient(180deg, var(--bg-base) 0%, var(--bg-deep) 100%);
+}
+
+/* Faint dot grid — anchors the canvas without competing for attention. */
+.studio-backdrop__blob,
+.studio-backdrop__blob--1,
+.studio-backdrop__blob--2,
+.studio-backdrop__blob--3 {
+  display: none;
+}
+
+.studio-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, var(--dots-color) 1px, transparent 0);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 100%);
+  opacity: 0.7;
+}
+
+@keyframes studio-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(20px, -10px); }
+}
+@keyframes studio-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-15px, 12px); }
+}
+@keyframes studio-drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(8px, 18px); }
+}
+
+.panel-glass {
+  background: var(--panel-glass-bg);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  backdrop-filter: saturate(140%) blur(18px);
+}
+
+/* -------------------------------------------------------------------------
+   Body + utility classes
+   ------------------------------------------------------------------------- */
+body {
+  background: var(--bg-base);
+  color: var(--text-0);
+  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  letter-spacing: -0.005em;
+  transition: background-color 200ms var(--ease-out);
+}
+
+.display {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.022em;
+  font-weight: 500;
+}
+
+.eyebrow {
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.num {
+  font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* =========================================================================
+   ReactFlow overrides
+   ========================================================================= */
+.react-flow__renderer { background: transparent !important; }
+.react-flow__edge-path { stroke-width: 1.4; }
+.react-flow__edge.edge--running .react-flow__edge-path {
+  stroke: var(--running);
+  stroke-dasharray: 6 4;
+  animation: edge-flow 0.9s linear infinite;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--running) 45%, transparent));
+}
+.react-flow__edge.edge--done .react-flow__edge-path {
+  stroke: var(--success);
+  stroke-dasharray: none;
+  animation: none;
+}
+.react-flow__edge.edge--error .react-flow__edge-path {
+  stroke: var(--danger);
+  stroke-dasharray: none;
+}
+.react-flow__controls {
+  box-shadow: none !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden;
+  border: 1px solid var(--border) !important;
+}
+.react-flow__controls button {
+  background: var(--panel-glass-bg) !important;
+  border-color: var(--border) !important;
+  border-bottom: 1px solid var(--border-soft) !important;
+  color: var(--text-2) !important;
+  width: 30px !important;
+  height: 30px !important;
+  -webkit-backdrop-filter: saturate(140%) blur(12px) !important;
+  backdrop-filter: saturate(140%) blur(12px) !important;
+}
+.react-flow__controls button:hover {
+  background: var(--bg-3) !important;
+  color: var(--text-0) !important;
+}
+.react-flow__minimap {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border) !important;
+}
+.react-flow__attribution { display: none !important; }
+
+/* =========================================================================
+   Scrollbar — Linear/Supabase style, slim and unobtrusive
+   ========================================================================= */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: rgba(127, 127, 140, 0.18);
+  transition: background 120ms var(--ease-out);
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(127, 127, 140, 0.4); }
+
+/* =========================================================================
+   Motion
+   ========================================================================= */
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-pulse-border { animation: pulse-border 2s ease-in-out infinite; }
+
+@keyframes run-ring {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--running) 55%, transparent),
+      0 0 0 1px var(--running),
+      0 18px 44px -12px color-mix(in srgb, var(--running) 50%, transparent);
+  }
+  70% {
+    box-shadow:
+      0 0 0 8px color-mix(in srgb, var(--running) 0%, transparent),
+      0 0 0 1px var(--running),
+      0 18px 44px -12px color-mix(in srgb, var(--running) 60%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--running) 0%, transparent),
+      0 0 0 1px var(--running),
+      0 18px 44px -12px color-mix(in srgb, var(--running) 50%, transparent);
+  }
+}
+.run-ring { animation: run-ring 1.8s var(--ease-out) infinite; }
+
+@keyframes scan-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.scan-sweep::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%);
+  animation: scan-sweep 1.4s linear infinite;
+}
+[data-theme="light"] .scan-sweep::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%);
+}
+
+@keyframes edge-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+@keyframes live-blink {
+  0%, 55% { opacity: 1; }
+  60%, 100% { opacity: 0.25; }
+}
+.live-blink { animation: live-blink 1.2s steps(2, end) infinite; }
+
+.lift {
+  transition:
+    transform 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    background-color 160ms var(--ease-out);
+}
+.lift:hover { transform: translateY(-1px); }
+
+/* =========================================================================
+   Atmosphere — kept for backwards compat but disabled by default
+   ========================================================================= */
+.canvas-atmo {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--atmo-gradient);
+  transition: background 220ms var(--ease-out);
+}
+.canvas-grain {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
+}
+
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;
+}
+.chip--idle    { background: color-mix(in srgb, var(--text-2) 8%, transparent);  color: var(--text-2); border: 1px solid var(--border); }
+.chip--running { background: color-mix(in srgb, var(--running) 11%, transparent); color: var(--running); border: 1px solid color-mix(in srgb, var(--running) 35%, transparent); }
+.chip--ok      { background: color-mix(in srgb, var(--success) 11%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 35%, transparent); }
+.chip--error   { background: color-mix(in srgb, var(--danger) 11%, transparent);  color: var(--danger);  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+
+button:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(-100%); opacity: 0.6; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.drawer {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  z-index: 40;
+  animation: drawer-in 180ms var(--ease-out);
+  will-change: transform;
+}
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: backdrop-in 180ms var(--ease-out);
+}
+
+.run-console {
+  backdrop-filter: saturate(140%);
+  -webkit-backdrop-filter: saturate(140%);
+}
+
+.doc-chip {
+  transition:
+    background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out);
+}
+.doc-chip--edit {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent) inset;
+}
+.doc-chip--new { opacity: 0.95; }
+
+@keyframes drawer-spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: drawer-spin 0.9s linear infinite; }
+
+.port-dataframe   { background: var(--port-dataframe);   border-color: var(--port-dataframe); }
+.port-object      { background: var(--port-object);      border-color: var(--port-object); }
+.port-scalar      { background: var(--port-scalar);      border-color: var(--port-scalar); }
+.port-string-list { background: var(--port-string-list); border-color: var(--port-string-list); }
+.port-workflow    { background: var(--port-workflow);    border-color: var(--port-workflow); }
+
+@keyframes blink-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-blink-soft { animation: blink-soft 1.6s ease-in-out infinite; }
+
+@keyframes dashflow {
+  to { stroke-dashoffset: -20; }
+}
+.animate-dashflow { animation: dashflow 0.9s linear infinite; }
+
+/* -------------------------------------------------------------------------
+   Section dividers and panel headers — Supabase-style ribbon
+   ------------------------------------------------------------------------- */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-2) 40%, transparent), transparent);
+}
+
+/* -------------------------------------------------------------------------
+   Refined buttons (mostly used via inline style overrides; this is a
+   safety net for anything that uses default <button>).
+   ------------------------------------------------------------------------- */
+button {
+  font-family: inherit;
+}
+
+/* Polished card surface — used by node thumbnails in the canvas */
+.surface-card {
+  background: var(--bg-node);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.02) inset,
+    0 12px 28px -16px rgba(0, 0, 0, 0.65);
+  transition:
+    border-color 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+.surface-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+[data-theme="light"] .surface-card {
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.5) inset,
+    0 6px 18px -10px rgba(0, 0, 0, 0.12);
+}
+
+/* Soft kbd hint */
+kbd {
+  font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+
+/* React Flow background dots blend with backdrop */
+.react-flow__background {
+  opacity: 0.55;
+}

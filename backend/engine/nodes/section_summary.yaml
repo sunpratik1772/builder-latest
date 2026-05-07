@@ -1,0 +1,135 @@
+type_id: SECTION_SUMMARY
+description: "Aggregate stats + LLM narrative section"
+
+ui:
+  color: "#DB2777"
+  icon: NotebookText
+  palette:
+    section:
+      id: narrative
+      label: Narrative
+      order: 50
+      color: "#F472B6"
+    node_order: 50
+
+input_ports:
+  - name: dataset
+    type: dataframe
+    description: "Any DataFrame referenced by input_name."
+  - name: context
+    type: object
+    description: "trader_id, currency_pair, disposition consumed by the prompt template."
+    optional: true
+
+output_ports:
+  - name: section
+    type: object
+    store_at: "ctx.sections[{section_name}]"
+    description: "{name, stats, narrative, dataset}. Stored under context.sections[section_name]."
+    required_keys: [name, stats, narrative, dataset]
+
+params:
+  - name: section_name
+    type: string
+    description: "Unique section identifier."
+    required: true
+  - name: input_name
+    type: input_ref
+    description: "Source dataset."
+    required: true
+  - name: mode
+    type: enum
+    description: >-
+      templated     — legacy stats-in-prompt flow.
+      fact_pack_llm — pre-compute named facts, pass as JSON, verify each
+                      required fact appears in narrative (retry once).
+      event_narrative — format one line per row into a chronological list,
+                        then stitch with an LLM.
+    enum: [templated, fact_pack_llm, event_narrative]
+    default: templated
+    required: false
+  - name: field_bindings
+    type: array
+    description: "Array of {field: string, agg: 'count'|'sum'|'mean'|'nunique'|'max'|'min'}. Used in templated mode."
+    default: []
+    required: false
+  - name: facts
+    type: array
+    description: >-
+      Array of {name, column, agg} for fact_pack_llm mode. Example:
+      [{name: 'buy_count', column: 'side', agg: 'count_where_buy'}].
+    default: []
+    required: false
+  - name: required_facts
+    type: string_list
+    description: >-
+      Fact names whose values MUST appear verbatim in the generated
+      narrative. A retry is triggered once if any are missing.
+    default: []
+    required: false
+  - name: sort_by
+    type: string
+    description: "Column used to order rows for event_narrative mode."
+    default: ""
+    required: false
+  - name: event_template
+    type: string
+    description: >-
+      Python format string used to render each event row in event_narrative
+      mode. Row columns are passed as keyword args.
+      Example: '{timestamp}  {side} {quantity} @ {limit_price}'.
+    default: ""
+    required: false
+  - name: max_events
+    type: integer
+    description: "Cap events passed to the LLM in event_narrative mode."
+    default: 40
+    required: false
+  - name: llm_prompt_template
+    type: string
+    description: >-
+      Prompt with {stats}, {facts}, {events}, {section}, {disposition},
+      {trader_id}, {currency_pair} placeholders, plus any vars defined
+      under prompt_context.vars and (when mode=dataset|mixed) {dataset}.
+      In templated mode, {stats} renders a text block and
+      {stats.<field>_<agg>} can reference a computed field_binding stat.
+      Cross-dataset refs like {executions.notional.sum} resolve inline.
+    required: false
+    widget: textarea
+  - name: system_prompt
+    type: string
+    description: >-
+      System instruction for the section narrative LLM. Rendered with the
+      same prompt_context vars and context refs as llm_prompt_template.
+    required: false
+    widget: textarea
+  - name: prompt_context
+    type: object
+    description: >-
+      Optional structured slot block: {mode: template|dataset|mixed,
+      vars: {name: ref_expr, ...}, dataset: {ref, format, max_rows,
+      columns}}. vars resolve cross-dataset refs into named slots; the
+      serialized dataset (csv/json/markdown) is exposed as {dataset}.
+    default: {}
+    required: false
+  - name: model
+    type: string
+    description: "Optional LLM model override."
+    required: false
+  - name: temperature
+    type: number
+    description: "LLM temperature."
+    default: 0.2
+    required: false
+  - name: max_output_tokens
+    type: integer
+    description: "Maximum response tokens."
+    default: 600
+    required: false
+
+semantics:
+  requires: []
+
+constraints:
+  - "Default max_output_tokens: 600."
+  - "fact_pack_llm retries at most once when required facts are missing from the narrative."

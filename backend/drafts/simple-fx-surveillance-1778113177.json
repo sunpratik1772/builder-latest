@@ -1,0 +1,79 @@
+{
+  "workflow_id": "simple_fx_surveillance",
+  "name": "Simple FX Surveillance",
+  "schema_version": "1.0",
+  "description": "A basic FX surveillance workflow with an alert trigger and one data source.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "ALERT_TRIGGER",
+      "label": "Alert Trigger",
+      "config": {
+        "alert_fields": {
+          "trader_id": "string",
+          "currency_pair": "string",
+          "alert_date": "date"
+        }
+      }
+    },
+    {
+      "id": "n02",
+      "type": "TIME_WINDOW",
+      "label": "Define Surveillance Window",
+      "config": {
+        "event_time_key": "alert_date",
+        "pre_minutes": 60,
+        "post_minutes": 60,
+        "output_name": "surveillance_window"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "EXECUTION_DATA_COLLECTOR",
+      "label": "Collect FX Executions",
+      "config": {
+        "source": "hs_execution",
+        "query_template": "trader_id:{context.trader_id} AND currency_pair:\"{context.currency_pair}\" AND exec_time:[{context.surveillance_window.start_time} TO {context.surveillance_window.end_time}] AND trade_version:1",
+        "output_name": "fx_executions",
+        "window_key": "surveillance_window",
+        "trader_filter_key": "trader_id"
+      }
+    },
+    {
+      "id": "n04",
+      "type": "REPORT_OUTPUT",
+      "label": "Generate Report",
+      "config": {
+        "output_path": "output/simple_fx_surveillance_report.xlsx",
+        "tabs": [
+          {
+            "name": "FX Executions",
+            "dataset": "fx_executions"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n01",
+      "to": "n03"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n01",
+      "to": "n04"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    }
+  ]
+}

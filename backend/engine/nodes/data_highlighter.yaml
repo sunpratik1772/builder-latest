@@ -1,0 +1,60 @@
+type_id: DATA_HIGHLIGHTER
+description: "Apply colour rules to dataset rows"
+
+ui:
+  color: "#9333EA"
+  icon: Highlighter
+  config_tags: [output_name]
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 20
+      color: "#A78BFA"
+    node_order: 21
+
+input_ports:
+  - name: dataset
+    type: dataframe
+    description: "Any DataFrame referenced by input_name."
+
+output_ports:
+  - name: highlighted
+    type: dataframe
+    store_at: "ctx.datasets[{output_name}]"
+    description: >-
+      Input DataFrame + _highlight_colour (hex) + _highlight_label (str).
+      Stored under ctx.datasets[output_name].
+    required_columns:
+      - _highlight_colour
+      - _highlight_label
+
+params:
+  - name: input_name
+    type: input_ref
+    description: "Source dataset."
+    required: true
+  - name: output_name
+    type: string
+    description: "Highlighted dataset name (convention: input_name + '_highlighted')."
+    required: true
+  - name: rules
+    type: array
+    description: >-
+      Array of {condition, colour, label}. `condition` is a
+      pandas.DataFrame.eval expression evaluated against the target
+      dataset's rows. The condition may include `{ref}` placeholders
+      that resolve to SCALAR values via the cross-dataset ref grammar
+      BEFORE pandas eval — e.g. `notional > {context.peak_threshold}`,
+      `bucket == {ladder.peak_bucket.first}`. `colour` is hex #RRGGBB.
+    default: []
+    required: false
+
+semantics:
+  requires: []
+
+constraints:
+  - "Conditions are evaluated with pandas DataFrame.eval after `{ref}` resolution."
+  - "Rules are applied in order — last matching rule wins."
+  - "Rows with no matching rule get colour #FFFFFF and empty label."
+  - "Buggy rules (unresolved refs, syntax errors, missing columns) are skipped with a warning. The run continues."
