@@ -66,6 +66,11 @@
 
   --minimap-mask: rgba(8, 9, 10, 0.78);
 
+  /* Typography - Inter for UI, JetBrains Mono for code */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+  --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
+
   --atmo-gradient: none;
   --grain-blend: overlay;
   --grain-opacity: 0;

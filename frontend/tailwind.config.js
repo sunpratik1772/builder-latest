@@ -31,9 +31,9 @@ export default {
         info: '#60a5fa',
       },
       fontFamily: {
-        sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
-        heading: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['Geist Mono', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'SF Mono', 'ui-monospace', 'monospace'],
       },
       keyframes: {
         'blink-soft': {
