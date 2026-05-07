@@ -204,14 +204,14 @@
 body {
   background: var(--bg-base);
   color: var(--text-0);
-  font-family: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-feature-settings: 'cv11', 'ss01', 'ss03';
   letter-spacing: -0.005em;
   transition: background-color 200ms var(--ease-out);
 }
 
 .display {
-  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   letter-spacing: -0.022em;
   font-weight: 500;
 }
@@ -225,7 +225,7 @@ body {
 }
 
 .num {
-  font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -378,7 +378,7 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1.4;
-  font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 .chip--idle    { background: color-mix(in srgb, var(--text-2) 8%, transparent);  color: var(--text-2); border: 1px solid var(--border); }
 .chip--running { background: color-mix(in srgb, var(--running) 11%, transparent); color: var(--running); border: 1px solid color-mix(in srgb, var(--running) 35%, transparent); }
@@ -495,7 +495,7 @@ button {
 
 /* Soft kbd hint */
 kbd {
-  font-family: 'Geist Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 4px;

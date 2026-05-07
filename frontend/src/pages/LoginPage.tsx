@@ -78,7 +78,7 @@ export default function LoginPage() {
         background: 'var(--bg-base)',
         color: 'var(--text-0)',
         fontFamily:
-          "'Geist', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+          "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
       {/* LEFT — hero half */}
