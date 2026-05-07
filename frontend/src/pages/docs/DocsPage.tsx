@@ -1,16 +1,12 @@
 /**
- * DocsPage - Documentation section matching Railway's aesthetic
- * Light theme, clean typography, hierarchical navigation
+ * DocsPage - Documentation matching dbSherpa's warm color scheme
  */
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   BookOpen,
-  Workflow,
+  Lightbulb,
   Zap,
-  Database,
-  GitBranch,
-  FileText,
   ChevronRight,
   ChevronDown,
   Home,
@@ -24,7 +20,7 @@ import ReactMarkdown from 'react-markdown'
 interface DocSection {
   id: string
   title: string
-  icon: React.ReactNode
+  icon: string
   items: DocItem[]
 }
 
@@ -34,25 +30,27 @@ interface DocItem {
   content: string
 }
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || ''
+
 export default function DocsPage() {
   const { section, item } = useParams()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['getting-started']))
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['skills', 'getting-started']))
   const [searchQuery, setSearchQuery] = useState('')
   const [docs, setDocs] = useState<DocSection[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Fetch and parse markdown docs
-    fetch(`${import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL}/api/docs`)
+    fetch(`${BACKEND_URL}/api/docs`)
       .then(res => res.json())
       .then(data => {
-        setDocs(data.sections || getDefaultDocs())
+        setDocs(data.sections || [])
         setLoading(false)
       })
-      .catch(() => {
-        setDocs(getDefaultDocs())
+      .catch(err => {
+        console.error('Failed to load docs:', err)
+        setDocs([])
         setLoading(false)
       })
   }, [])
@@ -67,17 +65,25 @@ export default function DocsPage() {
     setExpandedSections(newExpanded)
   }
 
+  const getIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'lightbulb': return <Lightbulb size={16} />
+      case 'zap': return <Zap size={16} />
+      default: return <BookOpen size={16} />
+    }
+  }
+
   const currentSection = docs.find(s => s.id === section)
   const currentItem = currentSection?.items.find(i => i.id === item)
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#FAFAFA', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ display: 'flex', height: '100vh', background: '#0a0908', fontFamily: 'Inter, sans-serif' }}>
       {/* Sidebar */}
       <aside
         style={{
           width: sidebarOpen ? 280 : 0,
-          borderRight: '1px solid #E5E7EB',
-          background: '#FFFFFF',
+          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+          background: '#121212',
           overflow: 'hidden',
           transition: 'width 200ms',
           display: 'flex',
@@ -85,16 +91,14 @@ export default function DocsPage() {
         }}
       >
         {/* Logo */}
-        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #E5E7EB' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontSize: 18, fontWeight: 600, color: '#111827', letterSpacing: '-0.02em' }}>
-                dbSherpa
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#6B7280' }}>
-                Studio
-              </span>
-            </div>
+        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 16 }}>
+            <span style={{ fontSize: 18, fontWeight: 600, color: '#F5F3EF', letterSpacing: '-0.02em' }}>
+              dbSherpa
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: '#9D8C7C' }}>
+              Studio
+            </span>
           </div>
           
           {/* Search */}
@@ -105,11 +109,11 @@ export default function DocsPage() {
               gap: 8,
               padding: '8px 12px',
               borderRadius: 6,
-              border: '1px solid #E5E7EB',
-              background: '#F9FAFB',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: '#1a1a1a',
             }}
           >
-            <Search size={14} style={{ color: '#9CA3AF' }} />
+            <Search size={14} style={{ color: '#6B5D4F', flexShrink: 0 }} />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -120,7 +124,7 @@ export default function DocsPage() {
                 background: 'transparent',
                 outline: 'none',
                 fontSize: 13,
-                color: '#111827',
+                color: '#F5F3EF',
               }}
             />
           </div>
@@ -139,8 +143,8 @@ export default function DocsPage() {
               padding: '8px 12px',
               borderRadius: 6,
               border: 'none',
-              background: !section ? '#F3F4F6' : 'transparent',
-              color: !section ? '#111827' : '#6B7280',
+              background: !section ? 'rgba(210, 125, 70, 0.15)' : 'transparent',
+              color: !section ? '#E89C6B' : '#9D8C7C',
               fontSize: 13.5,
               fontWeight: 500,
               cursor: 'pointer',
@@ -166,15 +170,21 @@ export default function DocsPage() {
                   borderRadius: 6,
                   border: 'none',
                   background: 'transparent',
-                  color: '#374151',
+                  color: '#B5A594',
                   fontSize: 13.5,
                   fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 140ms',
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {sec.icon}
+                  {getIcon(sec.icon)}
                   <span>{sec.title}</span>
                 </div>
                 {expandedSections.has(sec.id) ? (
@@ -198,14 +208,24 @@ export default function DocsPage() {
                         padding: '7px 12px',
                         borderRadius: 6,
                         border: 'none',
-                        background: section === sec.id && item === itm.id ? '#F3F4F6' : 'transparent',
-                        color: section === sec.id && item === itm.id ? '#111827' : '#6B7280',
+                        background: section === sec.id && item === itm.id ? 'rgba(210, 125, 70, 0.15)' : 'transparent',
+                        color: section === sec.id && item === itm.id ? '#E89C6B' : '#9D8C7C',
                         fontSize: 13,
                         fontWeight: section === sec.id && item === itm.id ? 500 : 400,
                         cursor: 'pointer',
                         textAlign: 'left',
                         transition: 'all 140ms',
-                        borderLeft: section === sec.id && item === itm.id ? '2px solid #6366F1' : '2px solid transparent',
+                        borderLeft: section === sec.id && item === itm.id ? '2px solid #D27D46' : '2px solid transparent',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!(section === sec.id && item === itm.id)) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!(section === sec.id && item === itm.id)) {
+                          e.currentTarget.style.background = 'transparent'
+                        }
                       }}
                     >
                       <ArrowRight size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
@@ -222,9 +242,9 @@ export default function DocsPage() {
         <div
           style={{
             padding: '12px 16px',
-            borderTop: '1px solid #E5E7EB',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             fontSize: 11.5,
-            color: '#9CA3AF',
+            color: '#6B5D4F',
           }}
         >
           <a
@@ -233,7 +253,7 @@ export default function DocsPage() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              color: '#6366F1',
+              color: '#D27D46',
               textDecoration: 'none',
               fontWeight: 500,
             }}
@@ -252,8 +272,8 @@ export default function DocsPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px 32px',
-            borderBottom: '1px solid #E5E7EB',
-            background: '#FFFFFF',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            background: '#121212',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -265,46 +285,30 @@ export default function DocsPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid #E5E7EB',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: 6,
                 background: 'transparent',
                 cursor: 'pointer',
-                color: '#6B7280',
+                color: '#9D8C7C',
               }}
             >
               {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
             </button>
             
             {currentItem && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6B7280' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#9D8C7C' }}>
                 <span>{currentSection?.title}</span>
                 <ChevronRight size={14} />
-                <span style={{ color: '#111827', fontWeight: 500 }}>{currentItem.title}</span>
+                <span style={{ color: '#F5F3EF', fontWeight: 500 }}>{currentItem.title}</span>
               </div>
             )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <a
-              href="https://github.com/sunpratik1772/sherpa-new"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 13,
-                color: '#6B7280',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
-              GitHub
-            </a>
           </div>
         </header>
 
         {/* Content Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '48px 64px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '48px 64px', background: '#0a0908' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '48px', color: '#9CA3AF' }}>
+            <div style={{ textAlign: 'center', padding: '48px', color: '#6B5D4F' }}>
               Loading documentation...
             </div>
           ) : !currentItem ? (
@@ -321,7 +325,7 @@ export default function DocsPage() {
                 style={{
                   fontSize: 36,
                   fontWeight: 600,
-                  color: '#111827',
+                  color: '#F5F3EF',
                   marginBottom: 16,
                   letterSpacing: '-0.025em',
                   lineHeight: 1.2,
@@ -331,37 +335,47 @@ export default function DocsPage() {
               </h1>
               <ReactMarkdown
                 components={{
+                  h1: ({ children }) => (
+                    <h1 style={{ fontSize: 32, fontWeight: 600, color: '#F5F3EF', marginTop: 32, marginBottom: 16, letterSpacing: '-0.02em' }}>
+                      {children}
+                    </h1>
+                  ),
                   h2: ({ children }) => (
-                    <h2 style={{ fontSize: 24, fontWeight: 600, color: '#111827', marginTop: 32, marginBottom: 12 }}>
+                    <h2 style={{ fontSize: 24, fontWeight: 600, color: '#E8DFD8', marginTop: 32, marginBottom: 12 }}>
                       {children}
                     </h2>
                   ),
                   h3: ({ children }) => (
-                    <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', marginTop: 24, marginBottom: 10 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 600, color: '#E8DFD8', marginTop: 24, marginBottom: 10 }}>
                       {children}
                     </h3>
                   ),
                   p: ({ children }) => (
-                    <p style={{ fontSize: 15, lineHeight: 1.7, color: '#374151', marginBottom: 16 }}>
+                    <p style={{ fontSize: 15, lineHeight: 1.7, color: '#B5A594', marginBottom: 16 }}>
                       {children}
                     </p>
                   ),
                   ul: ({ children }) => (
-                    <ul style={{ fontSize: 15, lineHeight: 1.7, color: '#374151', marginBottom: 16, paddingLeft: 24 }}>
+                    <ul style={{ fontSize: 15, lineHeight: 1.7, color: '#B5A594', marginBottom: 16, paddingLeft: 24 }}>
                       {children}
                     </ul>
+                  ),
+                  li: ({ children }) => (
+                    <li style={{ marginBottom: 8 }}>
+                      {children}
+                    </li>
                   ),
                   code: ({ children, className }) => {
                     const isInline = !className
                     return isInline ? (
                       <code
                         style={{
-                          background: '#F3F4F6',
+                          background: 'rgba(210, 125, 70, 0.15)',
                           padding: '2px 6px',
                           borderRadius: 4,
                           fontSize: 13.5,
                           fontFamily: 'JetBrains Mono, monospace',
-                          color: '#DC2626',
+                          color: '#E89C6B',
                         }}
                       >
                         {children}
@@ -370,14 +384,15 @@ export default function DocsPage() {
                       <code
                         style={{
                           display: 'block',
-                          background: '#1F2937',
-                          color: '#F9FAFB',
+                          background: '#1a1a1a',
+                          color: '#E8DFD8',
                           padding: '16px 20px',
                           borderRadius: 8,
                           fontSize: 13.5,
                           fontFamily: 'JetBrains Mono, monospace',
                           overflowX: 'auto',
                           marginBottom: 16,
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
                         }}
                       >
                         {children}
@@ -397,22 +412,30 @@ export default function DocsPage() {
 }
 
 function DocsHome({ docs, navigate }: { docs: DocSection[]; navigate: any }) {
+  const getIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'lightbulb': return <Lightbulb size={20} />
+      case 'zap': return <Zap size={20} />
+      default: return <BookOpen size={20} />
+    }
+  }
+
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto' }}>
       <h1
         style={{
           fontSize: 48,
           fontWeight: 600,
-          color: '#111827',
+          color: '#F5F3EF',
           marginBottom: 16,
           letterSpacing: '-0.03em',
         }}
       >
         dbSherpa Studio Documentation
       </h1>
-      <p style={{ fontSize: 18, lineHeight: 1.6, color: '#6B7280', marginBottom: 48 }}>
-        Build intelligent AI workflows visually with dbSherpa Studio. Learn how to create powerful
-        automations using our node-based workflow builder.
+      <p style={{ fontSize: 18, lineHeight: 1.6, color: '#9D8C7C', marginBottom: 48 }}>
+        Build intelligent AI workflows visually. Learn how to create powerful
+        surveillance and data automation workflows using our node-based builder.
       </p>
 
       <div
@@ -433,27 +456,27 @@ function DocsHome({ docs, navigate }: { docs: DocSection[]; navigate: any }) {
             style={{
               padding: 24,
               borderRadius: 12,
-              border: '1px solid #E5E7EB',
-              background: '#FFFFFF',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: '#121212',
               cursor: 'pointer',
               transition: 'all 200ms',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#6366F1'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.1)'
+              e.currentTarget.style.borderColor = '#D27D46'
+              e.currentTarget.style.background = 'rgba(210, 125, 70, 0.08)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#E5E7EB'
-              e.currentTarget.style.boxShadow = 'none'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+              e.currentTarget.style.background = '#121212'
             }}
           >
-            <div style={{ marginBottom: 12, color: '#6366F1' }}>
-              {sec.icon}
+            <div style={{ marginBottom: 12, color: '#D27D46' }}>
+              {getIcon(sec.icon)}
             </div>
-            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#F5F3EF', marginBottom: 8 }}>
               {sec.title}
             </h3>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#6B7280' }}>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: '#9D8C7C' }}>
               {sec.items.length} article{sec.items.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -461,300 +484,4 @@ function DocsHome({ docs, navigate }: { docs: DocSection[]; navigate: any }) {
       </div>
     </div>
   )
-}
-
-function getDefaultDocs(): DocSection[] {
-  return [
-    {
-      id: 'getting-started',
-      title: 'Getting Started',
-      icon: <Zap size={16} />,
-      items: [
-        {
-          id: 'introduction',
-          title: 'Introduction',
-          content: `# Welcome to dbSherpa Studio
-
-dbSherpa Studio is a powerful visual workflow automation platform that lets you build intelligent AI-driven workflows without writing code.
-
-## What is dbSherpa Studio?
-
-dbSherpa Studio combines the power of AI with deterministic data processing to create sophisticated automation workflows. Whether you're building surveillance systems, data pipelines, or intelligent agents, dbSherpa provides the tools you need.
-
-## Key Features
-
-- **Visual Workflow Builder**: Drag-and-drop interface for building complex workflows
-- **AI-Powered Nodes**: LLM integration for intelligent decision-making
-- **Data Processing**: Built-in nodes for data collection, transformation, and analysis
-- **Real-time Execution**: Run workflows on-demand or trigger them automatically
-- **Template Library**: Pre-built workflows for common use cases
-
-## Getting Started
-
-1. Create a new workflow from the Templates page
-2. Add nodes by dragging them onto the canvas
-3. Connect nodes to define your workflow logic
-4. Configure each node with the required parameters
-5. Run your workflow and view the results
-
-Ready to build your first workflow? Check out our [Quick Start Guide](#).`,
-        },
-        {
-          id: 'quick-start',
-          title: 'Quick Start Guide',
-          content: `# Quick Start Guide
-
-Get up and running with dbSherpa Studio in minutes.
-
-## Step 1: Create Your First Workflow
-
-Navigate to the Templates section and click "New workflow" to start with a blank canvas.
-
-## Step 2: Add Nodes
-
-From the left panel, browse available nodes:
-- **Trigger Nodes**: Start your workflow (ALERT_TRIGGER, TIME_WINDOW)
-- **Collector Nodes**: Fetch data (EXECUTION_DATA_COLLECTOR, MARKET_DATA_COLLECTOR)
-- **Transform Nodes**: Process data (FEATURE_ENGINE, AGGREGATOR_NODE)
-- **AI Nodes**: Add intelligence (LLM_PLANNER, LLM_CRITIC, LLM_EVALUATOR)
-- **Output Nodes**: Generate results (REPORT_OUTPUT, SECTION_SUMMARY)
-
-## Step 3: Connect Nodes
-
-Click and drag from one node's output to another node's input to create connections.
-
-## Step 4: Configure Nodes
-
-Click on any node to open its configuration panel. Fill in required fields based on your use case.
-
-## Step 5: Run Your Workflow
-
-Click the "Run" button in the top toolbar to execute your workflow. View results in real-time.
-
-## Example: Simple Data Pipeline
-
-\`\`\`
-ALERT_TRIGGER → EXECUTION_DATA_COLLECTOR → FEATURE_ENGINE → REPORT_OUTPUT
-\`\`\`
-
-This creates a basic pipeline that collects execution data, transforms it, and generates a report.`,
-        },
-      ],
-    },
-    {
-      id: 'workflows',
-      title: 'Workflows',
-      icon: <Workflow size={16} />,
-      items: [
-        {
-          id: 'workflow-basics',
-          title: 'Workflow Basics',
-          content: `# Workflow Basics
-
-Learn the fundamentals of building workflows in dbSherpa Studio.
-
-## What is a Workflow?
-
-A workflow is a directed acyclic graph (DAG) of connected nodes that processes data step by step. Each node performs a specific task, and the connections define how data flows through your automation.
-
-## Workflow Components
-
-### Nodes
-Individual processing units that perform specific tasks:
-- **Trigger Nodes**: Start workflow execution
-- **Data Nodes**: Collect or transform data
-- **AI Nodes**: Make intelligent decisions
-- **Output Nodes**: Generate artifacts and reports
-
-### Connections
-Edges that define data flow between nodes. Data flows from parent nodes to child nodes.
-
-### Context
-The shared state that passes between nodes. Each node can read from and write to the context.
-
-## Best Practices
-
-1. **Start with a clear goal**: Know what you want to achieve
-2. **Keep it modular**: Break complex logic into smaller nodes
-3. **Validate data**: Use validator nodes after critical steps
-4. **Handle errors**: Add error handling nodes for robustness
-5. **Test incrementally**: Run and verify each section before expanding
-
-## Workflow Lifecycle
-
-1. **Design**: Build your workflow visually
-2. **Configure**: Set parameters for each node
-3. **Validate**: Check for errors and missing connections
-4. **Execute**: Run the workflow
-5. **Monitor**: Track execution and results
-6. **Iterate**: Refine based on outcomes`,
-        },
-        {
-          id: 'agentic-patterns',
-          title: 'Agentic Workflow Patterns',
-          content: `# Agentic Workflow Patterns
-
-Build intelligent, self-improving workflows using AI agents.
-
-## Core Principle
-
-\`\`\`
-LLM nodes decide, critique, evaluate, or synthesize.
-Helper/data nodes validate, execute, transform, aggregate, guard, and write artifacts.
-\`\`\`
-
-## Recommended Pattern
-
-For high-value agentic workflows:
-
-\`\`\`
-ALERT_TRIGGER
-→ deterministic data collection
-→ LLM_PLANNER
-→ PLAN_VALIDATOR
-→ LLM_ACTION
-→ ACTION_VALIDATOR
-→ GUARDRAIL
-→ TOOL_EXECUTOR
-→ DATA_REDUCER
-→ LLM_CRITIC
-→ STATE_MANAGER
-→ LLM_EVALUATOR
-→ LOOP_CONTROLLER
-→ LLM_SYNTHESIZER
-→ REPORT_OUTPUT
-\`\`\`
-
-## Key AI Nodes
-
-### LLM_PLANNER
-Converts intent into structured plans with steps and dependencies.
-
-### LLM_CRITIC
-Evaluates execution results and provides actionable feedback.
-
-### LLM_EVALUATOR
-Determines if workflow goals are satisfied.
-
-### LLM_SYNTHESIZER
-Creates final artifacts from validated results.
-
-## Example Use Cases
-
-- **Evidence Analysis**: Collect data, analyze for patterns, generate reports
-- **Compliance Monitoring**: Detect violations, gather evidence, create alerts
-- **Data Quality**: Check completeness, validate accuracy, suggest improvements`,
-        },
-      ],
-    },
-    {
-      id: 'nodes',
-      title: 'Node Library',
-      icon: <GitBranch size={16} />,
-      items: [
-        {
-          id: 'node-overview',
-          title: 'Node Overview',
-          content: `# Node Library Overview
-
-dbSherpa Studio provides a comprehensive library of nodes for building workflows.
-
-## Node Categories
-
-### Trigger Nodes
-- **ALERT_TRIGGER**: Start workflow from external alerts
-- **TIME_WINDOW**: Define time-based execution windows
-
-### Data Collection Nodes
-- **EXECUTION_DATA_COLLECTOR**: Collect trade execution data
-- **MARKET_DATA_COLLECTOR**: Fetch market prices and ticks
-- **COMMS_COLLECTOR**: Retrieve communication logs
-- **ORACLE_DATA_COLLECTOR**: Query warehouse data
-
-### Transform Nodes
-- **FEATURE_ENGINE**: Calculate derived features
-- **AGGREGATOR_NODE**: Perform aggregations and grouping
-- **GROUP_BY**: Split data by dimensions
-- **MAP**: Apply operations to each group
-
-### AI/LLM Nodes
-- **LLM_PLANNER**: Generate execution plans
-- **LLM_ACTION**: Determine next actions
-- **LLM_CRITIC**: Evaluate results
-- **LLM_EVALUATOR**: Check goal completion
-- **LLM_SYNTHESIZER**: Create final output
-
-### Validation Nodes
-- **PLAN_VALIDATOR**: Validate LLM plans
-- **ACTION_VALIDATOR**: Check action validity
-- **GUARDRAIL**: Enforce safety rules
-
-### Control Flow Nodes
-- **STATE_MANAGER**: Track iteration state
-- **LOOP_CONTROLLER**: Manage retry logic
-- **ERROR_HANDLER**: Handle failures
-
-### Output Nodes
-- **REPORT_OUTPUT**: Generate Excel reports
-- **SECTION_SUMMARY**: Create section summaries
-- **CONSOLIDATED_SUMMARY**: Build executive summaries`,
-        },
-      ],
-    },
-    {
-      id: 'data-sources',
-      title: 'Data Sources',
-      icon: <Database size={16} />,
-      items: [
-        {
-          id: 'data-sources-overview',
-          title: 'Data Sources Overview',
-          content: `# Data Sources
-
-Connect to various data sources to power your workflows.
-
-## Available Data Sources
-
-### Trade Data
-- **hs_client_order**: Client order records
-- **hs_execution**: Trade execution data (must include \`trade_version:1\`)
-- **hs_trades**: Consolidated trade data
-- **hs_orders_and_executions**: Combined order and execution view
-
-### Market Data
-- **EBS**: EBS market prices
-- **Mercury**: Mercury tick data
-
-### Communications
-- **oculus**: Message logs and keyword hits
-
-### Reference Data
-- **oracle_orders**: Reference order data
-- **oracle_executions**: Reference execution data
-
-## Data Source Rules
-
-1. **Use exact column names** from the schema
-2. **Include required filters** (e.g., \`trade_version:1\` for executions)
-3. **Check semantic tags** for column usage hints
-4. **Validate data quality** after collection
-
-## Querying Data
-
-Use collector nodes with proper configuration:
-
-\`\`\`
-{
-  "source": "hs_execution",
-  "filters": {
-    "trade_version": 1,
-    "trade_date": "2024-01-15"
-  },
-  "columns": ["trade_id", "symbol", "quantity", "price"]
-}
-\`\`\``,
-        },
-      ],
-    },
-  ]
 }

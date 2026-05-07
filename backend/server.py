@@ -29,6 +29,7 @@ from app.routers import reports as reports_routes
 from app.routers import run as run_routes
 from app.routers import validate as validate_routes
 from app.routers import workflows as workflow_routes
+from app.routers import docs as docs_routes
 
 app = FastAPI(title="dbSherpa Studio API", version="1.1.0")
 
@@ -55,6 +56,7 @@ app.include_router(copilot_routes.contracts_router, prefix="/api")
 app.include_router(agent_routes.router, prefix="/api")
 app.include_router(library_routes.router, prefix="/api")
 app.include_router(auth_routes.router, prefix="/api")
+app.include_router(docs_routes.router, prefix="/api")
 
 
 @app.get("/api/")
