@@ -23,6 +23,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   PanelLeft,
+  ArrowUpRight,
+  BookOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useWorkflowStore } from '../store/workflowStore'
@@ -285,6 +287,32 @@ export default function LeftNav() {
           }}
         />
         <NavRow item={settingsItem} showLabels={showLabels} state={navState} />
+        <a
+          href="/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-2 rounded-md transition-all"
+          style={{
+            color: 'var(--text-2)',
+            textDecoration: 'none',
+            fontSize: 13,
+            fontWeight: 500,
+            letterSpacing: '-0.005em',
+            margin: '0 6px',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-2)'
+            e.currentTarget.style.color = 'var(--text-0)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.color = 'var(--text-2)'
+          }}
+        >
+          <BookOpen size={16} style={{ flexShrink: 0 }} />
+          {showLabels && <span className="flex-1 min-w-0">Docs</span>}
+          {showLabels && <ArrowUpRight size={14} style={{ flexShrink: 0, opacity: 0.5 }} />}
+        </a>
       </nav>
 
       {/* Sidebar control */}

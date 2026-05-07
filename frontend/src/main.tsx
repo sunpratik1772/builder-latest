@@ -23,6 +23,7 @@ import {
 import App from './App.tsx'
 import LoginPage from './pages/LoginPage'
 import AuthCallback from './pages/AuthCallback'
+import DocsPage from './pages/docs/DocsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import './styles/globals.css'
 
@@ -36,6 +37,8 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/docs" element={<DocsPage />} />
+      <Route path="/docs/:section/:item" element={<DocsPage />} />
       <Route
         path="/dashboard"
         element={

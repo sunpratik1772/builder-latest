@@ -1,0 +1,13 @@
+workflow_id: untitled
+name: Untitled workflow
+version: 0.1.0
+description: ''
+nodes:
+- id: n01
+  type: EXECUTION_DATA_COLLECTOR
+  label: Solr Data Collector
+  config: {}
+  position:
+    x: 664
+    y: 294
+edges: []
