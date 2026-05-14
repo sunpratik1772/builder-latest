@@ -82,6 +82,10 @@ class AgentState:
     attempts: int = 0                      # completed LLM repair passes
     auto_fix_passes: int = 0
     auto_fixes_applied: list[str] = field(default_factory=list)
+    canonicalization_passes: int = 0
+    canonicalization_applied: list[str] = field(default_factory=list)
+    runtime_smoke_passed: bool | None = None
+    runtime_smoke_error: str | None = None
 
     template_id: str | None = None
     matched_skills: list[str] = field(default_factory=list)

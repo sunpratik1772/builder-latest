@@ -1,90 +1,96 @@
-"""HTTP_REQUEST Node — real HTTP fetch with per-item URL templating."""
+"""HTTP_REQUEST node with basic request/response options."""
 from __future__ import annotations
-import logging
-import re
-from pathlib import Path
-from typing import Any, Dict, List
 
-import httpx
+from pathlib import Path
+from typing import Any
+
+import requests
 
 from ..context import RunContext
 from ..node_spec import NodeSpec, _spec_from_yaml
 
-logger = logging.getLogger(__name__)
 
-
-# ``{{ $json.path.to.field }}`` or ``{{ field }}`` — n8n-flavoured templating.
-_TEMPLATE_RE = re.compile(r"\{\{\s*(?:\$json\.)?([\w\.]+)\s*\}\}")
-
-
-def _resolve(template: str, item: Dict[str, Any]) -> str:
-    """Replace ``{{ $json.foo.bar }}`` with the matching value from `item`."""
-    if not isinstance(template, str) or "{{" not in template:
-        return template
-
-    def repl(m: re.Match) -> str:
-        path = m.group(1).split(".")
-        cur: Any = item
-        for key in path:
-            if isinstance(cur, dict):
-                cur = cur.get(key)
-            else:
-                return ""
-        return "" if cur is None else str(cur)
-
-    return _TEMPLATE_RE.sub(repl, template)
+def _resolve_expr(item: dict[str, Any], expr: Any) -> Any:
+    if not isinstance(expr, str):
+        return expr
+    raw = expr.strip()
+    if raw.startswith("={{") and raw.endswith("}}"):
+        raw = raw[3:-2].strip()
+    if not raw.startswith("$json"):
+        return expr
+    raw = raw.removeprefix("$json")
+    if raw.startswith("."):
+        raw = raw[1:]
+    cur: Any = item
+    for part in raw.split("."):
+        if not part:
+            continue
+        cur = cur.get(part) if isinstance(cur, dict) else None
+        if cur is None:
+            return None
+    return cur
 
 
 def handle_http_request(node: dict, ctx: RunContext) -> None:
+    """Execute HTTP request for each input item."""
     cfg = node.get("config", {}) or {}
     node_id = node.get("id", "http_request")
+    src = ctx.get(f"{node_id}_input", [])
+    items = src if isinstance(src, list) else [src]
 
-    # If no upstream items wired, run once with an empty item so static URLs work.
-    items = ctx.get(f"{node_id}_input") or [{}]
-    method = (cfg.get("method") or "GET").upper()
-    url_tpl = cfg.get("url", "")
-    headers_tpl = cfg.get("headers") or {}
-    body_tpl = cfg.get("body")
-    options = cfg.get("options") or {}
-    timeout = float(options.get("timeout", 30))
-    response_format = options.get("response_format", "auto")
+    method = str(cfg.get("method", "GET")).upper()
+    url = str(cfg.get("url", ""))
+    options = cfg.get("options", {}) or {}
+    include_response_meta = bool(options.get("include_response_headers_and_status", False))
+    never_error = bool(options.get("never_error", False))
+    timeout_ms = int(options.get("timeout", 30000) or 30000)
+    response_format = str(options.get("response_format", "autodetect")).lower()
 
-    out: List[Dict[str, Any]] = []
-    with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-        for item in items:
-            url = _resolve(url_tpl, item)
-            headers = {k: _resolve(v, item) for k, v in headers_tpl.items()} if isinstance(headers_tpl, dict) else {}
-            # Default UA — Paul Graham's server 403s the bare httpx UA.
-            headers.setdefault("User-Agent", "Mozilla/5.0 (compatible; dbSherpa/1.0)")
-            body: Any = None
-            if isinstance(body_tpl, dict) and body_tpl:
-                body = {k: _resolve(v, item) if isinstance(v, str) else v for k, v in body_tpl.items()}
-            elif isinstance(body_tpl, str) and body_tpl:
-                body = _resolve(body_tpl, item)
+    headers = cfg.get("headers", {}) or {}
+    query = cfg.get("query", {}) or {}
+    body = cfg.get("body")
 
+    out: list[dict[str, Any]] = []
+    for item in items:
+        row = item if isinstance(item, dict) else {"value": item}
+        h = {k: _resolve_expr(row, v) for k, v in headers.items()}
+        q = {k: _resolve_expr(row, v) for k, v in query.items()}
+        req_url = _resolve_expr(row, url)
+        req_body = _resolve_expr(row, body)
+
+        resp = requests.request(
+            method=method,
+            url=req_url,
+            params=q or None,
+            headers=h or None,
+            json=req_body if isinstance(req_body, (dict, list)) else None,
+            data=req_body if isinstance(req_body, (str, bytes)) else None,
+            timeout=max(timeout_ms / 1000.0, 0.001),
+        )
+
+        if not never_error and resp.status_code >= 400:
+            raise RuntimeError(f"HTTP_REQUEST failed with status {resp.status_code}")
+
+        if response_format == "json":
+            payload: Any = resp.json()
+        elif response_format == "text":
+            payload = resp.text
+        elif response_format == "file":
+            payload = {"content": resp.content, "content_type": resp.headers.get("content-type")}
+        else:
             try:
-                resp = client.request(method, url, headers=headers, json=body if isinstance(body, dict) else None,
-                                      content=body if isinstance(body, (str, bytes)) else None)
-                content_type = resp.headers.get("content-type", "")
-                parsed: Any
-                if response_format == "json" or (response_format == "auto" and "json" in content_type):
-                    try:
-                        parsed = resp.json()
-                    except Exception:
-                        parsed = resp.text
-                else:
-                    parsed = resp.text
-                out.append({
-                    "status": resp.status_code,
-                    "url": str(resp.url),
-                    "headers": dict(resp.headers),
-                    "body": parsed,
-                })
-            except Exception as exc:  # network failure — surface as item, not crash
-                logger.warning("HTTP_REQUEST %s %s failed: %s", method, url, exc)
-                out.append({"status": 0, "url": url, "error": str(exc), "body": None})
+                payload = resp.json()
+            except Exception:
+                payload = resp.text
+
+        record: dict[str, Any] = {"response": payload}
+        if include_response_meta:
+            record["status_code"] = resp.status_code
+            record["headers"] = dict(resp.headers)
+        out.append(record)
 
     ctx.set(f"{node_id}_output", out)
 
 
-NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix(".yaml"), handle_http_request)
+
+NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix('.yaml'), handle_http_request)

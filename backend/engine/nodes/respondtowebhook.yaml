@@ -1,0 +1,86 @@
+type_id: RESPOND_TO_WEBHOOK
+description: Use the Respond to Webhook node to control the response to incoming webhooks.
+  This node works with the Webhook node.
+ui:
+  display_name: Respond to Webhook
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 51
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: enableResponseOutput
+    type: boolean
+    description: Emit a second response output object for downstream nodes.
+    required: false
+    default: false
+  - name: respondWith
+    type: string
+    description: Response payload mode
+    required: false
+    default: firstIncomingItem
+    enum: [allIncomingItems, firstIncomingItem, binary, json, jwt, text, redirect, noData]
+  - name: responseBody
+    type: object
+    description: Response body for json/text modes
+    required: false
+  - name: payload
+    type: object
+    description: JWT payload when respondWith is jwt.
+    required: false
+  - name: jwt_secret
+    type: string
+    description: JWT signing secret for local adapter mode.
+    required: false
+  - name: jwt_algorithm
+    type: string
+    description: JWT algorithm for local adapter mode.
+    required: false
+    default: HS256
+  - name: responseDataSource
+    type: string
+    description: Binary response source mode.
+    required: false
+    default: automatically
+    enum: [automatically, set]
+  - name: inputFieldName
+    type: string
+    description: Binary field name when responseDataSource is set.
+    required: false
+    default: data
+  - name: redirectURL
+    type: string
+    description: Redirect target for redirect mode
+    required: false
+  - name: options
+    type: object
+    description: Response options including responseCode and responseHeaders
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/'
+extras:
+  docs_slug: n8n-nodes-base.respondtowebhook
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/
+  scrape_mode: deep_all_sections

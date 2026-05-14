@@ -1,0 +1,61 @@
+type_id: HTML
+description: The HTML node provides operations to help you work with HTML in n8n.
+ui:
+  display_name: HTML
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 29
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: operation
+    type: string
+    description: HTML operation
+    required: false
+    default: generateHtmlTemplate
+    enum: [generateHtmlTemplate, extractHtmlContent, convertToHtmlTable]
+  - name: html
+    type: string
+    description: HTML template when operation=generateHtmlTemplate
+    required: false
+  - name: dataPropertyName
+    type: string
+    description: Source field containing HTML when operation=extractHtmlContent
+    required: false
+    default: data
+  - name: extractionValues
+    type: object
+    description: Extraction selectors and return options
+    required: false
+  - name: options
+    type: object
+    description: Operation-specific options
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/'
+extras:
+  docs_slug: n8n-nodes-base.html
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/
+  scrape_mode: deep_all_sections

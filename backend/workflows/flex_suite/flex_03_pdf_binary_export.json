@@ -1,0 +1,52 @@
+{
+  "workflow_name": "Flex 03 - PDF Binary Export",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "gen_pdf",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [{'pdf_b64': 'JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9Db3VudCAxIC9LaWRzIFsgMyAwIFIgXSA+PgplbmRvYmoKMyAwIG9iago8PCAvVHlwZSAvUGFnZSAvUGFyZW50IDIgMCBSIC9NZWRpYUJveCBbMCAwIDMwMCAxNDQgXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCA+PiA+PgplbmRvYmoKNCAwIG9iago8PCAvTGVuZ3RoIDQ0ID4+CnN0cmVhbQpCVCAvRjEgMTIgVGYgNTAgMTAwIFRkIChkYlNoZXJwYSBtb2NrIFBERikgVGogRVQKZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8IC9UeXBlIC9Gb250IC9TdWJ0eXBlIC9UeXBlMSAvQmFzZUZvbnQgL0hlbHZldGljYSA+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjIgMDAwMDAgbiAKMDAwMDAwMDExNyAwMDAwMCBuIAowMDAwMDAwMjI3IDAwMDAwIG4gCjAwMDAwMDAzMjEgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA2IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgozOTQKJSVFT0Y=', 'doc_id': 'INV-001'}]"
+      }
+    },
+    {
+      "id": "to_pdf_bytes",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "toBinary",
+        "input_field": "pdf_b64",
+        "put_output_file_in_field": "data",
+        "file_name": "invoice_mock.pdf"
+      }
+    },
+    {
+      "id": "write_pdf",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/invoice_mock.pdf",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "gen_pdf"
+    },
+    {
+      "from": "gen_pdf",
+      "to": "to_pdf_bytes"
+    },
+    {
+      "from": "to_pdf_bytes",
+      "to": "write_pdf"
+    }
+  ]
+}

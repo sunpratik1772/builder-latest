@@ -68,9 +68,26 @@ _SPECS: tuple[NodeSpec, ...] = _discover_specs()
 # Public lookups
 # -----------------------------------------------------------------------------
 NODE_SPECS: dict[str, NodeSpec] = {s.type_id: s for s in _SPECS}
+_NODE_TYPE_ALIASES: dict[str, str] = {
+    # Canonicalize common naming variants used by imported/converted workflows.
+    "DATETIME": "DATE_TIME",
+    "RSS_FEED_READ": "RSS_READ",
+}
+for alias, canonical in _NODE_TYPE_ALIASES.items():
+    if alias in NODE_SPECS:
+        continue
+    spec = NODE_SPECS.get(canonical)
+    if spec is not None:
+        NODE_SPECS[alias] = spec
 
 NODE_HANDLERS: dict[str, Handler] = {s.type_id: s.handler for s in _SPECS}
 """Drop-in replacement for the old dag_runner map."""
+for alias, canonical in _NODE_TYPE_ALIASES.items():
+    if alias in NODE_HANDLERS:
+        continue
+    handler = NODE_HANDLERS.get(canonical)
+    if handler is not None:
+        NODE_HANDLERS[alias] = handler
 
 
 def all_specs() -> Iterable[NodeSpec]:

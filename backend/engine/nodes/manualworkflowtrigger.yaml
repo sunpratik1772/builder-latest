@@ -1,0 +1,39 @@
+type_id: MANUAL_TRIGGER
+description: Use this node if you want to start a workflow by selecting **Execute
+  Workflow** and don't want any option for the workflow to run automatically.
+ui:
+  display_name: Manual Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 37
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: emitted_items
+    type: array
+    description: Optional static emitted payload override
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/'
+extras:
+  docs_slug: n8n-nodes-base.manualworkflowtrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/
+  scrape_mode: deep_all_sections

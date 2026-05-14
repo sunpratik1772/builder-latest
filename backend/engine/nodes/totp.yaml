@@ -1,0 +1,72 @@
+type_id: TOTP
+description: The TOTP node provides a way to generate a TOTP (time-based one-time
+  password).
+ui:
+  display_name: TOTP
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 63
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: TOTP operation.
+  required: false
+  default: generateSecret
+  constraints:
+    enum: [generateSecret]
+- name: secret
+  type: string
+  description: Base32 secret; if omitted, a random secret is generated.
+  required: false
+- name: options
+  type: object
+  description: TOTP generation options.
+  required: false
+  default: {}
+- name: algorithm
+  type: string
+  description: HMAC hashing algorithm.
+  required: false
+  default: SHA1
+  constraints:
+    enum: [SHA1, SHA224, SHA256, SHA3-224, SHA3-256, SHA3-384, SHA3-512, SHA384, SHA512]
+- name: digits
+  type: integer
+  description: Number of digits in generated token.
+  required: false
+  default: 6
+- name: period
+  type: integer
+  description: Token validity period in seconds.
+  required: false
+  default: 30
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.totp/'
+extras:
+  docs_slug: n8n-nodes-base.totp
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.totp/
+  scrape_mode: deep_all_sections

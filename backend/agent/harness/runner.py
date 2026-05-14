@@ -27,14 +27,27 @@ the final state.
 from __future__ import annotations
 
 import copy
+import os
 from typing import Iterator
+
+from engine.dag_runner import run_workflow
 
 from ..planner import Planner
 from ..prompt_builder import PromptBuilder
+from ..canonicalizer import Canonicalizer
 from ..repair.auto_fixer import AutoFixer
 from ..validator_adapter import ValidatorAdapter
 from .metrics import AgentMetrics, get_metrics
 from .state import AgentEvent, AgentPhase, AgentState
+
+_SMOKE_ALERT_PAYLOAD = {
+    "trader_id": "T001",
+    "book": "FX-SPOT",
+    "alert_date": "2024-01-15",
+    "currency_pair": "EUR/USD",
+    "alert_id": "SMOKE-001",
+}
+_SMOKE_SAMPLE_LIST_LIMIT = 2
 
 
 class AgentRunner:
@@ -44,13 +57,18 @@ class AgentRunner:
         prompt_builder: PromptBuilder | None = None,
         validator: ValidatorAdapter | None = None,
         auto_fixer: AutoFixer | None = None,
+        canonicalizer: Canonicalizer | None = None,
         metrics: AgentMetrics | None = None,
     ) -> None:
         self.planner = planner or Planner()
         self.prompt_builder = prompt_builder or PromptBuilder()
         self.validator = validator or ValidatorAdapter()
         self.auto_fixer = auto_fixer or AutoFixer()
+        self.canonicalizer = canonicalizer or Canonicalizer(auto_fixer=self.auto_fixer)
         self.metrics = metrics or get_metrics()
+        self.runtime_smoke_enabled = os.environ.get("DBSHERPA_RUNTIME_SMOKE", "1").lower() in {
+            "1", "true", "yes", "on"
+        }
 
     # --------------------------------------------------------------------
     # Public API — both shapes delegate to _run() which does the real work.
@@ -100,7 +118,10 @@ class AgentRunner:
     ) -> Iterator[tuple[AgentEvent, AgentState]]:
         self.metrics.record_run_start()
         state = AgentState(scenario=scenario, max_attempts=max_attempts)
-        system_prompt = self.prompt_builder.system_prompt()
+        system_prompt = self.prompt_builder.system_prompt(
+            scenario=scenario,
+            current_workflow=current_workflow,
+        )
         history: list[dict] = []
 
         editing_mode = current_workflow is not None
@@ -175,6 +196,12 @@ class AgentRunner:
         history.append({"role": "assistant", "content": plan.raw})
         state.raw_text = plan.raw
         state.workflow = plan.workflow
+        can = self.canonicalizer.canonicalize(state.workflow)
+        if can.workflow is not None:
+            state.workflow = can.workflow
+        if can.changed:
+            state.canonicalization_passes += 1
+            state.canonicalization_applied.extend(can.applied)
 
         state.validation = self.validator.validate(state.workflow)
         state.errors = state.validation.get("errors", [])
@@ -198,8 +225,10 @@ class AgentRunner:
             ), state
 
         if state.is_valid:
-            yield from self._emit_success(state)
-            return
+            smoke_ok = yield from self._run_runtime_smoke(state)
+            if smoke_ok:
+                yield from self._emit_success(state)
+                return
 
         # ── Phase: deterministic auto-fix pass (no LLM) -------------------
         # We only try auto-fix when we have *something* to patch. If the
@@ -207,8 +236,10 @@ class AgentRunner:
         if state.workflow is not None:
             yield from self._try_auto_fix(state)
             if state.is_valid:
-                yield from self._emit_success(state)
-                return
+                smoke_ok = yield from self._run_runtime_smoke(state)
+                if smoke_ok:
+                    yield from self._emit_success(state)
+                    return
 
         # ── Phase: LLM repair loop ----------------------------------------
         while state.attempts < state.max_attempts:
@@ -263,6 +294,12 @@ class AgentRunner:
                 continue
 
             state.workflow = plan.workflow
+            can = self.canonicalizer.canonicalize(state.workflow)
+            if can.workflow is not None:
+                state.workflow = can.workflow
+            if can.changed:
+                state.canonicalization_passes += 1
+                state.canonicalization_applied.extend(can.applied)
             state.validation = self.validator.validate(state.workflow)
             state.errors = state.validation.get("errors", [])
             state.warnings = state.validation.get("warnings", [])
@@ -284,16 +321,20 @@ class AgentRunner:
             ), state
 
             if approved:
-                yield from self._emit_success(state)
-                return
+                smoke_ok = yield from self._run_runtime_smoke(state)
+                if smoke_ok:
+                    yield from self._emit_success(state)
+                    return
 
             # Try an auto-fix pass after each LLM repair — the model
             # often fixes 90% of errors and leaves a hard-rule holdout
             # that AutoFixer can patch without burning another attempt.
             yield from self._try_auto_fix(state)
             if state.is_valid:
-                yield from self._emit_success(state)
-                return
+                smoke_ok = yield from self._run_runtime_smoke(state)
+                if smoke_ok:
+                    yield from self._emit_success(state)
+                    return
 
         # ── Exhausted attempts --------------------------------------------
         yield AgentEvent(
@@ -316,6 +357,10 @@ class AgentRunner:
                 # validation/raw diagnostics, but it must not be loaded or saved.
                 "workflow": state.workflow if state.is_valid else None,
                 "validation": state.validation,
+                "canonicalization_changed": bool(state.canonicalization_applied),
+                "canonicalization_applied": state.canonicalization_applied,
+                "runtime_smoke_passed": state.runtime_smoke_passed,
+                "runtime_smoke_error": state.runtime_smoke_error,
             },
         ), state
         self.metrics.record_run_failure(
@@ -389,14 +434,112 @@ class AgentRunner:
             data={
                 "workflow": state.workflow,
                 "validation": state.validation,
+                "canonicalization_changed": bool(state.canonicalization_applied),
+                "canonicalization_applied": state.canonicalization_applied,
+                "runtime_smoke_passed": state.runtime_smoke_passed,
+                "runtime_smoke_error": state.runtime_smoke_error,
             },
         ), state
         self.metrics.record_run_success(attempts=state.attempts)
+
+    def _run_runtime_smoke(self, state: AgentState) -> Iterator[tuple[AgentEvent, AgentState]]:
+        if not self.runtime_smoke_enabled:
+            state.runtime_smoke_passed = None
+            state.runtime_smoke_error = None
+            return True
+        if state.workflow is None or not state.is_valid:
+            return False
+
+        yield AgentEvent(
+            AgentPhase.FINALIZING,
+            "Runtime smoke test",
+            detail="Executing reduced-sample workflow for runtime validity",
+        ), state
+
+        candidate = _prepare_smoke_workflow(state.workflow)
+        try:
+            run_workflow(candidate, alert_payload=_SMOKE_ALERT_PAYLOAD)
+        except Exception as exc:
+            message = str(exc)
+            state.runtime_smoke_passed = False
+            state.runtime_smoke_error = message
+            self._inject_runtime_smoke_failure(state, message)
+            yield AgentEvent(
+                AgentPhase.FINALIZING,
+                "Runtime smoke test",
+                status="error",
+                detail=message,
+                data={"runtime_smoke_passed": False, "runtime_smoke_error": message},
+            ), state
+            return False
+
+        state.runtime_smoke_passed = True
+        state.runtime_smoke_error = None
+        yield AgentEvent(
+            AgentPhase.FINALIZING,
+            "Runtime smoke test",
+            status="done",
+            detail="Reduced-sample execution passed",
+            data={"runtime_smoke_passed": True},
+        ), state
+        return True
+
+    def _inject_runtime_smoke_failure(self, state: AgentState, message: str) -> None:
+        base = copy.deepcopy(state.validation or {})
+        warnings = list(base.get("warnings") or [])
+        existing_errors = [
+            err for err in (base.get("errors") or [])
+            if err.get("code") != "RUNTIME_SMOKE_FAILED"
+        ]
+        existing_errors.append(
+            {
+                "code": "RUNTIME_SMOKE_FAILED",
+                "message": f"Runtime smoke test failed: {message}",
+                "severity": "error",
+                "node_id": None,
+                "field": None,
+            }
+        )
+        state.validation = {
+            "valid": False,
+            "errors": existing_errors,
+            "warnings": warnings,
+            "summary": f"{len(existing_errors)} error(s), {len(warnings)} warning(s)",
+        }
+        state.errors = existing_errors
+        state.warnings = warnings
 
 
 # ---------------------------------------------------------------------------
 # Small helpers
 # ---------------------------------------------------------------------------
+def _prepare_smoke_workflow(workflow: dict) -> dict:
+    candidate = copy.deepcopy(workflow)
+    for node in candidate.get("nodes", []):
+        if not isinstance(node, dict):
+            continue
+        if node.get("type") != "MANUAL_TRIGGER":
+            continue
+        cfg = node.get("config")
+        if not isinstance(cfg, dict):
+            continue
+        emitted_items = cfg.get("emitted_items")
+        if isinstance(emitted_items, list):
+            cfg["emitted_items"] = _truncate_sample_value(emitted_items)
+            node["config"] = cfg
+    return candidate
+
+
+def _truncate_sample_value(value: object, depth: int = 0) -> object:
+    if depth >= 6:
+        return value
+    if isinstance(value, list):
+        return [_truncate_sample_value(v, depth + 1) for v in value[:_SMOKE_SAMPLE_LIST_LIMIT]]
+    if isinstance(value, dict):
+        return {k: _truncate_sample_value(v, depth + 1) for k, v in value.items()}
+    return value
+
+
 def _summarize(wf: dict) -> dict:
     return {
         "name": wf.get("name"),

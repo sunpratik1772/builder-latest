@@ -1,0 +1,284 @@
+{
+  "workflow_id": "support_ticket_digest_workflow",
+  "name": "Support Ticket Digest and Email",
+  "schema_version": "1.0",
+  "description": "Processes mock support tickets, summarizes urgent and normal issues, drafts an executive email, and outputs markdown digest and email to files.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Mock Support Tickets",
+      "config": {
+        "emitted_items": [
+          {
+            "ticket_id": "T001",
+            "customer_name": "Acme Corp",
+            "issue_description": "System outage affecting production environment. All services down.",
+            "priority": "Urgent"
+          },
+          {
+            "ticket_id": "T002",
+            "customer_name": "Beta Solutions",
+            "issue_description": "Login issues for a few users. Password reset not working.",
+            "priority": "Normal"
+          },
+          {
+            "ticket_id": "T003",
+            "customer_name": "Gamma Innovations",
+            "issue_description": "Critical data corruption detected in primary database. Immediate action required.",
+            "priority": "Urgent"
+          },
+          {
+            "ticket_id": "T004",
+            "customer_name": "Delta Dynamics",
+            "issue_description": "Feature request for new reporting module. Low impact.",
+            "priority": "Low"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "IF",
+      "label": "Branch by Priority",
+      "config": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "field": "priority",
+              "operator": "equalTo",
+              "value": "Urgent"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "LLM_BASIC",
+      "label": "Summarize Urgent Issues",
+      "config": {
+        "prompt": "Summarize the following urgent support ticket issue concisely:\n\n{{ $json.issue_description }}",
+        "system_prompt": "You are a concise summarizer for urgent technical issues.",
+        "model": "gemini-2.5-flash",
+        "output_field": "summary_text"
+      }
+    },
+    {
+      "id": "n04",
+      "type": "SET",
+      "label": "Tag Urgent Summary",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "key": "summary_type",
+              "value": "Urgent"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "LLM_BASIC",
+      "label": "Summarize Normal Issues",
+      "config": {
+        "prompt": "Summarize the following support ticket issue concisely:\n\n{{ $json.issue_description }}",
+        "system_prompt": "You are a concise summarizer for general technical issues.",
+        "model": "gemini-2.5-flash",
+        "output_field": "summary_text"
+      }
+    },
+    {
+      "id": "n06",
+      "type": "SET",
+      "label": "Tag Normal Summary",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "key": "summary_type",
+              "value": "Normal"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n07",
+      "type": "MERGE",
+      "label": "Merge Summaries",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "n08",
+      "type": "SUMMARIZE",
+      "label": "Concatenate Summaries by Type",
+      "config": {
+        "fieldsToSummarize": [
+          {
+            "aggregation": "concatenate",
+            "field": "summary_text",
+            "output_field_name": "concatenated_summaries"
+          }
+        ],
+        "fieldsToSplitBy": "summary_type",
+        "outputFormat": "separateItems"
+      }
+    },
+    {
+      "id": "n09",
+      "type": "AGGREGATE",
+      "label": "Combine All Summaries",
+      "config": {
+        "aggregate": "aggregateIndividualFields",
+        "fieldsToAggregate": {
+          "all_summaries": {
+            "aggregation": "concatenate",
+            "field": "concatenated_summaries"
+          }
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "type": "LLM_BASIC",
+      "label": "Generate Final Digest (Markdown)",
+      "config": {
+        "prompt": "Create a comprehensive markdown digest from the following urgent and normal support issue summaries. Structure it with 'Urgent Issues' and 'Normal Issues' sections:\n\n{{ $json.all_summaries }}",
+        "system_prompt": "You are an expert at creating concise and well-structured markdown digests of support issues for executive review.",
+        "model": "gemini-2.5-flash",
+        "output_field": "final_digest_markdown"
+      }
+    },
+    {
+      "id": "n11",
+      "type": "LLM_BASIC",
+      "label": "Draft Executive Email",
+      "config": {
+        "prompt": "Draft a concise executive email summarizing the key points from this digest. Focus on impact and next steps for urgent issues, and general status for normal issues. Start with a professional greeting and end with a closing.\n\nDigest:\n{{ $json.final_digest_markdown }}",
+        "system_prompt": "You are an executive assistant drafting a summary email for leadership.",
+        "model": "gemini-2.5-flash",
+        "output_field": "executive_email_draft"
+      }
+    },
+    {
+      "id": "n12",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Digest to File",
+      "config": {
+        "operation": "toText",
+        "text": "{{ $json.final_digest_markdown }}",
+        "put_output_file_in_field": "digest_binary"
+      }
+    },
+    {
+      "id": "n13",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write Digest to File",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/final_digest.md",
+        "input_binary_field": "digest_binary"
+      }
+    },
+    {
+      "id": "n14",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Email to File",
+      "config": {
+        "operation": "toText",
+        "text": "{{ $json.executive_email_draft }}",
+        "put_output_file_in_field": "email_binary"
+      }
+    },
+    {
+      "id": "n15",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write Email Draft to File",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/executive_email_draft.txt",
+        "input_binary_field": "email_binary"
+      }
+    },
+    {
+      "id": "n16",
+      "type": "NO_OP",
+      "label": "End of Workflow",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03",
+      "port": "output"
+    },
+    {
+      "from": "n02",
+      "to": "n05",
+      "port": "output1"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n05",
+      "to": "n06"
+    },
+    {
+      "from": "n04",
+      "to": "n07"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n07",
+      "to": "n08"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n10",
+      "to": "n11"
+    },
+    {
+      "from": "n11",
+      "to": "n12"
+    },
+    {
+      "from": "n12",
+      "to": "n13"
+    },
+    {
+      "from": "n13",
+      "to": "n14"
+    },
+    {
+      "from": "n14",
+      "to": "n15"
+    },
+    {
+      "from": "n15",
+      "to": "n16"
+    }
+  ]
+}

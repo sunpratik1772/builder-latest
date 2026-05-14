@@ -1,0 +1,46 @@
+type_id: ERROR_TRIGGER
+description: You can use the Error Trigger node to create error workflows. When another
+  linked workflow fails, this node gets details about the failed workflow and the
+  errors, and runs the error workflow.
+ui:
+  display_name: Error Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 16
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: mode
+  type: string
+  description: Execution mode; manual mode returns sample data when no payload.
+  required: false
+  default: manual
+- name: emitted_items
+  type: array
+  description: External error payload passed into the trigger.
+  required: false
+  default: []
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.errortrigger/'
+extras:
+  docs_slug: n8n-nodes-base.errortrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.errortrigger/
+  scrape_mode: deep_all_sections

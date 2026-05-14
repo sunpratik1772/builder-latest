@@ -1,0 +1,57 @@
+type_id: MARKDOWN
+description: The Markdown node converts between Markdown and HTML formats.
+ui:
+  display_name: Markdown
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 38
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: mode
+    type: string
+    description: Conversion mode
+    required: false
+    default: htmlToMarkdown
+    enum: [markdownToHtml, htmlToMarkdown]
+  - name: markdown
+    type: string
+    description: Markdown source when mode=markdownToHtml
+    required: false
+  - name: html
+    type: string
+    description: HTML source when mode=htmlToMarkdown
+    required: false
+  - name: destinationKey
+    type: string
+    description: Destination field for converted output
+    required: false
+    default: data
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/'
+extras:
+  docs_slug: n8n-nodes-base.markdown
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,99 @@
+type_id: CHAT_TRIGGER
+description: Use the Chat Trigger node when building AI workflows for chatbots and
+  other chat interfaces. You can configure how users access the chat, using one of
+  n8n's provided interfaces, or your own. You can add authentication.
+ui:
+  display_name: Chat Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 7
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: public
+  type: boolean
+  description: Whether chat endpoint is publicly available.
+  required: false
+  default: false
+- name: mode
+  type: string
+  description: Chat access mode.
+  required: false
+  default: hostedChat
+  enum: [hostedChat, webhook]
+- name: authentication
+  type: string
+  description: Access authentication mode.
+  required: false
+  default: none
+  enum: [none, basicAuth, n8nUserAuth]
+- name: initial_messages
+  type: array
+  description: Initial hosted-chat messages.
+  required: false
+  default: []
+- name: message
+  type: string
+  description: Incoming user message payload.
+  required: false
+- name: responseMode
+  type: string
+  description: Response handling mode.
+  required: false
+  default: lastNode
+  enum: [lastNode, responseNode, responseNodes, streaming]
+- name: event
+  type: string
+  description: Trigger event identifier.
+  required: false
+  default: manual
+- name: session_id
+  type: string
+  description: Chat session identifier.
+  required: false
+  default: session-1
+- name: files
+  type: array
+  description: Optional uploaded file metadata list.
+  required: false
+  default: []
+- name: options
+  type: object
+  description: Chat options (responseMode, loadPreviousSession, UI fields).
+  required: false
+  default: {}
+- name: body
+  type: object
+  description: Incoming chat request payload (chatInput, sessionId, action).
+  required: false
+  default: {}
+- name: execution_mode
+  type: string
+  description: Runtime mode controlling public chat availability.
+  required: false
+  default: manual
+  enum: [manual, production]
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/'
+extras:
+  docs_slug: n8n-nodes-langchain.chattrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/
+  scrape_mode: deep_all_sections

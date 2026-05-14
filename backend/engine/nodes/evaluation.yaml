@@ -1,0 +1,90 @@
+type_id: EVALUATION
+description: Run evaluation operations for inputs, outputs, and metrics.
+ui:
+  display_name: Evaluation
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: ai
+      label: AI
+      order: 30
+      color: '#8B5CF6'
+    node_order: 17
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Evaluation operation to execute.
+  required: false
+  default: setOutputs
+  enum:
+  - setInputs
+  - setOutputs
+  - setMetrics
+  - checkIfEvaluating
+- name: source
+  type: string
+  description: Destination for setOutputs operation.
+  required: false
+  default: dataTable
+  enum:
+  - dataTable
+  - googleSheets
+- name: dataTableId
+  type: string
+  description: Data table id when source is dataTable.
+  required: false
+  default: evaluation_results
+- name: documentId
+  type: string
+  description: Spreadsheet id when source is googleSheets.
+  required: false
+- name: sheetName
+  type: string
+  description: Sheet name when source is googleSheets.
+  required: false
+  default: Sheet1
+- name: outputs
+  type: array
+  description: Output mappings with name and value keys.
+  required: false
+  default: []
+- name: metrics
+  type: array
+  description: Metrics list with name and numeric value.
+  required: false
+  default: []
+- name: inputs
+  type: array
+  description: Input field mappings for setInputs operation.
+  required: false
+  default: []
+- name: is_evaluating
+  type: boolean
+  description: Fallback evaluation mode if runtime state is not set.
+  required: false
+  default: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluation/'
+extras:
+  docs_slug: n8n-nodes-base.evaluation
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.evaluation/
+  scrape_mode: deep_all_sections

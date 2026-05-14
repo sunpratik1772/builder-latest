@@ -1,0 +1,224 @@
+{
+  "workflow_id": "wf_create_a_workflow_from_mock_logs_alerts_and_ticket_streams_f",
+  "name": "Compiled: Create a workflow from mock logs, alerts, and ticket streams",
+  "schema_version": "1.0",
+  "description": "Workflow compiled via strict multi-agent pipeline.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "ACTIVATION_TRIGGER",
+      "label": "Activation Trigger",
+      "config": {
+        "events": [],
+        "activationMode": "manual",
+        "workflow_id": "workflow-1",
+        "current_workflow_id": null
+      }
+    },
+    {
+      "id": "n02",
+      "type": "SPLIT_IN_BATCHES",
+      "label": "Split In Batches",
+      "config": {
+        "batch_size": 1,
+        "options": null,
+        "reset": false,
+        "inputs": {
+          "input": "{{ ACTIVATION_TRIGGER.output }}"
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "LOOP_OVER_ITEMS",
+      "label": "Loop Over Items",
+      "config": {
+        "batch_size": 1,
+        "inputs": {
+          "input": "{{ SPLIT_IN_BATCHES.output }}"
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "type": "LLM_BASIC",
+      "label": "Llm Basic",
+      "config": {
+        "prompt": "Summarize the following content:\n\n{{ $json.body }}",
+        "system_prompt": "You are a concise, accurate summarizer.",
+        "model": "gemini-2.5-flash",
+        "output_field": "response",
+        "temperature": 0.2,
+        "max_chars": 60000,
+        "inputs": {
+          "input": "{{ LOOP_OVER_ITEMS.output }}"
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "SPREADSHEET_FILE",
+      "label": "Spreadsheet File",
+      "config": {
+        "operation": "write",
+        "file_format": "csv",
+        "file_path": null,
+        "options": {},
+        "inputs": {
+          "input": "{{ LOOP_OVER_ITEMS.output }}"
+        }
+      }
+    },
+    {
+      "id": "n06",
+      "type": "MARKDOWN",
+      "label": "Markdown",
+      "config": {
+        "mode": "htmlToMarkdown",
+        "destinationKey": "data",
+        "inputs": {
+          "input": "{{ LOOP_OVER_ITEMS.output }}"
+        }
+      }
+    },
+    {
+      "id": "n07",
+      "type": "SET",
+      "label": "Set",
+      "config": {
+        "assignments": {},
+        "fields": [],
+        "json_output": {},
+        "keep_only_set_fields": false,
+        "support_dot_notation": true,
+        "inputs": {
+          "input": "{{ LLM_BASIC.output }}"
+        }
+      }
+    },
+    {
+      "id": "n08",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert To File",
+      "config": {
+        "operation": "csv",
+        "file_name": "incident_evidence_bundle_csv",
+        "input_field": null,
+        "inputs": {
+          "input": "{{ SPREADSHEET_FILE.output }}"
+        }
+      }
+    },
+    {
+      "id": "n09",
+      "type": "SWITCH",
+      "label": "Switch",
+      "config": {
+        "mode": "rules",
+        "rules": {
+          "output_0": [
+            {
+              "field": "severity",
+              "operator": "equal",
+              "value": "P1"
+            }
+          ],
+          "output_1": [
+            {
+              "field": "severity",
+              "operator": "equal",
+              "value": "P2"
+            }
+          ],
+          "output_2": [
+            {
+              "field": "severity",
+              "operator": "equal",
+              "value": "P3"
+            }
+          ]
+        },
+        "fallback_output": "extra_output",
+        "number_of_outputs": 3,
+        "inputs": {
+          "input": "{{ SET.output }}"
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Read Write Files From Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/{{ CONVERT_TO_FILE.output.filename }}",
+        "input_binary_field": "data",
+        "inputs": {
+          "input": "{{ CONVERT_TO_FILE.output }}"
+        }
+      }
+    },
+    {
+      "id": "n11",
+      "type": "MERGE",
+      "label": "Merge",
+      "config": {
+        "mode": "append",
+        "combine_by": "combineByPosition",
+        "fields_to_match": null,
+        "output_type": "keep_matches",
+        "include_any_unpaired_items": false,
+        "output": "input1",
+        "inputs": {
+          "input": "{{ SWITCH.output }}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n07"
+    },
+    {
+      "from": "n07",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n11"
+    },
+    {
+      "from": "n03",
+      "to": "n05"
+    },
+    {
+      "from": "n03",
+      "to": "n06"
+    },
+    {
+      "from": "n05",
+      "to": "n08"
+    },
+    {
+      "from": "n06",
+      "to": "n08"
+    },
+    {
+      "from": "n08",
+      "to": "n10"
+    }
+  ]
+}

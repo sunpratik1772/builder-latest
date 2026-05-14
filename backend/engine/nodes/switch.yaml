@@ -1,72 +1,80 @@
 type_id: SWITCH
-description: "Route items to different outputs based on rules"
-
+description: Use the Switch node to route a workflow conditionally based on comparison
+  operations. It's similar to the IF node, but supports multiple output routes.
 ui:
-  color: "#F59E0B"
-  icon: GitBranch
+  display_name: Switch
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: control
-      label: Control Flow
-      order: 5
-      color: "#FF6D5A"
-    node_order: 2
-
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 62
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to route"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output0
-    type: object
-    description: "Output 0"
-  - name: output1
-    type: object
-    description: "Output 1"
-  - name: output2
-    type: object
-    description: "Output 2"
-  - name: output3
-    type: object
-    description: "Output 3"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
   - name: mode
     type: string
-    description: "Routing mode"
-    enum: [rules, expression]
+    description: Routing mode
+    required: false
     default: rules
-    required: true
-    
+    enum: [rules, expression]
   - name: rules
-    type: array
-    description: "Routing rules (rules mode)"
-    default: []
+    type: object
+    description: Rules mode configuration (rules.values[])
     required: false
-    schema:
-      items:
-        type: object
-        properties:
-          output:
-            type: integer
-            description: "Output index (0-3)"
-          conditions:
-            type: array
-            description: "Conditions for this output"
-            
   - name: fallback_output
-    type: integer
-    description: "Output index for items that don't match any rule"
-    default: 0
+    type: string
+    description: Unmatched item behavior in rules mode
     required: false
-
+    default: none
+    enum: [none, extra_output, output_0]
+  - name: send_data_to_all_matching_outputs
+    type: boolean
+    description: Send to all matched outputs instead of first match
+    required: false
+    default: false
+  - name: ignore_case
+    type: boolean
+    description: Case-insensitive string comparisons
+    required: false
+    default: false
+  - name: less_strict_type_validation
+    type: boolean
+    description: Attempt type coercion before comparison
+    required: false
+    default: false
+  - name: number_of_outputs
+    type: integer
+    description: Output count in expression mode
+    required: false
+    default: 2
+  - name: output_index
+    type: string
+    description: Expression (or integer) returning output index
+    required: false
+    default: "={{ 0 }}"
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Each item is routed to one output only"
-  - "Rules are evaluated in order, first match wins"
-  - "Items not matching any rule go to fallback output"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/'
+extras:
+  docs_slug: n8n-nodes-base.switch
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,80 @@
+type_id: EDIT_IMAGE
+description: Use the Edit Image node to manipulate and edit images.
+ui:
+  display_name: Edit Image
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 14
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Image operation.
+  required: false
+  default: getInformation
+  constraints:
+    enum: [blur, border, composite, create, crop, draw, getInformation, multiStep, resize, rotate, shear, text, transparent]
+- name: property_name
+  type: string
+  description: Input binary field containing image bytes.
+  required: false
+  default: data
+- name: destinationKey
+  type: string
+  description: Output binary field for generated/edited bytes.
+  required: false
+  default: data
+- name: width
+  type: integer
+  description: Width used by create/resize operations.
+  required: false
+  default: 50
+- name: height
+  type: integer
+  description: Height used by create/resize operations.
+  required: false
+  default: 50
+- name: backgroundColor
+  type: string
+  description: Background color used by create/rotate operations.
+  required: false
+  default: "#ffffff"
+- name: text
+  type: string
+  description: Text content for text operation.
+  required: false
+- name: options
+  type: object
+  description: Additional operation options.
+  required: false
+  default: {}
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/'
+extras:
+  docs_slug: n8n-nodes-base.editimage
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/
+  scrape_mode: deep_all_sections

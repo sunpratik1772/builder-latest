@@ -1,0 +1,87 @@
+type_id: COMPARE_DATASETS
+description: The Compare Datasets node helps you compare data from two input streams.
+ui:
+  display_name: Compare Datasets
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 5
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: mergeByFields
+  type: array
+  description: List of field pairs used to match Input A and Input B rows.
+  required: false
+  default: []
+- name: resolve
+  type: string
+  description: Conflict strategy when matched rows differ.
+  required: false
+  default: includeBoth
+  constraints:
+    enum: [preferInput1, preferInput2, mix, includeBoth]
+- name: fuzzy_compare
+  type: boolean
+  description: Tolerate type differences such as 3 vs "3".
+  required: false
+  default: false
+- name: disable_dot_notation
+  type: boolean
+  description: Disable parent.child lookups in fields.
+  required: false
+  default: false
+- name: options
+  type: object
+  description: Additional comparison options.
+  required: false
+  default: {}
+- name: skip_fields
+  type: string
+  description: Comma-separated fields ignored during same/different checks.
+  required: false
+- name: multiple_matches
+  type: string
+  description: Whether to include all matches or first only.
+  required: false
+  default: all
+  constraints:
+    enum: [all, first]
+- name: preferWhenMix
+  type: string
+  description: Base side to prefer for mix mode.
+  required: false
+  default: input1
+  constraints:
+    enum: [input1, input2]
+- name: exceptWhenMix
+  type: string
+  description: Comma-separated fields sourced from the non-preferred side in mix mode.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/'
+extras:
+  docs_slug: n8n-nodes-base.comparedatasets
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/
+  scrape_mode: deep_all_sections

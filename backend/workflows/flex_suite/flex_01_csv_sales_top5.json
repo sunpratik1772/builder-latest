@@ -1,0 +1,82 @@
+{
+  "workflow_name": "Flex 01 - CSV Sales Top 5",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "gen_sales",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n    {\n        'order_id': f'ORD-{i:03d}',\n        'region': ['EU', 'US', 'APAC', 'MEA'][i % 4],\n        'revenue': 1000 + i * 137,\n        'units': (i % 5) + 1,\n    }\n    for i in range(1, 21)\n]"
+      }
+    },
+    {
+      "id": "sort_revenue",
+      "type": "SORT",
+      "config": {
+        "type": "simple",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "revenue",
+              "order": "descending"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "top5",
+      "type": "LIMIT",
+      "config": {
+        "max_items": 5,
+        "keep": "first_items"
+      }
+    },
+    {
+      "id": "to_csv",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "csv",
+        "put_output_file_in_field": "data",
+        "file_name": "sales_top5"
+      }
+    },
+    {
+      "id": "write_csv",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/sales_top5.csv",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "gen_sales"
+    },
+    {
+      "from": "gen_sales",
+      "to": "sort_revenue"
+    },
+    {
+      "from": "sort_revenue",
+      "to": "top5"
+    },
+    {
+      "from": "top5",
+      "to": "to_csv"
+    },
+    {
+      "from": "to_csv",
+      "to": "write_csv"
+    }
+  ]
+}

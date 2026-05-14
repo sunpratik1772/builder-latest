@@ -1,0 +1,91 @@
+{
+  "workflow_name": "Flex 05 - Compression Roundtrip",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "make_payload",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [{'data': (b'alpha,beta,gamma,delta\\n' * 30)}]"
+      }
+    },
+    {
+      "id": "compress",
+      "type": "COMPRESSION",
+      "config": {
+        "operation": "compress",
+        "binaryPropertyName": "data",
+        "binaryPropertyOutput": "gz",
+        "outputFormat": "gzip"
+      }
+    },
+    {
+      "id": "decompress",
+      "type": "COMPRESSION",
+      "config": {
+        "operation": "decompress",
+        "binaryPropertyName": "gz",
+        "outputPrefix": "restored"
+      }
+    },
+    {
+      "id": "verify",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "blob = items[0]['restored0']\ntext = blob.decode('utf-8')\nresult = [{\n    'roundtrip_ok': ('alpha' in text and 'delta' in text),\n    'length': len(text),\n    'preview': text[:60],\n}]"
+      }
+    },
+    {
+      "id": "to_json",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "toJson",
+        "put_output_file_in_field": "data",
+        "file_name": "compression_roundtrip"
+      }
+    },
+    {
+      "id": "write_json",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/compression_roundtrip.json",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "make_payload"
+    },
+    {
+      "from": "make_payload",
+      "to": "compress"
+    },
+    {
+      "from": "compress",
+      "to": "decompress"
+    },
+    {
+      "from": "decompress",
+      "to": "verify"
+    },
+    {
+      "from": "verify",
+      "to": "to_json"
+    },
+    {
+      "from": "to_json",
+      "to": "write_json"
+    }
+  ]
+}

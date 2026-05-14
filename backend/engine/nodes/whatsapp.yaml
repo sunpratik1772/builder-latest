@@ -1,0 +1,59 @@
+type_id: WHATSAPP
+description: Unified WhatsApp node for trigger and send flows.
+
+ui:
+  display_name: WhatsApp
+  color: "#25D366"
+  icon: MessageCircle
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: "#10B981"
+    node_order: 99
+  config_tags: [n8n, whatsapp]
+
+input_ports:
+  - name: input
+    type: object
+    description: Incoming items (for send mode)
+    optional: true
+
+output_ports:
+  - name: output
+    type: object
+    description: Trigger payload or send result
+
+params:
+  - name: mode
+    type: string
+    description: "Node mode: trigger or send"
+    enum: [trigger, send]
+    default: send
+    required: true
+  - name: updates
+    type: array
+    description: "Subscribed updates for trigger mode"
+    required: false
+    default: []
+  - name: recipient_phone_number
+    type: string
+    description: "Recipient phone number (send mode)"
+    required: false
+  - name: text_body
+    type: string
+    description: "Message text to send (send mode)"
+    required: false
+  - name: phone_number_id
+    type: string
+    description: "WhatsApp business phone number id"
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "mode=trigger emits config.emitted_items (default empty)"
+  - "mode=send passes input through and appends whatsapp_send metadata"

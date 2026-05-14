@@ -1,0 +1,55 @@
+type_id: EXECUTE_WORKFLOW_TRIGGER
+description: Use this node to start a workflow in response to another workflow. It
+  should be the first node in the workflow.
+ui:
+  display_name: Execute Sub-workflow Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 21
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: inputSource
+  type: string
+  description: Input schema mode for incoming sub-workflow data.
+  required: false
+  default: passthrough
+  enum: [workflowInputs, jsonExample, passthrough, acceptAllData]
+- name: workflowInputs
+  type: object
+  description: Field schema when inputSource=workflowInputs.
+  required: false
+  default: {}
+- name: jsonExample
+  type: object
+  description: Example JSON schema when inputSource=jsonExample.
+  required: false
+  default: {}
+- name: fallback_default_value
+  type: string
+  description: Default value for missing schema fields.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/'
+extras:
+  docs_slug: n8n-nodes-base.executeworkflowtrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/
+  scrape_mode: deep_all_sections

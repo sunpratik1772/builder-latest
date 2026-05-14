@@ -1,0 +1,219 @@
+{
+  "workflow_id": "article_processing_workflow",
+  "name": "Article Processing and Social Post Drafts",
+  "schema_version": "1.0",
+  "description": "Processes mock article snippets, summarizes them, drafts social posts, assigns quality scores, and generates a report.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Start with Mock Articles",
+      "config": {
+        "emitted_items": [
+          {
+            "trader_id": "mock_trader",
+            "book": "mock_book",
+            "alert_date": "2023-10-27",
+            "alert_id": "mock_alert_123",
+            "articles": [
+              {
+                "title": "The Future of AI in Finance",
+                "content": "Artificial intelligence is rapidly transforming the financial industry, from algorithmic trading to fraud detection. New models are emerging that can predict market trends with unprecedented accuracy, leading to significant shifts in investment strategies. However, ethical considerations and regulatory frameworks are still catching up with the pace of technological advancement. Companies are investing heavily in R&D to stay competitive.",
+                "keywords": [
+                  "AI",
+                  "Finance",
+                  "Trading",
+                  "Fraud",
+                  "Regulation"
+                ]
+              },
+              {
+                "title": "Sustainable Investing Trends 2023",
+                "content": "Sustainable investing, also known as ESG (Environmental, Social, and Governance) investing, continues its strong growth trajectory in 2023. Investors are increasingly prioritizing companies with strong sustainability practices, driven by both ethical concerns and the belief that these companies offer better long-term financial performance. Green bonds and impact funds are seeing record inflows, pushing firms to integrate ESG factors into their core business models.",
+                "keywords": [
+                  "ESG",
+                  "Sustainable Investing",
+                  "Green Bonds",
+                  "Impact Funds"
+                ]
+              },
+              {
+                "title": "Blockchain Beyond Cryptocurrencies",
+                "content": "While blockchain technology is most commonly associated with cryptocurrencies like Bitcoin, its applications extend far beyond digital currencies. Enterprises are exploring blockchain for supply chain management, secure data sharing, digital identity, and smart contracts. The distributed ledger technology offers enhanced transparency and immutability, promising to revolutionize various industries by streamlining operations and reducing intermediaries.",
+                "keywords": [
+                  "Blockchain",
+                  "Cryptocurrency",
+                  "Supply Chain",
+                  "Smart Contracts",
+                  "DLT"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "SPLIT_OUT",
+      "label": "Split Articles for Processing",
+      "config": {
+        "field_to_split_out": "articles",
+        "include": "allOtherFields",
+        "destination_field_name": "article_data"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "LLM_BASIC",
+      "label": "Summarize Article",
+      "config": {
+        "prompt": "Summarize the following article content concisely:\n\n{{ $json.article_data.content }}",
+        "system_prompt": "You are a helpful assistant that summarizes articles.",
+        "model": "gemini-2.5-flash",
+        "output_field": "summary"
+      }
+    },
+    {
+      "id": "n04",
+      "type": "LLM_BASIC",
+      "label": "Draft Social Post",
+      "config": {
+        "prompt": "Rewrite the following summary into a short, engaging social media post (max 280 characters) for a professional audience. Include relevant hashtags from the original article's keywords: {{ $json.article_data.keywords }}.\n\nSummary: {{ $json.summary }}",
+        "system_prompt": "You are a social media manager drafting posts.",
+        "model": "gemini-2.5-flash",
+        "output_field": "social_post_draft"
+      }
+    },
+    {
+      "id": "n05",
+      "type": "SET",
+      "label": "Assign Quality Score",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "value": "={{ Math.floor(Math.random() * 100) + 1 }}",
+              "name": "quality_score",
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n06",
+      "type": "AGGREGATE",
+      "label": "Aggregate Processed Articles",
+      "config": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "processed_articles",
+        "include": "allFields"
+      }
+    },
+    {
+      "id": "n07",
+      "type": "SPLIT_OUT",
+      "label": "Split Aggregated Articles for Report",
+      "config": {
+        "field_to_split_out": "processed_articles",
+        "include": "noOtherFields",
+        "destination_field_name": "individual_processed_article"
+      }
+    },
+    {
+      "id": "n08",
+      "type": "SPREADSHEET_FILE",
+      "label": "Write Quality Score Table (XLSX)",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "Article_Quality_Scores.xlsx"
+      }
+    },
+    {
+      "id": "n09",
+      "type": "SUMMARIZE",
+      "label": "Calculate Summary Metrics",
+      "config": {
+        "fieldsToSummarize": [
+          {
+            "aggregation": "count",
+            "field": "article_data.title",
+            "output_field_name": "total_articles_processed"
+          },
+          {
+            "aggregation": "average",
+            "field": "quality_score",
+            "output_field_name": "average_quality_score"
+          }
+        ],
+        "outputFormat": "singleItem"
+      }
+    },
+    {
+      "id": "n10",
+      "type": "LLM_BASIC",
+      "label": "Synthesize Executive Summary",
+      "config": {
+        "system_prompt": "You are an executive assistant. Synthesize a brief executive summary from the provided article processing results and section summaries. Highlight key insights and overall quality.",
+        "prompt": "Here are the summary metrics: Total Articles Processed: {{ $json.total_articles_processed }}, Average Quality Score: {{ $json.average_quality_score }}. Please provide a concise executive summary based on these metrics.",
+        "model": "gemini-2.5-flash",
+        "output_field": "executive_summary"
+      }
+    },
+    {
+      "id": "n11",
+      "type": "CONVERT_TO_FILE",
+      "label": "Write Executive Summary (TXT)",
+      "config": {
+        "operation": "toText",
+        "text": "{{ $json.executive_summary }}",
+        "file_name": "Executive_Summary",
+        "put_output_file_in_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n05",
+      "to": "n06"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n07",
+      "to": "n08"
+    },
+    {
+      "from": "n07",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n10",
+      "to": "n11"
+    }
+  ]
+}

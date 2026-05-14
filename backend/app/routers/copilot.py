@@ -182,6 +182,7 @@ def copilot_generate(req: CopilotGenerateRequest) -> dict:
             current_workflow=req.current_workflow,
             recent_errors=req.recent_errors,
             selected_node_id=req.selected_node_id,
+            compiler_mode=(req.compiler_mode or "classic"),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -215,6 +216,7 @@ def copilot_generate_stream(req: CopilotGenerateRequest) -> StreamingResponse:
                 current_workflow=req.current_workflow,
                 recent_errors=req.recent_errors,
                 selected_node_id=req.selected_node_id,
+                compiler_mode=(req.compiler_mode or "classic"),
             ):
                 # Hitch a draft auto-save to the terminal "complete" event
                 # so the drawer's Drafts section reflects the new workflow

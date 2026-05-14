@@ -1,0 +1,83 @@
+type_id: SSH
+description: The SSH node is useful for executing commands using the Secure Shell
+  Protocol.
+ui:
+  display_name: SSH
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 59
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: authentication
+  type: string
+  description: Authentication type.
+  required: false
+  default: password
+  constraints:
+    enum: [password, privateKey]
+- name: resource
+  type: string
+  description: Target resource.
+  required: false
+  default: command
+  constraints:
+    enum: [command, file]
+- name: operation
+  type: string
+  description: Action to perform for selected resource.
+  required: false
+  default: execute
+  constraints:
+    enum: [execute, download, upload]
+- name: command
+  type: string
+  description: Command to execute (local adapter).
+  required: false
+- name: cwd
+  type: string
+  description: Working directory for command execution.
+  required: false
+  default: /tmp
+- name: path
+  type: string
+  description: Path for download source or upload destination directory.
+  required: false
+- name: binaryPropertyName
+  type: string
+  description: Field containing binary input/output data.
+  required: false
+  default: data
+- name: options
+  type: object
+  description: Optional operation options (for example fileName for upload).
+  required: false
+  default: {}
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssh/'
+extras:
+  docs_slug: n8n-nodes-base.ssh
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssh/
+  scrape_mode: deep_all_sections

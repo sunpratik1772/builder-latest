@@ -1,72 +1,67 @@
 type_id: HTTP_REQUEST
-description: "Make HTTP API requests"
-
+description: The HTTP Request node is one of the most versatile nodes in n8n. It allows
+  you to make HTTP requests to query data from any app or service with a REST API.
+  You can use the HTTP Request node a regular node or attached to an AI agent to use
+  as a tool.
 ui:
-  color: "#10B981"
-  icon: Globe
+  display_name: HTTP Request
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: integration
-      label: Integration
-      order: 30
-      color: "#10B981"
-    node_order: 20
-
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 30
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to process"
-    optional: true
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "HTTP response data"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
   - name: method
     type: string
-    description: "HTTP method"
-    enum: [GET, POST, PUT, DELETE, PATCH]
+    description: HTTP method
+    required: false
     default: GET
-    required: true
-    
+    enum: [GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS]
   - name: url
     type: string
-    description: "URL to request"
+    description: Request URL
     required: true
-    
+  - name: query
+    type: object
+    description: Query parameter map
+    required: false
   - name: headers
     type: object
-    description: "HTTP headers"
-    default: {}
+    description: Header map
     required: false
-    
   - name: body
     type: object
-    description: "Request body (for POST/PUT/PATCH)"
-    default: {}
+    description: Request body (JSON object/list or raw string)
     required: false
-    
   - name: options
     type: object
-    default: {}
+    description: Request/response options
     required: false
-    schema:
-      properties:
-        timeout:
-          type: integer
-          default: 30
-        response_format:
-          type: string
-          enum: [json, text]
-          default: json
-
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Executes HTTP request for each input item"
-  - "Use {{field}} syntax to interpolate values from items"
-  - "Returns response as items"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/'
+extras:
+  docs_slug: n8n-nodes-base.httprequest
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/
+  scrape_mode: deep_all_sections

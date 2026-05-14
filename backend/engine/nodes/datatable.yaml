@@ -1,0 +1,82 @@
+type_id: DATA_TABLE
+description: Use the Data Table node to create and manage internal data tables. Data
+  tables allow you to store structured data directly inside n8n and use it across
+  workflows.
+ui:
+  display_name: Data Table
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 10
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: resource
+  type: string
+  description: Resource to manage.
+  required: false
+  default: row
+  constraints:
+    enum: [row, table]
+- name: action
+  type: string
+  description: Operation to execute on selected resource.
+  required: false
+  default: list
+  constraints:
+    enum: [create, list, update, delete, insert, get, upsert, ifRowExists, ifRowDoesNotExist]
+- name: dataTableId
+  type: string
+  description: Table identifier for table or row operations.
+  required: false
+- name: tableName
+  type: string
+  description: Name used when creating or updating table resource.
+  required: false
+- name: columns
+  type: array
+  description: Column schema for table create/update.
+  required: false
+  default: []
+- name: where
+  type: object
+  description: Row match conditions for get/update/delete/exists operations.
+  required: false
+  default: {}
+- name: set
+  type: object
+  description: Row values to set during update.
+  required: false
+  default: {}
+- name: matchFields
+  type: string
+  description: Comma-separated keys used to match rows in upsert.
+  required: false
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datatable/'
+extras:
+  docs_slug: n8n-nodes-base.datatable
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datatable/
+  scrape_mode: deep_all_sections

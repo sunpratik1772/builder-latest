@@ -1,0 +1,2306 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "n8nclaw_converted_dbsherpa",
+  "name": "n8nClaw (Converted)",
+  "version": "1.0.0",
+  "description": "Converted from n8n JSON via convert_n8n_to_dbsherpa.py",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "NO_OP",
+      "label": "Telegram Trigger",
+      "config": {
+        "n8n_type": "n8n-nodes-base.telegramTrigger",
+        "parameters": {
+          "updates": [
+            "message"
+          ],
+          "additionalFields": {}
+        }
+      }
+    },
+    {
+      "id": "n02",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-sonnet-4.5",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "NO_OP",
+      "label": "Get row(s)",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTable",
+        "parameters": {
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "YOUR_USERNAME"
+              }
+            ]
+          },
+          "returnAll": true
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "type": "NO_OP",
+      "label": "Filter",
+      "config": {
+        "n8n_type": "n8n-nodes-base.filter",
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "b1b370a8-b981-43ab-b1b0-88853bad298b",
+                "leftValue": "={{ $json.message.chat.id }}",
+                "rightValue": "={{ $if($('Telegram Trigger').isExecuted, $('Telegram Trigger').item.json.message.chat.id, YOUR_TELEGRAM_CHAT_ID) }}",
+                "operator": {
+                  "type": "number",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "SET",
+      "label": "Edit Fields",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac8d70f0-59ba-4381-942d-18f7401a4705",
+              "name": "user_message",
+              "value": "={{ $if($('Transcribe a recording').isExecuted, $('Transcribe a recording').item.json.content.parts[0].text, $if($('Analyze document').isExecuted, $('Analyze document').item.json.content.parts[0].text, $if($('Analyze an image').isExecuted, $('Analyze an image').item.json.content.parts[0].text, $('Filter').item.json.message.text))) }}",
+              "type": "string"
+            },
+            {
+              "id": "4ebb8355-2aa2-4af2-8f82-a8c5bc57e0c9",
+              "name": "system_prompt_details",
+              "value": "=username: {{ $json.username || \"[COLLECT and use database tool to upsert] Field: username | Prompt: Ask the user to choose a username. This will be their unique identifier. | Rules: Save exactly as provided, no modifications. | Example: 'shabbir', 'nova_builder'\" }}\nsoul: {{ $json.soul || \"[COLLECT and use database tool to upsert] Field: soul | Prompt: Ask the user to define your soul - give you a name, a vibe, and a general purpose. | Rules: Combine all three elements (name, vibe, purpose) into a single concise description. | Example: 'Nova - warm and curious - helps brainstorm creative projects'\" }}\nuser: {{ $json.user || \"[COLLECT and use database tool to upsert] Field: user | Prompt: Ask the user to tell you about themselves - anything they want you to remember. | Rules: Consolidate their response into a structured profile. Include interests, goals, preferences, and any relevant context. | Example: 'AI automation consultant, prefers direct communication, focused on scaling content workflows'\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f1d7c2a0-d580-4e7a-bc8b-29e1102c03bb",
+              "name": "last_channel",
+              "value": "=telegram",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n06",
+      "type": "SWITCH",
+      "label": "Switch",
+      "config": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $if($('Edit Fields').isExecuted, $('Edit Fields').item.json.last_channel, $if($('Edit Fields1').isExecuted, $('Edit Fields1').item.json.last_channel, $if($('Edit Fields2').isExecuted, $('Edit Fields2').item.json.last_channel, $('Edit Fields3').item.json.last_channel))) }}",
+                    "rightValue": "telegram",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "39d05258-72cc-4266-86f1-8b2ae9fccd53"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Telegram"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "10be5dff-f0cc-496b-aff2-225f66654597",
+                    "leftValue": "={{ $if($('Edit Fields').isExecuted, $('Edit Fields').item.json.last_channel, $if($('Edit Fields1').isExecuted, $('Edit Fields1').item.json.last_channel, $if($('Edit Fields2').isExecuted, $('Edit Fields2').item.json.last_channel, $('Edit Fields3').item.json.last_channel))) }}",
+                    "rightValue": "whatsapp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "whatsapp"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n07",
+      "type": "NO_OP",
+      "label": "Send a text message",
+      "config": {
+        "n8n_type": "n8n-nodes-base.telegram",
+        "parameters": {
+          "chatId": "={{ $if($('Telegram Trigger').isExecuted, $('Telegram Trigger').item.json.message.chat.id, YOUR_TELEGRAM_CHAT_ID) }}",
+          "text": "={{ $('n8nClaw').item.json.output }}",
+          "additionalFields": {
+            "parse_mode": "Markdown"
+          }
+        }
+      }
+    },
+    {
+      "id": "n08",
+      "type": "NO_OP",
+      "label": "n8nClaw",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agent",
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.user_message }}",
+          "options": {
+            "systemMessage": "=You are n8nClaw, an advanced, proactive AI assistant with access to advanced tools. Your functionality is according to the below details.\n\n{{ $json.system_prompt_details }}\n\nThe User field is a living document. Any new and important information that you receive related to the user - that is worth remembering to be useful in future conversations - is to be added there using the update info tool. Any recurring tasks the user expects you to do (manage calendar, etc - should also go into the user field)\n\nYou also have access to read, create, and update tasks and subtasks through two data tables - one for tasks and one for subtasks.\n\nAnything the user asks you to do must be logged to the tasks and subtasks tables. You can then work on those tasks and subtasks, and update them with lots of detail - as necessary.\n\nTask and subtask details should be upserted with any info required. For example, if you completed a task/subtask partially, update the details with whatever you've already done so you can pick up from there in the next iteration.\n\nAdditionally, As you work on a task/subtask, it may require additional tasks/subtasks to be created - do so if needed, adding all relevant details.\n\nOnce a task or subtask is done, mark task_completed or subtask_completed as true. An entire task can only be completed once ALL subtasks are complete.\n\nYou should always search for tasks first, and then search for the subtasks by the task ID, and plan your work accordingly.\n\nIf you require more context about the user or about previous conversations, you can use query the vector store tool(it is trained on past conversations) to pull the relevant information and continue working.\n\nEMAIL\nYou have access to an AI agent tool that manages your gmail inbox. You can use it to read, reply, delete, get, and search for messages. To take any actions on existing messages, you will need to use the google api-friendly message ID (if you received an email directly).\n\nDOING WORK\nYou have access to a research agent to get any information on anything.\n\nYou also have access to multiple worker agents to break tasks up into parts and do more work concurrently. You MUST use these agents.\n\nYou also have access to a document agent for saving work. The document agent is ONLY to receive completed work for saving. You are NOT to send it instructions for what output to produce. this agent has access to google docs create, update, and drive tools. Save the Google Drive URLs to the task info for persistence.\n\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "n09",
+      "type": "NO_OP",
+      "label": "Get Tasks",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTableTool",
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Get pending or completed tasks",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_TASKS_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Tasks",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_TASKS_TABLE_ID"
+          },
+          "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}"
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "type": "NO_OP",
+      "label": "Get Subtasks",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTableTool",
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Get pending or completed subtasks",
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_SUBTASKS_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Subtasks",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_SUBTASKS_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "parent_task_id",
+                "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Value', ``, 'string') }}"
+              }
+            ]
+          },
+          "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}"
+        }
+      }
+    },
+    {
+      "id": "n11",
+      "type": "NO_OP",
+      "label": "Upsert Subtask",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTableTool",
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Upsert Subtask",
+          "operation": "upsert",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_SUBTASKS_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Subtasks",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_SUBTASKS_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "parent_task_id",
+                "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Value', ``, 'string') }}"
+              }
+            ]
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "subtask_complete": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subtask_complete', ``, 'boolean') }}",
+              "subtask_name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subtask_name', ``, 'string') }}",
+              "subtask_details": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('subtask_details', ``, 'string') }}",
+              "parent_task_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parent_task_id', ``, 'string') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "parent_task_id",
+                "displayName": "parent_task_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "subtask_name",
+                "displayName": "subtask_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "subtask_details",
+                "displayName": "subtask_details",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "subtask_complete",
+                "displayName": "subtask_complete",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n12",
+      "type": "NO_OP",
+      "label": "Upsert Task",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTableTool",
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Upsert task",
+          "operation": "upsert",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_TASKS_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Tasks",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_TASKS_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "task_name",
+                "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Value', ``, 'string') }}"
+              }
+            ]
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "task_complete": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('task_complete', ``, 'boolean') }}",
+              "task_name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('task_name', ``, 'string') }}",
+              "task_details": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('task_details', ``, 'string') }}",
+              "Is_recurring": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Is_recurring', ``, 'boolean') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "task_name",
+                "displayName": "task_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "task_details",
+                "displayName": "task_details",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "task_complete",
+                "displayName": "task_complete",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "Is_recurring",
+                "displayName": "Is_recurring",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "boolean",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n13",
+      "type": "NO_OP",
+      "label": "Initialization - Update Info",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTableTool",
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Initialize first usage",
+          "operation": "upsert",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Value', ``, 'string') }}"
+              }
+            ]
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "soul": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('soul', ``, 'string') }}",
+              "user": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('user', ``, 'string') }}",
+              "heartbeat": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('heartbeat', ``, 'string') }}",
+              "last_channel": "={{ $json.last_channel }}",
+              "username": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('username', `the \"username\" provided by the user as the first answer.`, 'string') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "username",
+                "displayName": "username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "soul",
+                "displayName": "soul",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "user",
+                "displayName": "user",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "heartbeat",
+                "displayName": "heartbeat",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "last_channel",
+                "displayName": "last_channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "last_vector_id",
+                "displayName": "last_vector_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n14",
+      "type": "NO_OP",
+      "label": "Postgres Chat Memory",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME",
+          "contextWindowLength": 15
+        }
+      }
+    },
+    {
+      "id": "n15",
+      "type": "NO_OP",
+      "label": "Execute a SQL query",
+      "config": {
+        "n8n_type": "n8n-nodes-base.postgres",
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT session_id, message, id\nFROM n8n_chat_histories \nWHERE id > '{{ $json.last_vector_id }}'\nORDER BY id ASC\n",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n16",
+      "type": "NO_OP",
+      "label": "Get row(s)1",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTable",
+        "parameters": {
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "YOUR_USERNAME"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "n17",
+      "type": "NO_OP",
+      "label": "Supabase Vector Store",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+        "parameters": {
+          "mode": "insert",
+          "tableName": {
+            "__rl": true,
+            "value": "documents",
+            "mode": "list",
+            "cachedResultName": "documents"
+          },
+          "options": {
+            "queryName": "match_documents"
+          }
+        }
+      }
+    },
+    {
+      "id": "n18",
+      "type": "NO_OP",
+      "label": "Embeddings OpenAI",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "parameters": {
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n19",
+      "type": "NO_OP",
+      "label": "Default Data Loader",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "parameters": {
+          "jsonMode": "expressionData",
+          "jsonData": "={{ $json.output.summary }}",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n20",
+      "type": "NO_OP",
+      "label": "Update row(s)",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTable",
+        "parameters": {
+          "operation": "update",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "YOUR_USERNAME"
+              }
+            ]
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "last_vector_id": "={{ $('Execute a SQL query').last().json.id }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "username",
+                "displayName": "username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "soul",
+                "displayName": "soul",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "user",
+                "displayName": "user",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "heartbeat",
+                "displayName": "heartbeat",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "last_channel",
+                "displayName": "last_channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": true
+              },
+              {
+                "id": "last_vector_id",
+                "displayName": "last_vector_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n21",
+      "type": "NO_OP",
+      "label": "Supabase Vector Store1",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+        "parameters": {
+          "mode": "retrieve-as-tool",
+          "toolDescription": "get info about the user as needed",
+          "tableName": {
+            "__rl": true,
+            "value": "documents",
+            "mode": "list",
+            "cachedResultName": "documents"
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n22",
+      "type": "NO_OP",
+      "label": "Embeddings OpenAI1",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "parameters": {
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n23",
+      "type": "NO_OP",
+      "label": "Webhook",
+      "config": {
+        "n8n_type": "n8n-nodes-base.webhook",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "YOUR_WEBHOOK_PATH",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n24",
+      "type": "NO_OP",
+      "label": "Get row(s)2",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTable",
+        "parameters": {
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "YOUR_USERNAME"
+              }
+            ]
+          },
+          "returnAll": true
+        }
+      }
+    },
+    {
+      "id": "n25",
+      "type": "NO_OP",
+      "label": "Filter1",
+      "config": {
+        "n8n_type": "n8n-nodes-base.filter",
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "b1b370a8-b981-43ab-b1b0-88853bad298b",
+                "leftValue": "={{ $json.body.data.key.remoteJid }}",
+                "rightValue": "=YOUR_PHONE@s.whatsapp.net",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              },
+              {
+                "id": "4f0a49e8-7a0b-4bcf-8c4c-929d0596e309",
+                "leftValue": "={{ $json.body.data.key.fromMe }}",
+                "rightValue": false,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "false",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n26",
+      "type": "SET",
+      "label": "Edit Fields1",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac8d70f0-59ba-4381-942d-18f7401a4705",
+              "name": "user_message",
+              "value": "={{ $('Filter1').item.json.body.data.message.conversation }}",
+              "type": "string"
+            },
+            {
+              "id": "4ebb8355-2aa2-4af2-8f82-a8c5bc57e0c9",
+              "name": "system_prompt_details",
+              "value": "=username: {{ $json.username || \"[COLLECT and use database tool to upsert] Field: username | Prompt: Ask the user to choose a username. This will be their unique identifier. | Rules: Save exactly as provided, no modifications. | Example: 'shabbir', 'nova_builder'\" }}\nsoul: {{ $json.soul || \"[COLLECT and use database tool to upsert] Field: soul | Prompt: Ask the user to define your soul - give you a name, a vibe, and a general purpose. | Rules: Combine all three elements (name, vibe, purpose) into a single concise description. | Example: 'Nova - warm and curious - helps brainstorm creative projects'\" }}\nuser: {{ $json.user || \"[COLLECT and use database tool to upsert] Field: user | Prompt: Ask the user to tell you about themselves - anything they want you to remember. | Rules: Consolidate their response into a structured profile. Include interests, goals, preferences, and any relevant context. | Example: 'AI automation consultant, prefers direct communication, focused on scaling content workflows'\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f1d7c2a0-d580-4e7a-bc8b-29e1102c03bb",
+              "name": "last_channel",
+              "value": "=whatsapp",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n27",
+      "type": "NO_OP",
+      "label": "Enviar texto",
+      "config": {
+        "n8n_type": "n8n-nodes-evolution-api.evolutionApi",
+        "parameters": {
+          "resource": "messages-api",
+          "instanceName": "YOUR_EVOLUTION_INSTANCE",
+          "remoteJid": "={{ $if($('Filter1').isExecuted, $('Filter1').item.json.body.data.key.remoteJid, 'YOUR_PHONE@s.whatsapp.net') }}",
+          "messageText": "={{ $('n8nClaw').item.json.output }}",
+          "options_message": {}
+        }
+      }
+    },
+    {
+      "id": "n28",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model1",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "google/gemini-3-flash-preview",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n29",
+      "type": "NO_OP",
+      "label": "Simple Memory",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME-research",
+          "contextWindowLength": 10
+        }
+      }
+    },
+    {
+      "id": "n30",
+      "type": "NO_OP",
+      "label": "Search in Tavily",
+      "config": {
+        "n8n_type": "@tavily/n8n-nodes-tavily.tavilyTool",
+        "parameters": {
+          "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n31",
+      "type": "NO_OP",
+      "label": "Wikipedia",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+        "parameters": {}
+      }
+    },
+    {
+      "id": "n32",
+      "type": "NO_OP",
+      "label": "Hourly heartbeat",
+      "config": {
+        "n8n_type": "n8n-nodes-base.scheduleTrigger",
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "n33",
+      "type": "NO_OP",
+      "label": "Get row(s)3",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTable",
+        "parameters": {
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "YOUR_USERNAME"
+              }
+            ]
+          },
+          "returnAll": true
+        }
+      }
+    },
+    {
+      "id": "n34",
+      "type": "SET",
+      "label": "Edit Fields2",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac8d70f0-59ba-4381-942d-18f7401a4705",
+              "name": "user_message",
+              "value": "=See what's pending and start working on it.",
+              "type": "string"
+            },
+            {
+              "id": "4ebb8355-2aa2-4af2-8f82-a8c5bc57e0c9",
+              "name": "system_prompt_details",
+              "value": "=username: {{ $json.username || \"[COLLECT and use database tool to upsert] Field: username | Prompt: Ask the user to choose a username. This will be their unique identifier. | Rules: Save exactly as provided, no modifications. | Example: 'shabbir', 'nova_builder'\" }}\nsoul: {{ $json.soul || \"[COLLECT and use database tool to upsert] Field: soul | Prompt: Ask the user to define your soul - give you a name, a vibe, and a general purpose. | Rules: Combine all three elements (name, vibe, purpose) into a single concise description. | Example: 'Nova - warm and curious - helps brainstorm creative projects'\" }}\nuser: {{ $json.user || \"[COLLECT and use database tool to upsert] Field: user | Prompt: Ask the user to tell you about themselves - anything they want you to remember. | Rules: Consolidate their response into a structured profile. Include interests, goals, preferences, and any relevant context. | Example: 'AI automation consultant, prefers direct communication, focused on scaling content workflows'\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f1d7c2a0-d580-4e7a-bc8b-29e1102c03bb",
+              "name": "last_channel",
+              "value": "={{ $json.last_channel }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n35",
+      "type": "NO_OP",
+      "label": "Research Agent",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agentTool",
+        "parameters": {
+          "toolDescription": "Research Agent",
+          "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+          "options": {
+            "systemMessage": "=You are a research agent. You have access to Wikipedia and Tavily tools."
+          }
+        }
+      }
+    },
+    {
+      "id": "n36",
+      "type": "NO_OP",
+      "label": "Gmail Trigger",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTrigger",
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "simple": false,
+          "filters": {},
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n37",
+      "type": "NO_OP",
+      "label": "Get row(s)4",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTable",
+        "parameters": {
+          "operation": "get",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "YOUR_USERNAME"
+              }
+            ]
+          },
+          "returnAll": true
+        }
+      }
+    },
+    {
+      "id": "n38",
+      "type": "SET",
+      "label": "Edit Fields3",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac8d70f0-59ba-4381-942d-18f7401a4705",
+              "name": "user_message",
+              "value": "=You have just received an email. Determine what to do with it.\n\nQuery the databases if it's related to any task, and query the vector store to get more context.\n\nIMPORTANT - you are not to divulge ANY sensitive information in email replies. If a reply requires sensitive information, save the reply as a draft in Gmail and let me know on telegram.\n\n{{ $('Gmail Trigger').item.json.headers.from }}\n{{ $('Gmail Trigger').item.json.headers['message-id'] }}\n{{ $('Gmail Trigger').item.json.headers.subject }}\n{{ $('Gmail Trigger').item.json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "4ebb8355-2aa2-4af2-8f82-a8c5bc57e0c9",
+              "name": "system_prompt_details",
+              "value": "=username: {{ $json.username || \"[COLLECT and use database tool to upsert] Field: username | Prompt: Ask the user to choose a username. This will be their unique identifier. | Rules: Save exactly as provided, no modifications. | Example: 'shabbir', 'nova_builder'\" }}\nsoul: {{ $json.soul || \"[COLLECT and use database tool to upsert] Field: soul | Prompt: Ask the user to define your soul - give you a name, a vibe, and a general purpose. | Rules: Combine all three elements (name, vibe, purpose) into a single concise description. | Example: 'Nova - warm and curious - helps brainstorm creative projects'\" }}\nuser: {{ $json.user || \"[COLLECT and use database tool to upsert] Field: user | Prompt: Ask the user to tell you about themselves - anything they want you to remember. | Rules: Consolidate their response into a structured profile. Include interests, goals, preferences, and any relevant context. | Example: 'AI automation consultant, prefers direct communication, focused on scaling content workflows'\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f1d7c2a0-d580-4e7a-bc8b-29e1102c03bb",
+              "name": "last_channel",
+              "value": "={{ $json.last_channel }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n39",
+      "type": "NO_OP",
+      "label": "Email Manager",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agentTool",
+        "parameters": {
+          "toolDescription": "Email manager agent",
+          "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+          "options": {
+            "systemMessage": "You are an email manager. You have access to a variety of tools to process emails. Keep track of the message ID (google api friendly format) - you'll need it to take any actions on any messages."
+          }
+        }
+      }
+    },
+    {
+      "id": "n40",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model2",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-haiku-4.5",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n41",
+      "type": "NO_OP",
+      "label": "Simple Memory1",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME-email",
+          "contextWindowLength": 10
+        }
+      }
+    },
+    {
+      "id": "n42",
+      "type": "NO_OP",
+      "label": "Send a message in Gmail",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTool",
+        "parameters": {
+          "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+          "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+          "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n43",
+      "type": "NO_OP",
+      "label": "Document Manager",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agentTool",
+        "parameters": {
+          "toolDescription": "call this tool to create, update, and move documents in google drive",
+          "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+          "options": {
+            "systemMessage": "You are a document manager agent. You have access to create and update google docs, search for folders in google drive, delete files in google drive, and move files between folders. Retain the file ID in memory for any file you are working with."
+          }
+        }
+      }
+    },
+    {
+      "id": "n44",
+      "type": "NO_OP",
+      "label": "Simple Memory2",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME-docs",
+          "contextWindowLength": 20
+        }
+      }
+    },
+    {
+      "id": "n45",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model3",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-haiku-4.5",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n46",
+      "type": "SWITCH",
+      "label": "Switch1",
+      "config": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.voice }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "bbe4cbfd-d4b1-4095-b505-d97c90927250"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio message"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "59f728d1-4935-475f-b519-39643b57c99f",
+                    "leftValue": "={{ $json.message.photo }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "array",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "72c3ed90-193a-4df8-ba1b-a5de99277d87",
+                    "leftValue": "={{ $json.message.document }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "object",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Document"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n47",
+      "type": "NO_OP",
+      "label": "Analyze document",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.googleGemini",
+        "parameters": {
+          "resource": "document",
+          "modelId": {
+            "__rl": true,
+            "value": "models/gemini-2.5-flash",
+            "mode": "list",
+            "cachedResultName": "models/gemini-2.5-flash"
+          },
+          "inputType": "binary",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n48",
+      "type": "NO_OP",
+      "label": "Get a file",
+      "config": {
+        "n8n_type": "n8n-nodes-base.telegram",
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.message.photo[3].file_id }}",
+          "additionalFields": {}
+        }
+      }
+    },
+    {
+      "id": "n49",
+      "type": "NO_OP",
+      "label": "Get a file1",
+      "config": {
+        "n8n_type": "n8n-nodes-base.telegram",
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.message.document.file_id }}",
+          "additionalFields": {}
+        }
+      }
+    },
+    {
+      "id": "n50",
+      "type": "NO_OP",
+      "label": "Get a file2",
+      "config": {
+        "n8n_type": "n8n-nodes-base.telegram",
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $json.message.voice.file_id }}",
+          "additionalFields": {}
+        }
+      }
+    },
+    {
+      "id": "n51",
+      "type": "NO_OP",
+      "label": "Transcribe a recording",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.googleGemini",
+        "parameters": {
+          "resource": "audio",
+          "modelId": {
+            "__rl": true,
+            "value": "models/gemini-2.5-flash",
+            "mode": "list",
+            "cachedResultName": "models/gemini-2.5-flash"
+          },
+          "inputType": "binary",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n52",
+      "type": "NO_OP",
+      "label": "Analyze an image",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.googleGemini",
+        "parameters": {
+          "resource": "image",
+          "operation": "analyze",
+          "modelId": {
+            "__rl": true,
+            "value": "models/nano-banana-pro-preview",
+            "mode": "list",
+            "cachedResultName": "models/nano-banana-pro-preview"
+          },
+          "inputType": "binary",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n53",
+      "type": "NO_OP",
+      "label": "Data Loader",
+      "config": {
+        "n8n_type": "n8n-nodes-base.scheduleTrigger",
+        "parameters": {
+          "rule": {
+            "interval": [
+              {}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "n54",
+      "type": "NO_OP",
+      "label": "Basic LLM Chain",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.chainLlm",
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.message }}",
+          "hasOutputParser": true,
+          "messages": {
+            "messageValues": [
+              {
+                "message": "You are a summarizer agent. I will provide you with the entire log of a day's worth of discussion with my AI agent. You are to summarize the conversation for storing in deep memory."
+              }
+            ]
+          },
+          "batching": {}
+        }
+      }
+    },
+    {
+      "id": "n55",
+      "type": "NO_OP",
+      "label": "Aggregate",
+      "config": {
+        "n8n_type": "n8n-nodes-base.aggregate",
+        "parameters": {
+          "fieldsToAggregate": {
+            "fieldToAggregate": [
+              {
+                "fieldToAggregate": "message"
+              }
+            ]
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n56",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model4",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-haiku-4.5",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n57",
+      "type": "NO_OP",
+      "label": "Structured Output Parser",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "parameters": {
+          "jsonSchemaExample": "{\n\t\"summary\":\"text\"\n}"
+        }
+      }
+    },
+    {
+      "id": "n58",
+      "type": "NO_OP",
+      "label": "Update User and Heartbeat",
+      "config": {
+        "n8n_type": "n8n-nodes-base.dataTableTool",
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Update user, heartbeat as needed.",
+          "operation": "upsert",
+          "dataTableId": {
+            "__rl": true,
+            "value": "YOUR_INIT_TABLE_ID",
+            "mode": "list",
+            "cachedResultName": "ClawdBot Init",
+            "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/YOUR_INIT_TABLE_ID"
+          },
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "username",
+                "keyValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditions0_Value', ``, 'string') }}"
+              }
+            ]
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "soul": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('soul', ``, 'string') }}",
+              "user": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('user', ``, 'string') }}",
+              "heartbeat": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('heartbeat', ``, 'string') }}",
+              "last_channel": "={{ $json.last_channel }}",
+              "username": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('username', `the \"username\" provided by the user as the first answer.`, 'string') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "username",
+                "displayName": "username",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "soul",
+                "displayName": "soul",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "user",
+                "displayName": "user",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "heartbeat",
+                "displayName": "heartbeat",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "last_channel",
+                "displayName": "last_channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              },
+              {
+                "id": "last_vector_id",
+                "displayName": "last_vector_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "number",
+                "readOnly": false,
+                "removed": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n59",
+      "type": "NO_OP",
+      "label": "Delete a message in Gmail",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTool",
+        "parameters": {
+          "operation": "delete",
+          "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}"
+        }
+      }
+    },
+    {
+      "id": "n60",
+      "type": "NO_OP",
+      "label": "Get a message in Gmail",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTool",
+        "parameters": {
+          "operation": "get",
+          "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+          "simple": false,
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n61",
+      "type": "NO_OP",
+      "label": "Get many messages in Gmail",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTool",
+        "parameters": {
+          "operation": "getAll",
+          "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+          "simple": false,
+          "filters": {
+            "q": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search', ``, 'string') }}",
+            "sender": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Sender', ``, 'string') }}"
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n62",
+      "type": "NO_OP",
+      "label": "Reply to a message in Gmail",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTool",
+        "parameters": {
+          "operation": "reply",
+          "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+          "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n63",
+      "type": "NO_OP",
+      "label": "Create a document in Google Docs",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDocsTool",
+        "parameters": {
+          "folderId": "default",
+          "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}"
+        }
+      }
+    },
+    {
+      "id": "n64",
+      "type": "NO_OP",
+      "label": "Get a document in Google Docs",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDocsTool",
+        "parameters": {
+          "operation": "get",
+          "documentURL": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Doc_ID_or_URL', ``, 'string') }}"
+        }
+      }
+    },
+    {
+      "id": "n65",
+      "type": "NO_OP",
+      "label": "Update a document in Google Docs",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDocsTool",
+        "parameters": {
+          "operation": "update",
+          "documentURL": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Doc_ID_or_URL', ``, 'string') }}",
+          "actionsUi": {
+            "actionFields": [
+              {
+                "action": "insert",
+                "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('actionFields0_Text', ``, 'string') }}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "n66",
+      "type": "NO_OP",
+      "label": "Delete a file in Google Drive",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDriveTool",
+        "parameters": {
+          "operation": "deleteFile",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('File', ``, 'string') }}",
+            "mode": "id"
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n67",
+      "type": "NO_OP",
+      "label": "Create folder in Google Drive",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDriveTool",
+        "parameters": {
+          "resource": "folder",
+          "name": "={{ $fromAI(\"folder_name\") }}",
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "root",
+            "cachedResultName": "/ (Root folder)"
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n68",
+      "type": "NO_OP",
+      "label": "Move file in Google Drive",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDriveTool",
+        "parameters": {
+          "operation": "move",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('File', ``, 'string') }}",
+            "mode": "id"
+          },
+          "driveId": {
+            "__rl": true,
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Parent_Folder', ``, 'string') }}",
+            "mode": "id"
+          }
+        }
+      }
+    },
+    {
+      "id": "n69",
+      "type": "NO_OP",
+      "label": "Search files and folders in Google Drive",
+      "config": {
+        "n8n_type": "n8n-nodes-base.googleDriveTool",
+        "parameters": {
+          "resource": "fileFolder",
+          "limit": 50,
+          "queryString": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query', ``, 'string') }}",
+          "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+          "filter": {},
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n70",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model5",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-haiku-4.5",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n71",
+      "type": "NO_OP",
+      "label": "Worker Agent 1",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agentTool",
+        "parameters": {
+          "toolDescription": "Worker Agent 1 - use this for simple work",
+          "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+          "options": {
+            "systemMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('System_Message', ``, 'string') }}"
+          }
+        }
+      }
+    },
+    {
+      "id": "n72",
+      "type": "NO_OP",
+      "label": "Simple Memory3",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME-worker1",
+          "contextWindowLength": 20
+        }
+      }
+    },
+    {
+      "id": "n73",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model6",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-sonnet-4.5",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n74",
+      "type": "NO_OP",
+      "label": "Simple Memory4",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME-worker2",
+          "contextWindowLength": 20
+        }
+      }
+    },
+    {
+      "id": "n75",
+      "type": "NO_OP",
+      "label": "OpenRouter Chat Model7",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "parameters": {
+          "model": "anthropic/claude-opus-4.6",
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n76",
+      "type": "NO_OP",
+      "label": "Simple Memory5",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "YOUR_USERNAME-worker3",
+          "contextWindowLength": 20
+        }
+      }
+    },
+    {
+      "id": "n77",
+      "type": "NO_OP",
+      "label": "Worker Agent 3",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agentTool",
+        "parameters": {
+          "toolDescription": "Worker Agent 3 - use for higher-order thinking work",
+          "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+          "options": {
+            "systemMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('System_Message', ``, 'string') }}"
+          }
+        }
+      }
+    },
+    {
+      "id": "n78",
+      "type": "NO_OP",
+      "label": "Worker Agent 2",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agentTool",
+        "parameters": {
+          "toolDescription": "Worker Agent 2 - use for mid-level work",
+          "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+          "options": {
+            "systemMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('System_Message', ``, 'string') }}"
+          }
+        }
+      }
+    },
+    {
+      "id": "n79",
+      "type": "NO_OP",
+      "label": "Mark a message as read in Gmail",
+      "config": {
+        "n8n_type": "n8n-nodes-base.gmailTool",
+        "parameters": {
+          "operation": "markAsRead",
+          "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n04"
+    },
+    {
+      "from": "n02",
+      "to": "n08",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n03",
+      "to": "n05"
+    },
+    {
+      "from": "n04",
+      "to": "n46"
+    },
+    {
+      "from": "n05",
+      "to": "n08"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n06",
+      "to": "n27",
+      "sourceHandle": "output1"
+    },
+    {
+      "from": "n08",
+      "to": "n06"
+    },
+    {
+      "from": "n09",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n10",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n11",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n12",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n13",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n14",
+      "to": "n08",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n16",
+      "to": "n15"
+    },
+    {
+      "from": "n15",
+      "to": "n55"
+    },
+    {
+      "from": "n18",
+      "to": "n17",
+      "sourceHandle": "ai_embedding",
+      "targetHandle": "ai_embedding"
+    },
+    {
+      "from": "n19",
+      "to": "n17",
+      "sourceHandle": "ai_document",
+      "targetHandle": "ai_document"
+    },
+    {
+      "from": "n17",
+      "to": "n20"
+    },
+    {
+      "from": "n21",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n22",
+      "to": "n21",
+      "sourceHandle": "ai_embedding",
+      "targetHandle": "ai_embedding"
+    },
+    {
+      "from": "n24",
+      "to": "n26"
+    },
+    {
+      "from": "n25",
+      "to": "n24"
+    },
+    {
+      "from": "n23",
+      "to": "n25"
+    },
+    {
+      "from": "n26",
+      "to": "n08"
+    },
+    {
+      "from": "n28",
+      "to": "n35",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n29",
+      "to": "n35",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n30",
+      "to": "n35",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n31",
+      "to": "n35",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n33",
+      "to": "n34"
+    },
+    {
+      "from": "n32",
+      "to": "n33"
+    },
+    {
+      "from": "n34",
+      "to": "n08"
+    },
+    {
+      "from": "n35",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n37",
+      "to": "n38"
+    },
+    {
+      "from": "n36",
+      "to": "n37"
+    },
+    {
+      "from": "n39",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n40",
+      "to": "n39",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n41",
+      "to": "n39",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n42",
+      "to": "n39",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n44",
+      "to": "n43",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n43",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n43",
+      "to": "n71",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n43",
+      "to": "n78",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n43",
+      "to": "n77",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n45",
+      "to": "n43",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n38",
+      "to": "n08"
+    },
+    {
+      "from": "n46",
+      "to": "n50"
+    },
+    {
+      "from": "n46",
+      "to": "n48",
+      "sourceHandle": "output1"
+    },
+    {
+      "from": "n46",
+      "to": "n49",
+      "sourceHandle": "output2"
+    },
+    {
+      "from": "n46",
+      "to": "n03",
+      "sourceHandle": "output3"
+    },
+    {
+      "from": "n48",
+      "to": "n52"
+    },
+    {
+      "from": "n49",
+      "to": "n47"
+    },
+    {
+      "from": "n47",
+      "to": "n03"
+    },
+    {
+      "from": "n50",
+      "to": "n51"
+    },
+    {
+      "from": "n51",
+      "to": "n03"
+    },
+    {
+      "from": "n52",
+      "to": "n03"
+    },
+    {
+      "from": "n53",
+      "to": "n16"
+    },
+    {
+      "from": "n54",
+      "to": "n17"
+    },
+    {
+      "from": "n55",
+      "to": "n54"
+    },
+    {
+      "from": "n56",
+      "to": "n54",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n57",
+      "to": "n54",
+      "sourceHandle": "ai_outputParser",
+      "targetHandle": "ai_outputParser"
+    },
+    {
+      "from": "n58",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n59",
+      "to": "n39",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n60",
+      "to": "n39",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n61",
+      "to": "n39",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n62",
+      "to": "n39",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n63",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n64",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n65",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n66",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n67",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n68",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n69",
+      "to": "n43",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n70",
+      "to": "n71",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n71",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n72",
+      "to": "n71",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n73",
+      "to": "n78",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n74",
+      "to": "n78",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n75",
+      "to": "n77",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n76",
+      "to": "n77",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n78",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n77",
+      "to": "n08",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n79",
+      "to": "n39",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    }
+  ]
+}

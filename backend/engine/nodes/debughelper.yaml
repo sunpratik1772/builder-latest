@@ -1,0 +1,90 @@
+type_id: DEBUG_HELPER
+description: Use the Debug Helper node to trigger different error types or generate
+  random datasets to help test n8n workflows.
+ui:
+  display_name: Debug Helper
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 12
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: category
+  type: string
+  description: Debug operation category.
+  required: false
+  default: throwError
+  constraints:
+    enum: [doNothing, throwError, oom, randomData]
+- name: throwErrorType
+  type: string
+  description: Error class to throw when category=throwError.
+  required: false
+  default: Error
+  constraints:
+    enum: [NodeApiError, NodeOperationError, Error]
+- name: throwErrorMessage
+  type: string
+  description: Error message text.
+  required: false
+  default: Node has thrown an error
+- name: memorySizeValue
+  type: integer
+  description: Approximate memory size to generate for oom simulation.
+  required: false
+  default: 10
+- name: randomDataType
+  type: string
+  description: Random data format for randomData category.
+  required: false
+  default: user
+- name: randomDataSeed
+  type: string
+  description: Seed for deterministic random generation.
+  required: false
+- name: randomDataCount
+  type: integer
+  description: Number of random items to generate.
+  required: false
+  default: 10
+- name: randomDataSingleArray
+  type: boolean
+  description: Emit one item containing generatedItems array.
+  required: false
+  default: false
+- name: nanoidAlphabet
+  type: string
+  description: Alphabet used when randomDataType=nanoid.
+  required: false
+- name: nanoidLength
+  type: string
+  description: Nanoid length when randomDataType=nanoid.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.debughelper/'
+extras:
+  docs_slug: n8n-nodes-base.debughelper
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.debughelper/
+  scrape_mode: deep_all_sections

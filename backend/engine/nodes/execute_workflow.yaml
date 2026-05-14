@@ -1,45 +1,80 @@
 type_id: EXECUTE_WORKFLOW
-description: "Execute another workflow as sub-workflow"
-
+description: Use the Execute Sub-workflow node to run a different workflow on the
+  host machine that runs n8n.
 ui:
-  color: "#8B5CF6"
-  icon: Workflow
+  display_name: Execute Sub-workflow
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: control
-      label: Control Flow
-      order: 5
-      color: "#FF6D5A"
-    node_order: 7
-
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 20
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Data to pass to sub-workflow"
-    optional: true
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Sub-workflow output"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
+  - name: source
+    type: string
+    description: Sub-workflow source
+    required: false
+    default: parameter
+    enum: [database, localFile, parameter, url]
+  - name: workflow_json
+    type: object
+    description: Inline sub-workflow JSON when source=parameter
+    required: false
+  - name: workflow_path
+    type: string
+    description: Local workflow file path when source=localFile
+    required: false
+  - name: workflow_url
+    type: string
+    description: URL for workflow JSON when source=url
+    required: false
   - name: workflow_id
     type: string
-    description: "ID of workflow to execute"
-    required: true
-    
-  - name: wait_for_completion
-    type: boolean
-    description: "Wait for sub-workflow to complete"
-    default: true
+    description: Workflow id when source=database
     required: false
-
+  - name: workflow_lookup
+    type: object
+    description: In-memory workflow map keyed by workflow_id
+    required: false
+  - name: mode
+    type: string
+    description: Execution mode
+    required: false
+    default: once
+    enum: [once, each]
+  - name: options
+    type: object
+    description: Execution options including waitForSubWorkflow
+    required: false
+  - name: subworkflow_output_key
+    type: string
+    description: Context key read from child run for output
+    required: false
+    default: output
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Executes specified workflow with input data"
-  - "Returns output from sub-workflow"
-  - "Can be used to modularize complex workflows"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/'
+extras:
+  docs_slug: n8n-nodes-base.executeworkflow
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,147 @@
+{
+  "workflow_id": "wf_create_a_complex_research_workflow_from_mock_source_docs_kpi",
+  "name": "Compiled: Create a complex research workflow from mock source docs, KP",
+  "schema_version": "1.0",
+  "description": "Workflow compiled via strict multi-agent pipeline.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Manual Trigger",
+      "config": {
+        "emitted_items": []
+      }
+    },
+    {
+      "id": "n02",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Read Write Files From Disk",
+      "config": {
+        "operation": "read",
+        "file_path_and_name": "/app/data/raw_documents/",
+        "put_output_file_in_field": "data",
+        "inputs": {
+          "input": "{{ MANUAL_TRIGGER.output }}"
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "SPREADSHEET_FILE",
+      "label": "Spreadsheet File",
+      "config": {
+        "operation": "read",
+        "file_format": "csv",
+        "file_path": null,
+        "options": {},
+        "inputs": {
+          "input": "{{ MANUAL_TRIGGER.output }}"
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "type": "MERGE",
+      "label": "Merge",
+      "config": {
+        "mode": "append",
+        "combine_by": "combineByPosition",
+        "fields_to_match": null,
+        "output_type": "keep_matches",
+        "include_any_unpaired_items": false,
+        "output": "input1",
+        "inputs": {
+          "input": [
+            "{{ READ_WRITE_FILES_FROM_DISK.output }}",
+            "{{ SPREADSHEET_FILE.output }}"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "LLM_BASIC",
+      "label": "Llm Basic",
+      "config": {
+        "prompt": "From the following content, extract all distinct key facts, claims, and data points relevant to market research, competitor analysis, and product performance. Present each extracted item as a concise, standalone bullet point. Do not summarize or elaborate, just list the facts.\n\nContent: {{ $json.body }}",
+        "system_prompt": "You are an expert research assistant. Your task is to meticulously identify and list all factual statements and claims from the provided text without interpretation or summarization.",
+        "model": "gemini-2.5-pro",
+        "output_field": "extracted_facts",
+        "temperature": 0.1,
+        "max_chars": 60000,
+        "inputs": {
+          "input": "{{ MERGE.output }}"
+        }
+      }
+    },
+    {
+      "id": "n06",
+      "type": "REMOVE_DUPLICATES",
+      "label": "Remove Duplicates",
+      "config": {
+        "operation": "removeDuplicateInputItems",
+        "compare": "allFields",
+        "logic": "removeItemsWithAlreadySeenKeyValues",
+        "inputs": {
+          "input": "{{ LLM_BASIC.output }}"
+        }
+      }
+    },
+    {
+      "id": "n07",
+      "type": "LOOP_OVER_ITEMS",
+      "label": "Loop Over Items",
+      "config": {
+        "inputs": {
+          "input": "{{ REMOVE_DUPLICATES.output }}"
+        }
+      }
+    },
+    {
+      "id": "n08",
+      "type": "MARKDOWN",
+      "label": "Markdown",
+      "config": {
+        "mode": "markdownToHtml",
+        "markdown": "{{ input.text }}",
+        "inputs": {
+          "input": "{{ LOOP_OVER_ITEMS.output }}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n01",
+      "to": "n03"
+    },
+    {
+      "from": "n02",
+      "to": "n04"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n05",
+      "to": "n06"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n07",
+      "to": "n08"
+    }
+  ]
+}

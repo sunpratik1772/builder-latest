@@ -128,6 +128,161 @@ def _normalize_edge_schema(workflow: dict) -> bool:
     return changed
 
 
+def _normalize_convert_to_file_ops(workflow: dict, report: AutoFixReport) -> bool:
+    changed = False
+    for node in workflow.get("nodes") or []:
+        if not isinstance(node, dict) or node.get("type") != "CONVERT_TO_FILE":
+            continue
+        cfg = node.get("config") or {}
+        if not isinstance(cfg, dict):
+            continue
+        op = str(cfg.get("operation", "")).strip()
+        if not op:
+            continue
+        mapped = {
+            "text": "toText",
+            "json": "toJson",
+            "binary": "toBinary",
+        }.get(op.lower())
+        if mapped and op != mapped:
+            cfg["operation"] = mapped
+            node["config"] = cfg
+            changed = True
+            report.applied.append(f"{node.get('id','?')}.config.operation: '{op}' -> '{mapped}'")
+    return changed
+
+
+def _map_legacy_operator(op: Any) -> str:
+    raw = str(op or "").strip().lower()
+    mapping = {
+        "equalto": "equals",
+        "stringequal": "equals",
+        "equals": "equals",
+        "notequalto": "notEquals",
+        "notequals": "notEquals",
+        "greaterthan": "greaterThan",
+        "lessthan": "lessThan",
+        "greaterthanorequalto": "largerEqual",
+        "lessthanorequalto": "smallerEqual",
+        "contains": "contains",
+        "notcontains": "notContains",
+    }
+    return mapping.get(raw, "equals")
+
+
+def _legacy_condition_to_runtime(cond: dict) -> dict:
+    field = str(cond.get("field") or "").strip()
+    left = cond.get("leftValue")
+    if left is None and field:
+        left = f"={{$json.{field}}}"
+    right = cond.get("rightValue", cond.get("value"))
+    operator = cond.get("operator")
+    if isinstance(operator, dict):
+        op_name = operator.get("operation") or "equals"
+    else:
+        op_name = _map_legacy_operator(operator)
+    return {
+        "leftValue": left,
+        "rightValue": right,
+        "operator": {"operation": op_name},
+    }
+
+
+def _normalize_switch_legacy_conditions(workflow: dict, report: AutoFixReport) -> bool:
+    changed = False
+    for node in workflow.get("nodes") or []:
+        if not isinstance(node, dict) or node.get("type") != "SWITCH":
+            continue
+        cfg = node.get("config") or {}
+        if not isinstance(cfg, dict) or str(cfg.get("mode", "rules")).lower() != "rules":
+            continue
+        rules = ((cfg.get("rules") or {}).get("values") or [])
+        if not isinstance(rules, list):
+            continue
+        for idx, rule in enumerate(rules):
+            if not isinstance(rule, dict):
+                continue
+            raw_conditions = rule.get("conditions")
+            # Legacy n8n-style: conditions is a direct list with field/operator/value.
+            if isinstance(raw_conditions, list):
+                rewritten = [
+                    _legacy_condition_to_runtime(c)
+                    for c in raw_conditions
+                    if isinstance(c, dict)
+                ]
+                rule["conditions"] = {"combinator": "and", "conditions": rewritten}
+                changed = True
+                report.applied.append(
+                    f"{node.get('id','?')}.rules[{idx}].conditions: normalized legacy list form"
+                )
+                continue
+            # Hybrid: operator provided as string inside runtime container.
+            if isinstance(raw_conditions, dict):
+                inner = raw_conditions.get("conditions")
+                if isinstance(inner, list):
+                    rewrote_any = False
+                    rewritten = []
+                    for cond in inner:
+                        if not isinstance(cond, dict):
+                            continue
+                        if isinstance(cond.get("operator"), dict) and "leftValue" in cond:
+                            rewritten.append(cond)
+                            continue
+                        rewritten.append(_legacy_condition_to_runtime(cond))
+                        rewrote_any = True
+                    if rewrote_any:
+                        raw_conditions["conditions"] = rewritten
+                        rule["conditions"] = raw_conditions
+                        changed = True
+                        report.applied.append(
+                            f"{node.get('id','?')}.rules[{idx}].conditions: normalized legacy entries"
+                        )
+    return changed
+
+
+def _normalize_filter_legacy_conditions(workflow: dict, report: AutoFixReport) -> bool:
+    changed = False
+    for node in workflow.get("nodes") or []:
+        if not isinstance(node, dict) or node.get("type") != "FILTER":
+            continue
+        cfg = node.get("config") or {}
+        if not isinstance(cfg, dict):
+            continue
+        root = cfg.get("conditions")
+        # Legacy n8n-style: config.conditions is a direct list.
+        if isinstance(root, list):
+            rewritten = [
+                _legacy_condition_to_runtime(c)
+                for c in root
+                if isinstance(c, dict)
+            ]
+            cfg["conditions"] = {"combinator": "and", "conditions": rewritten}
+            node["config"] = cfg
+            changed = True
+            report.applied.append(f"{node.get('id','?')}.config.conditions: normalized legacy list form")
+            continue
+        if isinstance(root, dict):
+            inner = root.get("conditions")
+            if isinstance(inner, list):
+                rewrote_any = False
+                rewritten = []
+                for cond in inner:
+                    if not isinstance(cond, dict):
+                        continue
+                    if isinstance(cond.get("operator"), dict) and "leftValue" in cond:
+                        rewritten.append(cond)
+                        continue
+                    rewritten.append(_legacy_condition_to_runtime(cond))
+                    rewrote_any = True
+                if rewrote_any:
+                    root["conditions"] = rewritten
+                    cfg["conditions"] = root
+                    node["config"] = cfg
+                    changed = True
+                    report.applied.append(f"{node.get('id','?')}.config.conditions: normalized legacy entries")
+    return changed
+
+
 def _fix_bad_param_type_empty_array(workflow: dict, error: dict, report: AutoFixReport) -> bool:
     """When an ARRAY param is missing / wrong-typed and the validator flagged
     it, fall back to an empty list. Only applies to params whose field path
@@ -215,6 +370,9 @@ class AutoFixer:
         # Normalise edge schema unconditionally — cheap and frequently fires.
         if _normalize_edge_schema(workflow):
             report.applied.append("edges: converted {source,target} → {from,to}")
+        _normalize_convert_to_file_ops(workflow, report)
+        _normalize_switch_legacy_conditions(workflow, report)
+        _normalize_filter_legacy_conditions(workflow, report)
 
         # Apply per-error rules. Each rule is idempotent so re-entry is
         # safe if the caller calls fix() multiple times.

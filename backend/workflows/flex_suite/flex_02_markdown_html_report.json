@@ -1,0 +1,89 @@
+{
+  "workflow_name": "Flex 02 - Markdown and HTML Report",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "gen_metrics",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n    {'team': 'Growth', 'wins': 14, 'losses': 3},\n    {'team': 'Support', 'wins': 9, 'losses': 4},\n    {'team': 'Data', 'wins': 11, 'losses': 2},\n]"
+      }
+    },
+    {
+      "id": "build_md",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "total_wins = sum(row['wins'] for row in items)\nlines = [\n    '# Weekly Team Report',\n    '',\n    f'- Teams: {len(items)}',\n    f'- Total wins: {total_wins}',\n    '',\n    '## Breakdown',\n]\nfor row in items:\n    lines.append(f\"- **{row['team']}**: {row['wins']} wins / {row['losses']} losses\")\nresult = [{'markdown': '\\n'.join(lines)}]"
+      }
+    },
+    {
+      "id": "to_html",
+      "type": "MARKDOWN",
+      "config": {
+        "mode": "markdownToHtml",
+        "destinationKey": "html"
+      }
+    },
+    {
+      "id": "write_html",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/weekly_report.html",
+        "input_binary_field": "html"
+      }
+    },
+    {
+      "id": "bundle_json",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "toJson",
+        "put_output_file_in_field": "data",
+        "file_name": "weekly_report_bundle"
+      }
+    },
+    {
+      "id": "write_bundle",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/weekly_report_bundle.json",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "gen_metrics"
+    },
+    {
+      "from": "gen_metrics",
+      "to": "build_md"
+    },
+    {
+      "from": "build_md",
+      "to": "to_html"
+    },
+    {
+      "from": "to_html",
+      "to": "write_html"
+    },
+    {
+      "from": "to_html",
+      "to": "bundle_json"
+    },
+    {
+      "from": "bundle_json",
+      "to": "write_bundle"
+    }
+  ]
+}

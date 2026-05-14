@@ -1,48 +1,51 @@
 type_id: SCHEDULE_TRIGGER
-description: "Trigger workflow on schedule"
-
+description: Use the Schedule Trigger node to run workflows at fixed intervals and
+  times. This works in a similar way to the Cron software utility in Unix-like systems.
 ui:
-  color: "#EF4444"
-  icon: Calendar
+  display_name: Schedule Trigger
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: trigger
+      id: triggers
       label: Triggers
-      order: 1
-      color: "#EF4444"
-    node_order: 1
-
+      order: 5
+      color: '#0EA5E9'
+    node_order: 54
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports: []
-
 output_ports:
-  - name: output
-    type: object
-    description: "Trigger data with timestamp"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
-  - name: mode
-    type: string
-    description: "Schedule mode"
-    enum: [interval, cron]
-    default: interval
-    required: true
-    
-  - name: interval
-    type: integer
-    description: "Interval in minutes (interval mode)"
-    default: 60
+  - name: rule
+    type: object
+    description: Trigger rule collection (interval[])
     required: false
-    
-  - name: cron_expression
+    default:
+      interval:
+      - field: days
+  - name: timezone
     type: string
-    description: "Cron expression (cron mode)"
+    description: Timezone used for schedule interpretation.
     required: false
-
+    default: UTC
+  - name: emitted_items
+    type: array
+    description: Optional static emitted payload override
+    required: false
 semantics:
   requires: []
-  provides: [trigger_time]
-
+  provides: []
 constraints:
-  - "Triggers workflow at specified intervals or cron schedule"
-  - "interval mode runs every N minutes"
-  - "cron mode uses standard cron syntax"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/'
+extras:
+  docs_slug: n8n-nodes-base.scheduletrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,90 @@
+type_id: MCP_SERVER_TRIGGER
+description: Use the MCP Server Trigger node to allow n8n to act as a Model Context
+  Protocol (MCP) server, making n8n tools and workflows available to MCP clients.
+ui:
+  display_name: MCP Server Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 40
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: authentication
+  type: string
+  description: Trigger endpoint auth mode.
+  required: false
+  default: none
+  enum: [none, bearerAuth, headerAuth]
+- name: serverTransport
+  type: string
+  description: MCP transport mode for emitted trigger events.
+  required: false
+  default: httpStreamable
+  enum: [sse, httpStreamable]
+- name: path
+  type: string
+  description: Base MCP URL path.
+  required: false
+  default: mcp
+- name: request_headers
+  type: object
+  description: Incoming headers for request auth check.
+  required: false
+  default: {}
+- name: bearer_token
+  type: string
+  description: Expected bearer token when authentication=bearerAuth.
+  required: false
+- name: header_name
+  type: string
+  description: Expected auth header name when authentication=headerAuth.
+  required: false
+  default: x-api-key
+- name: header_value
+  type: string
+  description: Expected auth header value when authentication=headerAuth.
+  required: false
+- name: session_id
+  type: string
+  description: Session identifier to include in emitted tool calls.
+  required: false
+  default: mcp-session
+- name: tool_calls
+  type: array
+  description: MCP tool calls to emit into workflow context.
+  required: false
+  default: []
+- name: tool_name
+  type: string
+  description: Fallback single tool name when tool_calls is empty.
+  required: false
+  default: echo
+- name: arguments
+  type: object
+  description: Fallback tool arguments.
+  required: false
+  default: {}
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/'
+extras:
+  docs_slug: n8n-nodes-langchain.mcptrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/
+  scrape_mode: deep_all_sections

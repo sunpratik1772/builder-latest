@@ -1,0 +1,112 @@
+{
+  "workflow_name": "Flex 04 - Split and Merge Multi-Source",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "products",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [{\n    'products': [\n        {'sku': 'A-100', 'category': 'analytics', 'price': 120},\n        {'sku': 'B-210', 'category': 'storage', 'price': 80},\n        {'sku': 'C-330', 'category': 'security', 'price': 150},\n    ]\n}]"
+      }
+    },
+    {
+      "id": "split_products",
+      "type": "SPLIT_OUT",
+      "config": {
+        "field_to_split_out": "products",
+        "include": "noOtherFields",
+        "destination_field_name": "product"
+      }
+    },
+    {
+      "id": "flatten_product",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForEachItem",
+        "pythonCode": "p = item['product']\nresult = {\n    'sku': p['sku'],\n    'category': p['category'],\n    'price': p['price'],\n}"
+      }
+    },
+    {
+      "id": "regions",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n    {'sku': 'A-100', 'region': 'EU', 'tax_rate': 0.20},\n    {'sku': 'B-210', 'region': 'US', 'tax_rate': 0.08},\n    {'sku': 'C-330', 'region': 'APAC', 'tax_rate': 0.15},\n]"
+      }
+    },
+    {
+      "id": "merge_inventory",
+      "type": "MERGE",
+      "config": {
+        "mode": "combine",
+        "combine_by": "matchingFields",
+        "fields_to_match": [
+          "sku"
+        ],
+        "output_type": "keep_matches"
+      }
+    },
+    {
+      "id": "to_csv",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "csv",
+        "put_output_file_in_field": "data",
+        "file_name": "priced_inventory"
+      }
+    },
+    {
+      "id": "write_inventory_csv",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/priced_inventory.csv",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "products"
+    },
+    {
+      "from": "products",
+      "to": "split_products"
+    },
+    {
+      "from": "split_products",
+      "to": "flatten_product"
+    },
+    {
+      "from": "trigger",
+      "to": "regions"
+    },
+    {
+      "from": "flatten_product",
+      "to": "merge_inventory",
+      "targetHandle": "input1"
+    },
+    {
+      "from": "regions",
+      "to": "merge_inventory",
+      "targetHandle": "input2"
+    },
+    {
+      "from": "merge_inventory",
+      "to": "to_csv"
+    },
+    {
+      "from": "to_csv",
+      "to": "write_inventory_csv"
+    }
+  ]
+}

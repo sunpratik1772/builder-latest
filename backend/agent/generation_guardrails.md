@@ -1,0 +1,471 @@
+These are hard generation constraints to reduce fixer/canonicalizer load.
+Each rule includes positive and negative examples.
+
+1) Runtime shape discipline
+- Rule: Emit dbSherpa-native edge endpoints (`from`, `to`) on every edge.
+  - Works: `{"from":"n01","to":"n02"}`
+  - Won't work: `{"source":"n01","target":"n02"}` as the only shape in new output.
+- Rule: Prefer explicit branch handles that map to runtime wiring.
+  - Works (IF): source handle `true` / `false`
+  - Works (SWITCH): source handle `output0`, `output1`
+  - Won't work: `main`, `else`, `output:0` in fresh generations.
+
+2) Condition payload discipline (IF/SWITCH/FILTER)
+- Rule: Use runtime condition objects.
+  - Works:
+    - `{"leftValue":"={{ $json.refund_credit }}","rightValue":100,"operator":{"operation":"greaterThan"}}`
+  - Won't work:
+    - `{"field":"refund_credit","operator":"greaterThan","value":100}`
+- Rule: Keep combinator explicit at container level.
+  - Works: `{"conditions":{"combinator":"and","conditions":[...]}}`
+  - Won't work: missing combinator with ambiguous defaults.
+
+3) CODE node safety rules
+- Rule: Emit Python-native CODE config.
+  - Works:
+    - `{"language":"python","pythonCode":"for item in items: ..."}`
+  - Won't work:
+    - `{"language":"javascript","jsCode":"return items;"}` without supported python bridge.
+- Rule: Avoid heavyweight spreadsheet/dataframe imports in CODE.
+  - Works: pure arithmetic/field transforms.
+  - Won't work: `import pandas`, `import xlsxwriter` inside CODE.
+
+4) Artifact fidelity rules
+- Rule: Artifact asks must end in deterministic writer tail.
+  - Works:
+    - `CONVERT_TO_FILE` -> `READ_WRITE_FILES_FROM_DISK` with concrete path.
+  - Won't work:
+    - File conversion node without a disk writer.
+- Rule: Output paths should be concrete and absolute.
+  - Works: `/tmp/cancellation_summary.xlsx`
+  - Won't work: empty path, relative-only placeholder path.
+- Rule: if user asks for a multi-tab workbook, emit ONE Excel file with named sheets (not multiple standalone files).
+  - Works:
+    - single path like `/tmp/orders_report.xlsx` containing tabs `Orders`, `RegionSummary`, `TopProducts`
+    - use `SPREADSHEET_FILE` write steps with `file_format: "xlsx"`, `options.sheet_name`, and `options.append_to_existing_file: true` for additional tabs
+  - Won't work:
+    - three separate Excel files (`orders.xlsx`, `region.xlsx`, `top_products.xlsx`) when a single multi-tab workbook is required.
+- Rule: Text must render real content (no unresolved templates).
+  - Works: `"text":"{{ $json.retention_insight }}"`
+  - Won't work: output file containing literal `{{ ... }}`.
+
+5) Topology and minimality
+- Rule: Build the smallest executable graph that satisfies intent.
+  - Works: trigger -> transform -> summarize -> artifact tail.
+  - Won't work: decorative nodes disconnected from outputs.
+- Rule: Every non-trigger node must be reachable and useful.
+  - Works: all nodes on at least one trigger-to-output path.
+  - Won't work: orphan branches that never feed requested artifacts.
+
+6) Data/schema grounding
+- Rule: Use only contract-backed node types and config keys.
+  - Works: known `type` + valid `config` fields.
+  - Won't work: invented node types/params.
+- Rule: Use only known dataset/column names from provided schemas or upstream shape.
+  - Works: summarizing fields present in input rows.
+  - Won't work: references to nonexistent columns.
+
+7) Stability in edit mode
+- Rule: Preserve existing node IDs and labels unless replacement is required.
+  - Works: update `n05.config.conditions` in place.
+  - Won't work: renumbering unrelated nodes.
+- Rule: Apply smallest executable diff.
+  - Works: targeted edge/config fix.
+  - Won't work: full graph rewrite when user asked for a local edit.
+
+8) Node-specific generation rules from runtime learnings
+- `SPLIT_OUT`
+  - Rule: only split `json` when upstream contains a real `json` field.
+  - Works:
+    - Upstream item: `{"json":[{...},{...}]}` with `field_to_split_out:"json"`.
+    - Flat rows: skip split or split actual array field (for example `records`).
+  - Won't work:
+    - Flat upstream rows + `field_to_split_out:"json"` (causes empty downstream).
+- `JSON`
+  - Rule: `field_name` must point to an existing field at the current node stage; nested-path parsing is allowed but only if that nested key actually exists.
+  - Rule: parse is in-place unless a separate remap node is added; do not assume `output_field_name` creates a new sibling object.
+  - Works:
+    - `operation: "parse"` with `field_name: "contact_info_raw"` (top-level stringified object).
+    - `operation: "parse"` with `field_name: "records.contact_info_raw"` only when item shape includes `records.{...}`.
+    - downstream extraction from `contact_info_raw.phone` / `contact_info_raw.address` after parse-in-place.
+  - Won't work:
+    - Parsing a field path that is absent at that stage (silent no-op drift).
+    - Assuming parse happened when downstream fields remain null.
+    - parsing `contact_info_raw` then reading `contact_details.phone` without an explicit remap step.
+- `ITEM_LISTS`
+  - Rule: `field_name` must reference a real array field after prior transforms.
+  - Works:
+    - `operation: "split"` on `records` when upstream item is `{records:[...]}`.
+    - `operation: "flatten"` on `records.tags` after tags were parsed into arrays.
+  - Won't work:
+    - Flatten/split against non-array fields or unparsed string payloads.
+    - Flatten before JSON parse created list values.
+- `REMOVE_DUPLICATES`
+  - Rule: dedupe compare fields should target stable scalar identifiers when possible.
+  - Works:
+    - `compare: "selectedFields"` with `fields: "email,company"` (or equivalent nested scalar keys).
+  - Won't work:
+    - using broad `allFields` on payloads containing mutable/nested list structures when intent is entity dedupe by key fields.
+- `RENAME_KEYS` -> downstream lineage
+  - Rule: if keys are renamed, all downstream node references must use renamed keys exactly.
+  - Works:
+    - rename `contact_info_raw -> contact_details_raw`, then:
+      - JSON parse on `contact_details_raw`
+      - SET extraction from `contact_details_raw.phone` / `contact_details_raw.address` (or from explicitly mapped `contact_details` if created).
+  - Won't work:
+    - rename to `contact_details_raw` but SET reads `contact_details.phone` without creating `contact_details`.
+    - mixed old/new key references across downstream nodes.
+- `SET` expression integrity
+  - Rule: every SET expression path must exist at the node stage unless explicitly optional.
+  - Rule: SET config must use runtime-supported assignment shape.
+  - Rule: keep inline expressions to path projection/arithmetic/simple conditionals; avoid method-call chains from `$json.*`.
+  - Works:
+    - `{"keep_only_set_fields": true, "json_output": {"id":"={{ $json.id }}","email":"={{ $json.email }}"}}`
+    - or assignment entries with direct `name`/`key` + `value` fields supported by runtime handler.
+    - list shaping done via dedicated list/parse transforms before SET (instead of method calls in SET expressions).
+  - Won't work:
+    - ad-hoc assignment payloads that use unsupported nesting/keys and are ignored at runtime.
+    - configs that syntactically validate but do not produce output fields.
+  - Works:
+    - `={{ $json.full_name }}`, `={{ $json.email }}`, `={{ $json.company }}`
+    - nested refs only when parent object is present at that stage.
+  - Won't work:
+    - expressions against non-existent parent objects that silently produce nulls (`={{ $json.contact_details.phone }}` when only `contact_details_raw` exists).
+    - method chains like `={{ $json.tags_raw.split(',') }}` that can be tokenized as path segments and degrade to literal strings.
+- `MERGE` count branch integrity
+  - Rule: summary/count nodes must receive both pre-transform and post-transform branches explicitly when before/after counts are required.
+  - Works:
+    - branch A: pre-dedupe rows -> MERGE input1
+    - branch B: post-dedupe canonical rows -> MERGE input2
+    - summary node computes `before_count` from branch A and `after_count` from branch B.
+  - Won't work:
+    - counting from one branch only while narrative claims before/after.
+    - relying on heuristic stage flags if branch lineage is not guaranteed.
+  - Rule: for multi-input nodes (`MERGE`, `COMPARE_DATASETS`) wire explicit target ports when graph has multiple inbound edges.
+  - Works:
+    - edges include `to_port` / `targetHandle` as `input1` and `input2`.
+  - Won't work:
+    - multiple inbound edges without target handles, causing both branches to collapse into default `input` and corrupt compare/merge semantics.
+  - Rule: in `MERGE` matching-fields mode, match fields must be valid field-name entries.
+  - Works:
+    - `fields_to_match: ["severity","region"]` (or equivalent runtime-supported normalized form).
+  - Won't work:
+    - malformed object-only entries that do not resolve to field names at runtime.
+- `CODE` summary consistency
+  - Rule: summary narrative must reflect actual transformed fields and counts.
+  - Works:
+    - mention only transforms that are verifiably present in output rows.
+  - Won't work:
+    - claiming extraction/normalization succeeded when output fields are null.
+- `IF` edge wiring
+  - Rule: branch metadata must map to runtime handles.
+  - Works:
+    - `from_port:"true"` / `from_port:"false"` (or equivalent normalized source handle).
+  - Won't work:
+    - branch-only metadata that runtime cannot map.
+  - Rule: IF count guards must use runtime-resolvable numeric expressions.
+  - Works:
+    - `leftValue: "={{ $items.length }}"` with numeric comparison and less-strict type support.
+  - Won't work:
+    - comparisons that leave left as unresolved string while right is numeric (type mismatch at runtime).
+- `SUMMARIZE`
+  - Rule: `fieldsToSplitBy` and `fieldsToSummarize.field` must exist in incoming item shape.
+  - Works:
+    - Incoming `{region, plan_tier, refund_credit}` with `fieldsToSplitBy:"region,plan_tier"`.
+  - Won't work:
+    - Splitting by nested paths when incoming rows are flat.
+    - Configs that produce null group keys for non-empty real data.
+  - Rule: aggregation keyword and output field naming must be runtime-compatible.
+  - Works:
+    - `aggregation: "average"` or `aggregation: "avg"` for mean calculations.
+    - set `outputName`/`outputFieldName` and use the same field name downstream.
+    - example: summarize `gross_value` with `outputName: "total_gross_value"` and downstream sort/filter on `total_gross_value`.
+  - Won't work:
+    - downstream referencing `total_gross_value` when summarize emitted only `sum_gross_value` due missing/ignored alias.
+    - using unsupported aggregation spellings.
+- `SORT`
+  - Rule: sort by fields present at that stage; direction should be canonical.
+  - Works:
+    - `{"field":"total_refund_credit","direction":"desc"}`
+    - `{"fieldName":"total_refund_credit","order":"descending"}` (canonical equivalent)
+  - Won't work:
+    - Sorting by missing fields or invalid direction values.
+    - Emitting sort specs with no field key at all.
+- `LLM_BASIC` summary generation
+  - Rule: feed real aggregated records.
+  - Works:
+    - LLM consumes merged summary rows with real region/tier/totals.
+  - Won't work:
+    - LLM fed placeholder rows (`region:null`, totals `0`) when source had real data.
+  - Rule: no-data case should be explicit and deterministic.
+  - Works:
+    - "No data available for period X" only when upstream truly empty.
+  - Won't work:
+    - no-data narrative when source rows were present but miswired.
+  - Rule: when objective asks delta/top findings, summary text must contain explicit delta wording and ranking cue.
+  - Works:
+    - includes tokens such as `delta` and one of `top`, `most significant`, `rank`, `highest`.
+  - Won't work:
+    - generic narrative that omits delta/ranking language despite delta-analysis objective.
+  - Rule: compare-summary prompts must ask for literal delta/drift + ranking terms in final output.
+  - Works:
+    - prompt text includes instructions like: "include the word 'delta' (or 'drift') and a ranking cue (`top`, `rank`, `highest`, `most significant`)."
+  - Won't work:
+    - prompt asks for generic summary only ("summarize findings") while objective requires ranked compare deltas.
+  - Rule: LLM prompt templates must be runtime-resolvable and avoid JS-only helper calls.
+  - Works:
+    - `prompt: "Summarize delta rows:\\n{{ $json }}"`
+    - `prompt: "Summarize top deltas from rows:\\n{{ JSON.stringify($items) }}"`
+  - Won't work:
+    - `prompt: "... {{ JSON.stringify($items.slice(0, 5), null, 2) }} ..."` unless runtime explicitly supports that helper shape.
+    - `prompt: "... {{ $json.to_json }} ..."` when no `to_json` field is produced upstream.
+- `FILTER` (status/time presence semantics)
+  - Rule: match operator to intent words in label/request.
+  - Rule: use only runtime-supported filter operators.
+  - Works:
+    - `equals`, `notEquals`, `contains`, `notContains`, `greaterThan`, `lessThan`, `isEmpty`, `isNotEmpty`, `exists`, `doesNotExist`.
+    - `isNull` / `isNotNull` / `isNumber` only when runtime implementation supports them.
+  - Won't work:
+    - unsupported operators such as `isNotNull`, `isNumber` when runtime filter implementation does not expose them.
+  - Works:
+    - Intent "dispatched/shipped/completed" with timestamp field:
+      - `operator.operation: "notEquals"` and `rightValue: null`
+      - or an explicit non-empty check (`isNotEmpty`) when available.
+    - Intent "pending/not dispatched/missing timestamp":
+      - `operator.operation: "equals"` with `rightValue: null`.
+  - Won't work:
+    - Label says "Filter Dispatched ..." but condition is `equals null` on `shipped_at`.
+
+- `DATE_TIME`
+  - Rule: date parameters must be real ISO-like values at runtime, not unresolved template literals.
+  - Works:
+    - set/copy source timestamp into a concrete field first (for example `date`), then run `DATE_TIME` using that field path or default row date behavior.
+    - `action: "formatDate"` with parseable source timestamp values.
+  - Won't work:
+    - `date: "={{ $json.event_time }}"` when the node does not evaluate template strings for `date`.
+    - feeding raw template text into date parsing paths (`fromisoformat` crashes in smoke/runtime).
+
+9) Multi-node topology stability
+- Rule: For branch+batch+compare objectives, require strict JSON-only workflow output and explicit artifact contract.
+  - Works:
+    - Generation request includes explicit node targets (`SWITCH`, `SPLIT_IN_BATCHES`, `LOOP_OVER_ITEMS`, `AGGREGATE`, `MERGE`, `COMPARE_DATASETS`) and concrete output files (`/tmp/...csv`, `/tmp/...md`).
+    - Generation request explicitly says "Return only valid workflow JSON".
+  - Won't work:
+    - High-level narrative request with no output-shape constraints; this can fail with `No valid JSON produced` before runtime.
+    - Overpacked single-line inline pseudo-JSON blobs in the request; this can still fail JSON emission.
+
+10) `COMPARE_DATASETS` branch grounding
+- Rule: both compare inputs must be trigger-reachable, and baseline must be emitted as row items (not a detached literal object).
+  - Works:
+    - Baseline branch starts from `MANUAL_TRIGGER` -> `SET`/`CODE` producing rows like `{severity, baseline_count}`.
+    - Compare config uses field mapping keys expected by runtime (`input1Field` / `input2Field`) and produces matched rows.
+    - compare key extraction works for canonical rows and json-wrapped rows (`{"json": {...}}`) by unwrapping before matching.
+  - Won't work:
+    - Detached baseline node not connected to trigger path (results in empty or null comparison rows).
+    - Compare mapping keys like `field1` / `field2` that do not match runtime mapping contract.
+    - matching only top-level keys when upstream rows carry canonical fields under `json`, leading to null group keys and zero deltas.
+  - Rule: compare resolve mode must match downstream delta-code shape expectations.
+  - Works:
+    - downstream code reads `inputA`/`inputB` (or `input1`/`input2`) and compare emits paired rows accordingly.
+  - Won't work:
+    - compare emits flattened rows while downstream code reads paired keys, producing null/zero deltas.
+    - compare emits paired rows while downstream code only reads flattened fields.
+  - Rule: feed compare with two independent aggregate streams; avoid pre-combining them through `MERGE(mode=combine)` before compare.
+  - Works:
+    - processed summary stream -> `COMPARE_DATASETS` `input1`
+    - baseline summary stream -> `COMPARE_DATASETS` `input2`
+  - Won't work:
+    - `MERGE` processed+baseline into one stream, then send merged output to compare as a single input.
+    - compare graph where only one input port is effectively populated.
+
+- `SWITCH` / `FILTER` / `SUMMARIZE` row-shape grounding
+  - Rule: these nodes must consume row-level items with required scalar fields already materialized.
+  - Works:
+    - upstream rows like `{severity, region, processed_count}` before SWITCH/FILTER/SUMMARIZE.
+    - if seed outputs arrays (`processed_data`, `baseline_data`), expand arrays first (for example via split/loop/code row-expansion) and then route/aggregate.
+  - Won't work:
+    - switching/filtering on `={{ $json.severity }}` when upstream item is `{processed_data:[...], baseline_data:[...]}`.
+    - summarizing fields that exist only inside nested arrays that were never expanded.
+  - Rule: expression syntax must be a single runtime template, not nested/mixed templates.
+  - Works:
+    - `leftValue: "={{ $json.severity }}"`
+    - `leftValue: "={{ $json.timestamp }}"`
+  - Won't work:
+    - `leftValue: "={$json.={{ $json.severity }}}"`
+    - any expression string that nests `={{ ... }}` inside another template shell.
+
+- `SPREADSHEET_FILE` artifact tail discipline
+  - Rule: when objective asks workbook output, `SPREADSHEET_FILE` write should be the terminal workbook writer.
+  - Works:
+    - `... -> SPREADSHEET_FILE(operation=write,file_format=xlsx,file_path=/tmp/<name>.xlsx)` (optional additional sheet writes with append mode).
+  - Won't work:
+    - chaining `SPREADSHEET_FILE(write)` into `CONVERT_TO_FILE(toBinary)` + `READ_WRITE_FILES_FROM_DISK` as if workbook still needs conversion.
+    - mixed writer tails that produce path metadata but fail to materialize the workbook file reliably.
+
+11) Canonical branch+batch+compare pattern
+- Rule: Keep one canonical topology for branch+batch+compare workflows; vary only input sequence and output file names.
+  - Use:
+    - Same node types/order across variants:
+      - `MANUAL_TRIGGER` -> `SET` baseline -> `SWITCH` -> `MERGE` branches -> `SPLIT_IN_BATCHES` -> `LOOP_OVER_ITEMS` -> `SUMMARIZE`/`AGGREGATE` -> `SPLIT_OUT` baseline -> `COMPARE_DATASETS` -> `CODE` delta normalizer -> `CONVERT_TO_FILE` -> `READ_WRITE_FILES_FROM_DISK`.
+    - Same schema across variants:
+      - processed rows: `{severity, processed_count}`
+      - baseline rows: `{severity, baseline_count}`
+      - final rows: `{severity, processed_count, baseline_count, delta}`.
+    - Deterministic artifacts:
+      - CSV path `/tmp/<variant_id>_delta.csv`
+      - Markdown path `/tmp/<variant_id>_findings.md`.
+  - Don't use:
+    - Rebuilding topology for every variant (causes hidden wiring regressions).
+    - Mixing incompatible processed field names (`count_event_id`, `total_events`, `processed_count`) without a normalization node.
+    - Reusing generic artifact names across unrelated variants (`/tmp/kpi_delta.csv`) when variant-specific outputs are required.
+
+- Rule: Add a deterministic delta-normalization step before writing artifacts.
+  - Use:
+    - `CODE` node that computes and emits:
+      - `delta = processed_count - baseline_count`
+      - explicit rows for `HIGH`, `MEDIUM`, `LOW` even if one branch is empty.
+    - Example output row:
+      - `{"severity":"HIGH","processed_count":6,"baseline_count":4,"delta":2}`
+  - Don't use:
+    - Directly converting raw compare payload to CSV/markdown without shape normalization.
+    - Allowing null severity keys or missing severity categories in final artifact rows.
+
+- Rule: Semantic gate is mandatory before pass/finalize.
+  - Use:
+    - CSV checks:
+      - file exists, non-empty, includes `HIGH`, `MEDIUM`, `LOW`.
+    - Markdown checks:
+      - no `[LLM error ...]`,
+      - no unresolved templates (`{{ ... }}`),
+      - no "baseline missing / cannot compare" phrasing.
+  - Don't use:
+    - Declaring pass because runtime/validator passed while artifacts are semantically wrong.
+
+- Rule: delta-table sanity must align with objective.
+  - Use:
+    - delta rows include non-null grouping keys (for example `severity`, `region`) and non-placeholder metrics.
+    - markdown reflects actual ranked delta rows and includes top findings when objective asks top deltas.
+    - markdown branch consumes output from delta-normalization node (post-compare), not from pre-compare or baseline-only branches.
+  - Don't use:
+    - single placeholder row like `{severity:null, baseline_count:0, processed_count:0, delta:0}` as final delta table.
+    - "no findings / empty data" narrative when upstream compare rows are expected from non-empty seeded inputs.
+    - wiring `LLM_BASIC` directly from non-delta branches when prompt asks top deltas.
+
+12) JSON repair rules from runtime-smoke and semantic failures
+- Rule: CODE snippets must be proxy-safe in dbSherpa runtime (`items` entries are item-proxy objects, not plain dict-only assumptions).
+  - Use:
+    - Access via `.get(...)` without membership probes:
+      - `left = it.get("inputA", None)`
+      - `right = it.get("inputB", None)`
+    - Build `result = [...]` explicitly.
+  - Don't use:
+    - Membership checks like `'input1' in item` on CODE item-proxy values (can trigger `KeyError(0)`).
+    - Unsupported builtins in restricted runtime (`hasattr`, `isinstance`) in generated snippets.
+
+- Rule: `COMPARE_DATASETS` downstream consumers must read actual runtime output keys.
+  - Use:
+    - Treat compare rows as `{inputA: {...}, inputB: {...}}` when deriving deltas.
+    - Example extraction:
+      - `left = it.get("inputA", None)` / `right = it.get("inputB", None)`
+  - Don't use:
+    - Assuming keys `input1` / `input2` if runtime emits `inputA` / `inputB`.
+    - Assuming rows are wrapped under `item["json"]` before `inputA/inputB` access.
+
+- Rule: pre-compare branch non-emptiness must be explicit for branch+batch+compare workflows.
+  - Use:
+    - ensure processed branch emits at least one summarized KPI row before `COMPARE_DATASETS`.
+    - ensure baseline branch emits at least one baseline KPI row before `COMPARE_DATASETS`.
+    - if a branch can be empty, handle it explicitly in delta CODE and markdown narrative.
+  - Don't use:
+    - routing/filter configs that silently drop all rows before summarize/compare.
+    - treating all-zero delta tables as success when objective expects meaningful comparison.
+
+- Rule: Keep row-level delta table on CSV branch; aggregate only for narrative branch.
+  - Use:
+    - `n15_calculate_delta -> CONVERT_TO_FILE(csv) -> READ_WRITE_FILES_FROM_DISK`
+    - optional parallel branch:
+      - `n15_calculate_delta -> AGGREGATE -> LLM_BASIC -> markdown writer`
+  - Don't use:
+    - Feeding aggregated blob (`all_deltas`) directly into CSV conversion (produces empty/non-meaningful CSV rows).
+
+- Rule: Artifact names must be deterministic and unique per variant.
+  - Use:
+    - `/tmp/<variant_id>_delta.csv`
+    - `/tmp/<variant_id>_findings.md`
+  - Don't use:
+    - Reusing generic artifact names from other variants during semantic validation.
+
+13) Data-hygiene chain rules (`REMOVE_DUPLICATES` / `RENAME_KEYS` / `JSON` / `ITEM_LISTS` / `SET`)
+- Rule: For data-hygiene objectives, enforce a fixed transform chain that keeps all target nodes trigger-reachable.
+  - Use:
+    - `MANUAL_TRIGGER -> CODE(seed rows) -> REMOVE_DUPLICATES -> RENAME_KEYS -> JSON(parse) -> ITEM_LISTS(flatten/split as needed) -> SET(canonical rows) -> writer tail`
+    - parallel summary branch from canonical rows:
+      - `CODE(schema summary with before_count/after_count) -> CONVERT_TO_FILE(toText) -> READ_WRITE_FILES_FROM_DISK`
+  - Don't use:
+    - detached target nodes that do not contribute to final artifacts.
+    - topology that writes artifacts before canonicalization.
+
+- Rule: CODE snippets in summary/normalization steps must be proxy-safe and syntax-safe.
+  - Use:
+    - simple list-safe operations (`len(items)`, `.get(...)`) and constant key lists when shape is known.
+    - string assembly without nested f-string quote collisions.
+    - example:
+      - `keys = ['company', 'email', 'full_name', 'region', 'source', 'tags']`
+      - `'- canonical_keys: ' + ', '.join(keys)`
+  - Don't use:
+    - `dict(items[0])`, `item.copy()`, or direct iteration assumptions over runtime item-proxy objects.
+    - index/membership idioms that can trigger `KeyError(0)` in runtime smoke.
+    - `items[0].keys()` on runtime proxy objects (`'_ItemProxy' object has no attribute 'keys'`).
+    - nested f-strings with unescaped embedded quotes (for example `f"... {', '.join(keys)}"` inside single-quoted f-strings).
+
+- Rule: Avoid unnecessary CODE for key normalization when built-in nodes can do it deterministically.
+  - Use:
+    - `RENAME_KEYS` for key renaming, `JSON(parse)` for stringified fields, `ITEM_LISTS` for array shaping, `SET` for canonical output.
+    - Keep CODE limited to:
+      - deterministic mock seed generation,
+      - deterministic markdown summary assembly.
+  - Don't use:
+    - extra CODE passes for trivial map/delete/copy operations that duplicate built-in transform behavior.
+    - `language: "pythonNative"` snippets copied from n8n-style examples when `language: "python"` + `pythonCode` is sufficient.
+
+- Rule: Node config forms must follow runtime-supported contract shapes.
+  - Use:
+    - `RENAME_KEYS` with explicit mapping array form:
+      - `{"keys":{"key":[{"currentKey":"fullName","newKey":"full_name"}]}}`
+    - `CONVERT_TO_FILE` JSON export with:
+      - `{"operation":"toJson","put_output_file_in_field":"data","file_name":"<variant_id>_cleaned"}`
+  - Don't use:
+    - ad-hoc dict mapping in `RENAME_KEYS` config (`{"keys":{"a":"b"}}`) as primary emitted form.
+    - non-canonical file ops like `operation:"json"` when canonical op is `toJson`.
+
+- Rule: Strict generation request should pin topology and runtime-safe CODE contract.
+  - Use request constraints:
+    - "Return only valid workflow JSON."
+    - "Use exactly these node types in main path: `MANUAL_TRIGGER`, `CODE`, `REMOVE_DUPLICATES`, `RENAME_KEYS`, `JSON`, `ITEM_LISTS`, `SET`, `CONVERT_TO_FILE`, `READ_WRITE_FILES_FROM_DISK`."
+    - "CODE must use `language: \"python\"` and `.get(...)` access only; no `dict(item)`, no `item.copy()`, no membership probes over proxies."
+    - "Write artifacts to deterministic `/tmp/...` paths."
+  - Don't use:
+    - high-level request text with no topology/config constraints (can drift into runtime-smoke failures despite validator pass).
+
+- Rule: Data-hygiene artifact contract must be deterministic and variant-specific.
+  - Use:
+    - `/tmp/<variant_id>_cleaned.json`, `/tmp/<variant_id>_schema_summary.md`
+  - Don't use:
+    - shared generic names across variants (causes semantic cross-contamination during validation).
+
+- Rule: Data-hygiene canonical output must retain required business keys unless explicitly excluded by objective.
+  - Use:
+    - canonical row includes at least: `id`, `full_name`, `email`, `company`, `region`
+    - include extra normalized fields (`tags`, `phone`, `address`, etc.) when objective asks nested normalization.
+  - Don't use:
+    - dropping required business keys from final canonical rows without explicit objective instruction.
+
+- Rule: Schema-summary markdown must include explicit count keys.
+  - Use:
+    - literal lines in markdown:
+      - `- before_count: <number>`
+      - `- after_count: <number>`
+    - deterministic summary fields even if additional narrative exists.
+  - Don't use:
+    - narrative-only summaries that omit explicit `before_count` / `after_count` keys.
+

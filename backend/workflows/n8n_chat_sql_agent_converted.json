@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "chat_sql_agent_converted_dbsherpa",
+  "name": "Chat SQL Agent (Converted)",
+  "version": "1.0.0",
+  "description": "Converted from n8n JSON via convert_n8n_to_dbsherpa.py",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "NO_OP",
+      "label": "When chat message received",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "parameters": {
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n02",
+      "type": "NO_OP",
+      "label": "Postgres",
+      "config": {
+        "n8n_type": "n8n-nodes-base.postgresTool",
+        "parameters": {
+          "query": "{{ $fromAI('sql_statement') }}",
+          "options": {},
+          "operation": "executeQuery"
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "NO_OP",
+      "label": "Simple Memory",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "parameters": {}
+      }
+    },
+    {
+      "id": "n04",
+      "type": "NO_OP",
+      "label": "AI Agent",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.agent",
+        "parameters": {
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "NO_OP",
+      "label": "OpenAI Chat Model",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4o-mini"
+          },
+          "options": {}
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n02",
+      "to": "n04",
+      "sourceHandle": "ai_tool",
+      "targetHandle": "ai_tool"
+    },
+    {
+      "from": "n03",
+      "to": "n04",
+      "sourceHandle": "ai_memory",
+      "targetHandle": "ai_memory"
+    },
+    {
+      "from": "n05",
+      "to": "n04",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n01",
+      "to": "n04"
+    }
+  ]
+}

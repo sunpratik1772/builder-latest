@@ -1,0 +1,377 @@
+{
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Start Workflow with Mock Orders",
+      "config": {
+        "emitted_items": [
+          {
+            "order_id": "A001",
+            "product": "Laptop",
+            "region": "East",
+            "quantity": 15,
+            "price": 1200,
+            "order_date": "2023-01-01"
+          },
+          {
+            "order_id": "A002",
+            "product": "Mouse",
+            "region": "West",
+            "quantity": 50,
+            "price": 25,
+            "order_date": "2023-01-02"
+          },
+          {
+            "order_id": "A003",
+            "product": "Keyboard",
+            "region": "East",
+            "quantity": 20,
+            "price": 75,
+            "order_date": "2023-01-03"
+          },
+          {
+            "order_id": "A004",
+            "product": "Monitor",
+            "region": "South",
+            "quantity": 8,
+            "price": 300,
+            "order_date": "2023-01-04"
+          },
+          {
+            "order_id": "A005",
+            "product": "Laptop",
+            "region": "West",
+            "quantity": 10,
+            "price": 1100,
+            "order_date": "2023-01-05"
+          },
+          {
+            "order_id": "A006",
+            "product": "Mouse",
+            "region": "East",
+            "quantity": 30,
+            "price": 20,
+            "order_date": "2023-01-06"
+          },
+          {
+            "order_id": "A007",
+            "product": "Webcam",
+            "region": "North",
+            "quantity": 5,
+            "price": 50,
+            "order_date": "2023-01-07"
+          },
+          {
+            "order_id": "A008",
+            "product": "Keyboard",
+            "region": "South",
+            "quantity": 12,
+            "price": 80,
+            "order_date": "2023-01-08"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "SET",
+      "label": "Calculate Revenue",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "key": "revenue",
+              "value": "={{ $json.quantity * $json.price }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "FILTER",
+      "label": "Filter High Quantity Orders",
+      "config": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={$json.quantity}",
+              "rightValue": 10,
+              "operator": {
+                "operation": "greaterThan"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "type": "SORT",
+      "label": "Sort Orders by Region and Date",
+      "config": {
+        "type": "simple",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "field": "region",
+              "direction": "asc"
+            },
+            {
+              "field": "order_date",
+              "direction": "asc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n06",
+      "type": "SUMMARIZE",
+      "label": "Summarize by Region",
+      "config": {
+        "fieldsToSplitBy": "region",
+        "fieldsToSummarize": [
+          {
+            "aggregation": "sum",
+            "field": "quantity",
+            "outputName": "total_quantity"
+          },
+          {
+            "aggregation": "sum",
+            "field": "revenue",
+            "outputName": "total_revenue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n08",
+      "type": "SUMMARIZE",
+      "label": "Summarize by Product",
+      "config": {
+        "fieldsToSplitBy": "product",
+        "fieldsToSummarize": [
+          {
+            "aggregation": "sum",
+            "field": "quantity",
+            "outputName": "total_quantity"
+          },
+          {
+            "aggregation": "sum",
+            "field": "revenue",
+            "outputName": "total_revenue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n09",
+      "type": "SORT",
+      "label": "Sort Products by Revenue",
+      "config": {
+        "type": "simple",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "field": "total_revenue",
+              "direction": "desc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "type": "LIMIT",
+      "label": "Top 3 Products",
+      "config": {
+        "max_items": 3
+      }
+    },
+    {
+      "id": "n13",
+      "type": "LLM_BASIC",
+      "label": "Generate Business Summary",
+      "config": {
+        "prompt": "Generate a one-paragraph business summary of the sales performance based on the following regional data: {{ $json.data }}",
+        "system_prompt": "You are a concise business analyst. Summarize the key insights from the provided data.",
+        "output_field": "business_summary"
+      }
+    },
+    {
+      "id": "n14",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Summary to Text File",
+      "config": {
+        "operation": "toText",
+        "text": "={{ $json.business_summary }}",
+        "file_name": "business_summary"
+      }
+    },
+    {
+      "id": "n15",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Business Summary to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/business_summary.txt",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "n17",
+      "type": "SET",
+      "label": "Set Final Artifact Paths",
+      "config": {
+        "json_output": {
+          "orders_report_path": "/tmp/orders_report.xlsx",
+          "region_summary_report_path": "/tmp/region_summary_report.xlsx",
+          "top_products_report_path": "/tmp/top_products_report.xlsx",
+          "business_summary_path": "/tmp/business_summary.txt"
+        }
+      }
+    },
+    {
+      "id": "n18",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Orders to Excel",
+      "config": {
+        "operation": "xlsx",
+        "file_name": "orders_report"
+      }
+    },
+    {
+      "id": "n19",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Orders Excel to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/orders_report.xlsx",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "n20",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Region Summary to Excel",
+      "config": {
+        "operation": "xlsx",
+        "file_name": "region_summary_report"
+      }
+    },
+    {
+      "id": "n21",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Region Summary Excel to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/region_summary_report.xlsx",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "n22",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Top Products to Excel",
+      "config": {
+        "operation": "xlsx",
+        "file_name": "top_products_report"
+      }
+    },
+    {
+      "id": "n23",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Top Products Excel to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/top_products_report.xlsx",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n02",
+      "to": "n06"
+    },
+    {
+      "from": "n02",
+      "to": "n08"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n06",
+      "to": "n13"
+    },
+    {
+      "from": "n13",
+      "to": "n14"
+    },
+    {
+      "from": "n14",
+      "to": "n15"
+    },
+    {
+      "from": "n15",
+      "to": "n17"
+    },
+    {
+      "from": "n04",
+      "to": "n18"
+    },
+    {
+      "from": "n18",
+      "to": "n19"
+    },
+    {
+      "from": "n19",
+      "to": "n17"
+    },
+    {
+      "from": "n06",
+      "to": "n20"
+    },
+    {
+      "from": "n20",
+      "to": "n21"
+    },
+    {
+      "from": "n21",
+      "to": "n17"
+    },
+    {
+      "from": "n10",
+      "to": "n22"
+    },
+    {
+      "from": "n22",
+      "to": "n23"
+    },
+    {
+      "from": "n23",
+      "to": "n17"
+    }
+  ]
+}

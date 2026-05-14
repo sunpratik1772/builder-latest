@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,78 @@ class PromptBuilder:
                 return self.contracts_path.read_text()
         return "{}"
 
+    def _load_generation_guardrails(self) -> str:
+        path = Path(__file__).resolve().parent / "generation_guardrails.md"
+        if not path.exists():
+            return "(no generation guardrails file found)"
+        text = path.read_text(encoding="utf-8").strip()
+        return text or "(generation guardrails file is empty)"
+
+    def _known_node_types(self) -> set[str]:
+        try:
+            from engine.registry import NODE_SPECS
+            return {str(t).upper() for t in NODE_SPECS.keys()}
+        except Exception:
+            return set()
+
+    def _infer_target_nodes(
+        self,
+        scenario: str | None = None,
+        current_workflow: dict[str, Any] | None = None,
+    ) -> list[str]:
+        known = self._known_node_types()
+        selected: set[str] = set()
+        if current_workflow:
+            for node in current_workflow.get("nodes", []) or []:
+                t = str((node or {}).get("type", "")).upper().strip()
+                if t:
+                    selected.add(t)
+        if scenario:
+            for token in re.findall(r"\b[A-Z][A-Z0-9_]{2,}\b", scenario):
+                t = token.strip().upper()
+                if t in known:
+                    selected.add(t)
+        return sorted(selected)
+
+    def _filter_guardrails_for_nodes(self, full_text: str, nodes: list[str]) -> str:
+        if not full_text.strip() or not nodes:
+            return full_text
+        want = {n.upper() for n in nodes}
+        lines = full_text.splitlines()
+        if not lines:
+            return full_text
+
+        first_node_rule_idx = next(
+            (i for i, ln in enumerate(lines) if re.match(r"^\s*-\s*`", ln)),
+            len(lines),
+        )
+        global_prefix = "\n".join(lines[:first_node_rule_idx]).strip()
+
+        blocks: list[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            is_node_rule = bool(re.match(r"^\s*-\s*`", line)) or bool(re.match(r"^\s*\d+\)\s+`", line))
+            if not is_node_rule:
+                i += 1
+                continue
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if re.match(r"^\s*-\s*`", nxt) or re.match(r"^\s*\d+\)\s+`", nxt):
+                    break
+                j += 1
+            block = "\n".join(lines[i:j]).strip()
+            names = {m.upper() for m in re.findall(r"`([A-Za-z0-9_]+)`", lines[i])}
+            if names & want:
+                blocks.append(block)
+            i = j
+
+        if not blocks:
+            return full_text
+        selected = [x for x in (global_prefix, *blocks) if x.strip()]
+        return "\n\n".join(selected)
+
     def list_skills(self) -> list[str]:
         if not self.skills_dir.exists():
             return []
@@ -89,9 +162,16 @@ class PromptBuilder:
                 out.insert(0, skill)
         return out
 
-    def system_prompt(self) -> str:
+    def system_prompt(
+        self,
+        scenario: str | None = None,
+        current_workflow: dict[str, Any] | None = None,
+    ) -> str:
         skills = self._load_skills()
         contracts = self._load_contracts()
+        guardrails = self._load_generation_guardrails()
+        targets = self._infer_target_nodes(scenario=scenario, current_workflow=current_workflow)
+        guardrails = self._filter_guardrails_for_nodes(guardrails, targets)
         schema_hints = get_registry().schema_hints_for_prompt()
         upload_scripts_enabled = os.environ.get("DBSHERPA_ALLOW_UPLOAD_SCRIPT", "").lower() in {"1", "true", "yes"}
         upload_rule = (
@@ -101,14 +181,42 @@ class PromptBuilder:
         )
         return f"""You are dbSherpa Copilot — an AI workflow designer for financial trade surveillance.
 
-You generate complete, valid DAG JSON workflows for the dbSherpa engine.
+You generate complete, valid, executable DAG JSON workflows for the dbSherpa engine.
 
-## Active Guardrails
-- Generate workflows only from the Node I/O Contracts below. Do not invent node types, ports, params, or config keys.
-- Use only data sources and columns listed under Data Source Column Schemas. Do not invent source names or columns.
-- Use Surveillance Skills Library guidance for scenario logic. If a requested scenario is outside the listed skills/source schemas, say so or compose only the supported subset.
-- Keep top-level edges acyclic. In normal linear/fan-out flows, every edge should point from a lower numbered node id to a higher numbered node id.
+## Mission
+Given a user objective, output one workflow JSON that runs end-to-end and
+produces requested artifacts (csv/excel/json/markdown/email-ready content)
+when those are requested.
+
+## Source of truth
+- Node behavior and valid config keys come only from Node I/O Contracts.
+- Dataset names/columns come only from Data Source Column Schemas.
+- Domain guidance comes from the skills library.
 - Host capability: {upload_rule}
+
+## Core generation policy
+1. Return ONLY one complete JSON object (no prose, no markdown fences).
+2. Never invent node types, params, fields, refs, dataset names, or columns.
+3. Every node must include: `id`, `type`, `label`, `config`.
+4. Every edge must use: `{{"from":"<id>","to":"<id>"}}`.
+5. Build an acyclic graph. Keep wiring explicit and execution-safe.
+6. Ensure every `input_name` is produced by an upstream `output_name`.
+7. If user asks for file outputs/artifacts, include a deterministic file-output tail:
+   `CONVERT_TO_FILE` -> `READ_WRITE_FILES_FROM_DISK` with concrete path.
+8. Use stable ids (`n01`, `n02`, ...) and preserve ids in edit mode unless required.
+9. Prefer minimum viable topology that satisfies objective; avoid decorative nodes.
+10. If objective is partially unsupported, implement the supported subset only.
+
+## Runtime-first preferences
+- Start with a trigger node appropriate for generic automation (usually `MANUAL_TRIGGER`).
+- Use `CODE` for lightweight deterministic shaping when needed, but emit Python code (`language: "python"` + `pythonCode`) only.
+- Use `MERGE`, `IF`, `SWITCH`, `SPLIT_OUT`, `SPLIT_IN_BATCHES` only when objective requires branch/loop behavior.
+- Use `LLM_BASIC` when summarization/rewrite/drafting is explicitly requested.
+- Prefer artifact-producing endings over no-op endings.
+
+## Generation guardrails (learned failure patterns)
+Node-targeted guardrails selected for this request: {targets or ["(none inferred; using global guardrails)"]}
+{guardrails}
 
 ## Node I/O Contracts
 {contracts}
@@ -116,53 +224,12 @@ You generate complete, valid DAG JSON workflows for the dbSherpa engine.
 ## Data Source Column Schemas
 {schema_hints}
 
-## Surveillance Skills Library
+## Skills Library
 {skills}
 
-## Absolute Hard Rules — NEVER violate
-1. `trade_version:1` is ALWAYS hard-coded in every hs_execution query_template — never injected from context.
-2. SIGNAL_CALCULATOR ALWAYS outputs EXACTLY these 5 columns:
-   _signal_flag, _signal_score, _signal_reason, _signal_type, _signal_window
-3. Every workflow MUST start with an ALERT_TRIGGER node whose id is EXACTLY "n01" (not "n01_alert_trigger" or similar).
-4. Every workflow MUST end with a REPORT_OUTPUT node.
-5. The DAG must be acyclic. Prefer edges from earlier node ids to later node ids (n03 -> n07), never backward edges (n07 -> n03).
-6. Context placeholders use {{context.field_name}} syntax.
-7. All `output_name` values must be referenced correctly as `input_name` in downstream nodes.
-8. Node IDs MUST be the plain form "n01", "n02", "n03", … (two-digit zero-padded integers). NEVER suffix them with names.
-9. Every node MUST include a human-readable "label" field.
-10. Edges MUST use the exact schema `{{"from": "<id>", "to": "<id>"}}` — do NOT use "source"/"target".
-11. SIGNAL_CALCULATOR: prefer `mode: "configure"` with a built-in `signal_type` from:
-    FRONT_RUNNING, WASH_TRADE, SPOOFING, LAYERING.
-    If upload_script is disabled by the Active Guardrails, NEVER use it. If it is enabled and
-    a custom signal is truly required, supply inline `script_content`; do NOT reference a
-    `script_path` file that may not exist on the host.
-
-## Output Format
-Always return a complete JSON object. No prose, no markdown fences, only JSON:
-{{
-  "workflow_id": "<snake_case_id>",
-  "name": "<Human Name>",
-  "schema_version": "1.0",
-  "description": "<one sentence>",
-  "nodes": [
-    {{"id": "n01", "type": "ALERT_TRIGGER", "label": "Alert Trigger", "config": {{...}}}},
-    ...
-  ],
-  "edges": [
-    {{"from": "n01", "to": "n02"}},
-    ...
-  ]
-}}
-
-## Validator Feedback
-After you respond, an automated validator will parse your JSON and run the
-full deterministic check (registry lookup, acyclicity, required params,
-wiring from input_name → upstream output_name, surveillance hard rules).
-
-If anything fails, you'll receive a `REPAIR` message listing every error
-by `code`, `node_id`, and `field`. Produce the complete corrected JSON —
-not just the diff — fixing exactly those issues without touching the
-rest.
+## Repair contract
+When you receive REPAIR feedback, fix only listed issues and re-emit the full
+workflow JSON. Keep unaffected sections stable.
 """
 
     # ── per-turn prompts ------------------------------------------------------
@@ -209,19 +276,14 @@ rest.
                 "## User request\n"
                 f"{user_request}\n"
                 "\n"
-                "## Creation rules\n"
-                "- Use the current Node I/O Contracts from the system prompt "
-                "as the source of truth.\n"
-                "- Use the current Data Source Column Schemas from the system "
-                "prompt; do not invent sources, concrete source names, or columns.\n"
-                "- Apply the matched skills listed above. If a needed capability "
-                "is unsupported by the current contracts or data schemas, generate "
-                "only the supported subset.\n"
-                "- For LLM prompt templates, reference dataset fields with exact "
-                "known refs such as `{dataset.column.agg}` or `{dataset.@row_count}`. "
-                "Escape literal JSON braces as `{{` and `}}`.\n"
-                "- Return the COMPLETE workflow JSON following the Output Format "
-                "in the system prompt.\n"
+                "## Generation checklist\n"
+                "- Build executable topology first, then artifacts requested by the user.\n"
+                "- Keep graph minimal but complete; no placeholder/no-op branches for required outputs.\n"
+                "- For artifact asks, ensure final writer path is concrete and deterministic.\n"
+                "- If the request says merge/combine, include at least one `MERGE` node in the execution path.\n"
+                "- If the request says split/branch/route, include explicit branching nodes (`SWITCH`/`IF`/`SPLIT_OUT`).\n"
+                "- Keep refs/schema-valid (`input_name` from upstream `output_name`, valid prompt refs).\n"
+                "- Return COMPLETE workflow JSON only.\n"
             )
 
         # Compact the DAG so the prompt stays within token budget for
@@ -253,11 +315,8 @@ rest.
             "- Preserve existing node IDs (`n01`, `n02`, …) and labels "
             "  wherever the node is still needed. Renaming IDs churns "
             "  the canvas and breaks the run log.\n"
-            "- Only add, remove, or modify nodes/edges that are strictly "
-            "  required by the user request or the errors.\n"
-            "- If the user is asking you to fix errors, make the "
-            "  smallest change that clears them. Do not rewrite "
-            "  unrelated config.\n"
+            "- Make the smallest executable change set that satisfies request/errors.\n"
+            "- Keep existing behavior intact unless user asked otherwise.\n"
             "- If the user uses deictic references (\"this\", \"that "
             "  node\", \"here\") and a node is listed under \"Currently "
             "  selected node\", treat that as the referent.\n"
@@ -271,6 +330,8 @@ rest.
             "- Assign new nodes fresh IDs continuing the `nNN` sequence "
             "  (highest existing + 1, zero-padded). Do not reuse a "
             "  deleted node's ID.\n"
+            "- If fix requires file artifacts, end with `CONVERT_TO_FILE` then "
+            "  `READ_WRITE_FILES_FROM_DISK` using concrete path.\n"
             "- Return the COMPLETE corrected workflow JSON (not a diff), "
             "  following the same schema as the Output Format in the "
             "  system prompt.\n"

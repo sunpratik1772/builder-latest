@@ -1,0 +1,64 @@
+type_id: REMOVE_DUPLICATES
+description: 'Use the Remove Duplicates node to identify and delete items that are:'
+ui:
+  display_name: Remove Duplicates
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 48
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: operation
+    type: string
+    description: Deduplication operation mode
+    required: false
+    default: removeDuplicateInputItems
+    enum: [removeDuplicateInputItems, removeItemsSeenInPreviousExecutions, clearDeduplicationHistory]
+  - name: compare
+    type: string
+    description: Compare mode for removeDuplicateInputItems
+    required: false
+    default: allFields
+    enum: [allFields, allFieldsExcept, selectedFields]
+  - name: fields
+    type: string
+    description: Comma-separated fields for selected/all-except compare
+    required: false
+  - name: logic
+    type: string
+    description: Keep logic for previous-execution dedupe
+    required: false
+    default: removeItemsWithAlreadySeenKeyValues
+    enum: [removeItemsWithAlreadySeenKeyValues, removeItemsUpToStoredIncrementalKey, removeItemsUpToStoredDate]
+  - name: options
+    type: object
+    description: Extra options including scope and compare flags
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.removeduplicates/'
+extras:
+  docs_slug: n8n-nodes-base.removeduplicates
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.removeduplicates/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,249 @@
+{
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Start Workflow with Mock Data",
+      "config": {
+        "emitted_items": [
+          {
+            "ticket_id": "T001",
+            "priority": "Urgent",
+            "issue_description": "Customer's production system is down, critical data loss. Immediate action required.",
+            "customer_id": "C101",
+            "customer_name": "Acme Corp"
+          },
+          {
+            "ticket_id": "T002",
+            "priority": "Low",
+            "issue_description": "User cannot log in to test environment. Not impacting production.",
+            "customer_id": "C102",
+            "customer_name": "Beta Inc"
+          },
+          {
+            "ticket_id": "T003",
+            "priority": "Urgent",
+            "issue_description": "Payment gateway integration failed, blocking all transactions. High business impact.",
+            "customer_id": "C103",
+            "customer_name": "Gamma Ltd"
+          },
+          {
+            "ticket_id": "T004",
+            "priority": "Medium",
+            "issue_description": "Report generation is slow. Affects daily operations but not critical.",
+            "customer_id": "C104",
+            "customer_name": "Delta Co"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "SWITCH",
+      "label": "Branch by Priority",
+      "config": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={$json.priority}",
+                    "rightValue": "Urgent",
+                    "operator": {
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={$json.priority}",
+                    "rightValue": "Urgent",
+                    "operator": {
+                      "operation": "notEquals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallback_output": "none"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "LLM_BASIC",
+      "label": "Summarize Urgent Issues (Gemini)",
+      "config": {
+        "prompt": "Summarize the following urgent support ticket issue for an executive audience, highlighting the impact and required action. Keep it concise.\n\nTicket ID: {{ $json.ticket_id }}\nCustomer: {{ $json.customer_name }}\nIssue: {{ $json.issue_description }}",
+        "output_field": "summary_text",
+        "model": "gemini-2.5-flash",
+        "system_prompt": "You are an AI assistant that summarizes urgent support issues for executives."
+      }
+    },
+    {
+      "id": "n04",
+      "type": "SET",
+      "label": "Process Non-Urgent Issues",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "summary_text",
+              "value": "Non-urgent issue ({{ $json.priority }}): {{ $json.issue_description }} (Ticket ID: {{ $json.ticket_id }}, Customer: {{ $json.customer_name }})"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "MERGE",
+      "label": "Merge Summaries",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "n06",
+      "type": "AGGREGATE",
+      "label": "Combine All Summaries for Digest",
+      "config": {
+        "aggregate": "aggregateIndividualFields",
+        "fieldsToAggregate": {
+          "all_summaries_combined": {
+            "field": "summary_text",
+            "aggregation": "join",
+            "options": {
+              "separator": "\n---\n"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "n07",
+      "type": "LLM_BASIC",
+      "label": "Draft Executive Email (Gemini)",
+      "config": {
+        "prompt": "Draft a concise executive email summarizing the following support issues. Start with a clear subject line like 'Daily Support Digest' and prioritize urgent items. Include key details and impact. \n\nIssues:\n{{ $json.all_summaries_combined }}",
+        "output_field": "executive_email_draft",
+        "model": "gemini-2.5-flash",
+        "system_prompt": "You are an AI assistant that drafts executive summary emails for support operations."
+      }
+    },
+    {
+      "id": "n08",
+      "type": "LLM_BASIC",
+      "label": "Create Markdown Digest (Gemini)",
+      "config": {
+        "prompt": "Create a detailed markdown digest of the following support issues. Use markdown headings and bullet points for each issue, including Ticket ID, Customer, Priority, and a brief summary. Group urgent issues under an 'Urgent Issues' heading and others under 'Other Issues'.\n\nIssues:\n{{ $json.all_summaries_combined }}",
+        "output_field": "markdown_digest_content",
+        "model": "gemini-2.5-flash",
+        "system_prompt": "You are an AI assistant that generates structured markdown digests of support issues."
+      }
+    },
+    {
+      "id": "n09",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Email to File",
+      "config": {
+        "operation": "toText",
+        "text": "{{ $json.executive_email_draft }}",
+        "file_name": "executive_email_draft.txt",
+        "put_output_file_in_field": "email_binary"
+      }
+    },
+    {
+      "id": "n10",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Email Draft to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/executive_email_draft.txt",
+        "input_binary_field": "email_binary"
+      }
+    },
+    {
+      "id": "n11",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Markdown to File",
+      "config": {
+        "operation": "toText",
+        "text": "{{ $json.markdown_digest_content }}",
+        "file_name": "support_digest.md",
+        "put_output_file_in_field": "markdown_binary"
+      }
+    },
+    {
+      "id": "n12",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Markdown Digest to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/support_digest.md",
+        "input_binary_field": "markdown_binary"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03",
+      "from_port": "output_0"
+    },
+    {
+      "from": "n02",
+      "to": "n04",
+      "from_port": "output_1"
+    },
+    {
+      "from": "n03",
+      "to": "n05"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n05",
+      "to": "n06"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n06",
+      "to": "n08"
+    },
+    {
+      "from": "n07",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n08",
+      "to": "n11"
+    },
+    {
+      "from": "n11",
+      "to": "n12"
+    }
+  ]
+}

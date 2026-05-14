@@ -1,0 +1,248 @@
+{
+  "workflow_id": "finops_cloud_anomaly_detection",
+  "name": "FinOps Cloud Anomaly Detection",
+  "schema_version": "1.0",
+  "description": "Detects anomalies in mock cloud billing and usage time-series data, splits by service and environment, merges findings, and produces tabular outputs, markdown narrative, and an executive email draft.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Start Workflow",
+      "config": {
+        "emitted_items": [
+          {
+            "start_date": "2023-01-01",
+            "end_date": "2023-01-31",
+            "num_services": 3,
+            "num_environments": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "CODE",
+      "label": "Generate Mock Cloud Data",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\nimport numpy as np\n\nstart_date = pd.to_datetime(items[0].json['start_date'])\nend_date = pd.to_datetime(items[0].json['end_date'])\nnum_services = items[0].json['num_services']\nnum_environments = items[0].json['num_environments']\n\ndates = pd.date_range(start=start_date, end=end_date, freq='D')\n\nservices = [f'Service_{i+1}' for i in range(num_services)]\nenvironments = [f'Env_{i+1}' for i in range(num_environments)]\n\ndata = []\nfor date in dates:\n    for service in services:\n        for env in environments:\n            cost = np.random.normal(loc=100, scale=20)\n            usage_hours = np.random.normal(loc=50, scale=10)\n            \n            # Introduce some anomalies\n            if date == pd.to_datetime('2023-01-15') and service == 'Service_1' and env == 'Env_1':\n                cost *= 3 # Spike\n                usage_hours *= 2\n            if date == pd.to_datetime('2023-01-20') and service == 'Service_2' and env == 'Env_2':\n                cost *= 0.1 # Drop\n                usage_hours *= 0.2\n\n            data.append({\n                'timestamp': date,\n                'service': service,\n                'environment': env,\n                'cost': max(0, cost),\n                'usage_hours': max(0, usage_hours)\n            })\n\ndf = pd.DataFrame(data)\ndf['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%S')\n\noutput_items = []\nfor _, row in df.iterrows():\n    output_items.append({'json': row.to_dict()})\n\nreturn output_items"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "SUMMARIZE",
+      "label": "Aggregate Daily Costs",
+      "config": {
+        "fieldsToSplitBy": "service,environment",
+        "fieldsToSummarize": [
+          {
+            "aggregation": "sum",
+            "field": "cost",
+            "outputName": "total_cost"
+          },
+          {
+            "aggregation": "sum",
+            "field": "usage_hours",
+            "outputName": "total_usage_hours"
+          }
+        ],
+        "outputFormat": "separateItems"
+      }
+    },
+    {
+      "id": "n04",
+      "type": "CODE",
+      "label": "Detect Anomalies",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\n\ndf = pd.DataFrame([item.json for item in items])\ndf['timestamp'] = pd.to_datetime(df['timestamp'])\n\ndef detect_anomalies(group):\n    # Simple anomaly detection: flag if cost is 2.5x std dev from mean\n    mean_cost = group['total_cost'].mean()\n    std_cost = group['total_cost'].std()\n    \n    if std_cost == 0:\n        group['is_anomaly'] = False\n        group['anomaly_reason'] = ''\n        return group\n\n    threshold = mean_cost + 2.5 * std_cost\n    group['is_anomaly'] = group['total_cost'] > threshold\n    group['anomaly_reason'] = group.apply(lambda row: f\"Cost {row['total_cost']:.2f} exceeds threshold {threshold:.2f}\" if row['is_anomaly'] else '', axis=1)\n    return group\n\ndf_anomalies = df.groupby(['service', 'environment']).apply(detect_anomalies).reset_index(drop=True)\n\noutput_items = []\nfor _, row in df_anomalies.iterrows():\n    output_items.append({'json': row.to_dict()})\n\nreturn output_items"
+      }
+    },
+    {
+      "id": "n05",
+      "type": "CODE",
+      "label": "Group by Service and Environment",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\n\ninput_data = [item.json for item in items]\ndf = pd.DataFrame(input_data)\n\ngrouped_data = []\nfor (service, environment), group_df in df.groupby(['service', 'environment']):\n    grouped_data.append({\n        'service': service,\n        'environment': environment,\n        'data': group_df.to_dict(orient='records')\n    })\n\noutput_items = [{'json': item} for item in grouped_data]\nreturn output_items"
+      }
+    },
+    {
+      "id": "n06",
+      "type": "LOOP_OVER_ITEMS",
+      "label": "Process Each Service/Environment Group",
+      "config": {}
+    },
+    {
+      "id": "n07",
+      "type": "LLM_BASIC",
+      "label": "LLM: Analyze Segment Anomalies",
+      "config": {
+        "prompt": "Analyze the following cloud billing and usage data for anomalies in service '{{ $json.service }}' and environment '{{ $json.environment }}'. Focus on items where 'is_anomaly' is true. Explain the potential cause and impact. If no anomalies, state 'No anomalies detected for this segment.'. Data: {{ JSON.stringify($json.data) }}",
+        "system_prompt": "You are a FinOps analyst. Provide concise anomaly explanations for cloud billing and usage. Highlight cost spikes or drops and their potential business impact. If no anomalies, state clearly.",
+        "model": "gemini-2.5-flash",
+        "output_field": "anomaly_summary"
+      }
+    },
+    {
+      "id": "n08",
+      "type": "SET",
+      "label": "Store Segment Summary",
+      "config": {
+        "json_output": {
+          "service": "{{ $json.service }}",
+          "environment": "{{ $json.environment }}",
+          "summary": "{{ $json.anomaly_summary }}"
+        }
+      }
+    },
+    {
+      "id": "n09",
+      "type": "MERGE",
+      "label": "Collect All Segment Summaries",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "n10",
+      "type": "LLM_BASIC",
+      "label": "LLM: Synthesize Executive Report",
+      "config": {
+        "prompt": "Based on the following anomaly summaries from various cloud services and environments, create a comprehensive executive summary of the key FinOps findings. Then, draft a professional email to stakeholders (To: 'execs@example.com', Subject: 'Cloud FinOps Anomaly Report - [Date Range]'). The email should briefly introduce the findings and suggest next steps. Summaries: {{ JSON.stringify($json) }}",
+        "system_prompt": "You are a senior FinOps manager. Your executive summary should be high-level, actionable, and suitable for an executive audience. The email should be professional, concise, and include a clear call to action for further investigation.",
+        "model": "gemini-2.5-flash",
+        "output_field": "executive_report"
+      }
+    },
+    {
+      "id": "n11",
+      "type": "SET",
+      "label": "Extract Report Components",
+      "config": {
+        "json_output": {
+          "markdown_narrative": "{{ $json.executive_report.summary }}",
+          "email_draft": "{{ $json.executive_report.email_draft }}"
+        }
+      }
+    },
+    {
+      "id": "n12",
+      "type": "CONVERT_TO_FILE",
+      "label": "Create Tabular Report (XLSX)",
+      "config": {
+        "operation": "xlsx",
+        "file_name": "finops_anomaly_report",
+        "put_output_file_in_field": "report_xlsx"
+      }
+    },
+    {
+      "id": "n13",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write Tabular Report to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/finops_anomaly_report.xlsx",
+        "input_binary_field": "report_xlsx"
+      }
+    },
+    {
+      "id": "n14",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write Markdown Narrative to Disk",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/finops_anomaly_narrative.md",
+        "file_content": "{{ $json.markdown_narrative }}"
+      }
+    },
+    {
+      "id": "n15",
+      "type": "SEND_EMAIL",
+      "label": "Send Executive Email Draft (Dry Run)",
+      "config": {
+        "dry_run": true,
+        "from_email": "finops@example.com",
+        "to_email": "execs@example.com",
+        "subject": "Cloud FinOps Anomaly Report - Draft",
+        "text": "{{ $json.email_draft }}"
+      }
+    },
+    {
+      "id": "n16",
+      "type": "NO_OP",
+      "label": "End Workflow",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n05",
+      "to": "n06"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n07",
+      "to": "n08"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n10",
+      "to": "n11"
+    },
+    {
+      "from": "n04",
+      "to": "n12"
+    },
+    {
+      "from": "n12",
+      "to": "n13"
+    },
+    {
+      "from": "n13",
+      "to": "n16"
+    },
+    {
+      "from": "n11",
+      "to": "n14"
+    },
+    {
+      "from": "n14",
+      "to": "n16"
+    },
+    {
+      "from": "n11",
+      "to": "n15"
+    },
+    {
+      "from": "n15",
+      "to": "n16"
+    }
+  ]
+}

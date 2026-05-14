@@ -1,0 +1,54 @@
+type_id: RSS_FEED_TRIGGER
+description: The RSS Feed Trigger node allows you to start an n8n workflow when a
+  new RSS feed item has been published.
+ui:
+  display_name: RSS Feed Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 53
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: pollTimes
+    type: object
+    description: Poll schedule definition (hour/day/week/month/everyX/custom).
+    required: false
+    default: {}
+  - name: feedUrl
+    type: string
+    description: RSS feed URL to poll
+    required: true
+  - name: mode
+    type: string
+    description: Execution mode for trigger behavior.
+    required: false
+    default: production
+    enum: [manual, production]
+  - name: emitted_items
+    type: array
+    description: Optional static emitted payload override
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedreadtrigger/'
+extras:
+  docs_slug: n8n-nodes-base.rssfeedreadtrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedreadtrigger/
+  scrape_mode: deep_all_sections

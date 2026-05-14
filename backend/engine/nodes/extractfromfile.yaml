@@ -1,0 +1,56 @@
+type_id: EXTRACT_FROM_FILE
+description: 'A common pattern in n8n workflows is to receive a file, either from
+  an HTTP Request node (for files you are fetching from a website), a Webhook Node
+  (for files which are sent to your workflow from elsewhere), or from a local source.
+  Data obtained in this way is often in a binary '
+ui:
+  display_name: Extract From File
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 23
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: operation
+    type: string
+    description: Extraction operation
+    required: false
+    default: csv
+  - name: input_binary_field
+    type: string
+    description: Input field containing source file/text
+    required: false
+    default: data
+  - name: destination_output_field
+    type: string
+    description: Output field for single-value extraction operations
+    required: false
+    default: data
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/'
+extras:
+  docs_slug: n8n-nodes-base.extractfromfile
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/
+  scrape_mode: deep_all_sections

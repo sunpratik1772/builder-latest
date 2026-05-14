@@ -1,0 +1,56 @@
+type_id: STOP_AND_ERROR
+description: Use the Stop And Error node to display custom error messages, cause executions
+  to fail under certain conditions, and send custom error information to error workflows.
+ui:
+  display_name: Stop And Error
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 60
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: errorType
+  type: string
+  description: Error mode.
+  required: false
+  default: errorMessage
+  constraints:
+    enum: [errorMessage, errorObject]
+- name: errorMessage
+  type: string
+  description: Error text thrown when errorType is errorMessage.
+  required: false
+  default: An error occurred!
+- name: errorObject
+  type: object
+  description: Error object thrown when errorType is errorObject.
+  required: false
+  default: {}
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/'
+extras:
+  docs_slug: n8n-nodes-base.stopanderror
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/
+  scrape_mode: deep_all_sections

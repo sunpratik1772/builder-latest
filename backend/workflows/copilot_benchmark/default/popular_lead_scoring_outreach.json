@@ -1,0 +1,324 @@
+{
+  "nodes": [
+    {
+      "id": "n01_trigger",
+      "type": "MANUAL_TRIGGER",
+      "label": "Manual Trigger",
+      "config": {}
+    },
+    {
+      "id": "n02_mock_crm_data",
+      "type": "CODE",
+      "label": "Mock CRM Data",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\ncrm_data = [\n    {\"lead_id\": \"L001\", \"company\": \"Alpha Corp\", \"revenue\": 1000000, \"industry\": \"Tech\"},\n    {\"lead_id\": \"L002\", \"company\": \"Beta Inc\", \"revenue\": 500000, \"industry\": \"Finance\"},\n    {\"lead_id\": \"L003\", \"company\": \"Gamma Ltd\", \"revenue\": 200000, \"industry\": \"Retail\"},\n    {\"lead_id\": \"L004\", \"company\": \"Delta Co\", \"revenue\": 1500000, \"industry\": \"Tech\"},\n    {\"lead_id\": \"L005\", \"company\": \"Epsilon LLC\", \"revenue\": 300000, \"industry\": \"Healthcare\"},\n]\noutput_items = crm_data"
+      }
+    },
+    {
+      "id": "n03_mock_web_events",
+      "type": "CODE",
+      "label": "Mock Web Events",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\nweb_events = [\n    {\"lead_id\": \"L001\", \"event_type\": \"demo_request\", \"timestamp\": \"2023-10-26T10:00:00Z\"},\n    {\"lead_id\": \"L001\", \"event_type\": \"page_view\", \"timestamp\": \"2023-10-26T09:50:00Z\"},\n    {\"lead_id\": \"L002\", \"event_type\": \"whitepaper_download\", \"timestamp\": \"2023-10-25T14:30:00Z\"},\n    {\"lead_id\": \"L003\", \"event_type\": \"page_view\", \"timestamp\": \"2023-10-24T11:00:00Z\"},\n    {\"lead_id\": \"L004\", \"event_type\": \"demo_request\", \"timestamp\": \"2023-10-26T11:15:00Z\"},\n    {\"lead_id\": \"L004\", \"event_type\": \"pricing_page_view\", \"timestamp\": \"2023-10-26T11:05:00Z\"},\n    {\"lead_id\": \"L005\", \"event_type\": \"blog_read\", \"timestamp\": \"2023-10-23T16:00:00Z\"},\n]\noutput_items = web_events"
+      }
+    },
+    {
+      "id": "n04_merge_lead_data",
+      "type": "MERGE",
+      "label": "Merge Lead Data",
+      "config": {
+        "mode": "combine",
+        "combine_by": "matchingFields",
+        "fields_to_match": [
+          {
+            "input1": "lead_id",
+            "input2": "lead_id"
+          }
+        ],
+        "output_type": "enrich_input_1"
+      }
+    },
+    {
+      "id": "n05_score_leads",
+      "type": "CODE",
+      "label": "Score Leads",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\n\nscored_leads = []\nfor item in items:\n    lead = item.json\n    score = 0\n\n    # Score based on revenue\n    if lead.get(\"revenue\", 0) > 1000000:\n        score += 50\n    elif lead.get(\"revenue\", 0) > 500000:\n        score += 30\n    else:\n        score += 10\n\n    # Score based on web events (if available)\n    if 'web_events' in lead and isinstance(lead['web_events'], list):\n        for event in lead['web_events']:\n            if event.get(\"event_type\") == \"demo_request\":\n                score += 40\n            elif event.get(\"event_type\") == \"pricing_page_view\":\n                score += 20\n            elif event.get(\"event_type\") == \"whitepaper_download\":\n                score += 15\n            elif event.get(\"event_type\") == \"page_view\":\n                score += 5\n\n    lead[\"lead_score\"] = score\n    if score >= 80:\n        lead[\"lead_category\"] = \"hot\"\n    elif score >= 40:\n        lead[\"lead_category\"] = \"warm\"\n    else:\n        lead[\"lead_category\"] = \"cold\"\n    scored_leads.append(lead)\n\noutput_items = scored_leads"
+      }
+    },
+    {
+      "id": "n06_split_leads",
+      "type": "SWITCH",
+      "label": "Split Leads by Category",
+      "config": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={$json.lead_category}",
+                    "rightValue": "hot",
+                    "operator": {
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={$json.lead_category}",
+                    "rightValue": "warm",
+                    "operator": {
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={$json.lead_category}",
+                    "rightValue": "cold",
+                    "operator": {
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "number_of_outputs": 3,
+        "fallback_output": "none"
+      }
+    },
+    {
+      "id": "n07_llm_hot_outreach",
+      "type": "LLM_BASIC",
+      "label": "LLM Hot Outreach",
+      "config": {
+        "prompt": "Draft a highly personalized outreach message for a hot lead. Focus on their high engagement and potential value. Lead details: {{ $json }}",
+        "output_field": "outreach_message"
+      }
+    },
+    {
+      "id": "n08_llm_warm_outreach",
+      "type": "LLM_BASIC",
+      "label": "LLM Warm Outreach",
+      "config": {
+        "prompt": "Draft a friendly, informative outreach message for a warm lead. Encourage further engagement. Lead details: {{ $json }}",
+        "output_field": "outreach_message"
+      }
+    },
+    {
+      "id": "n09_llm_cold_outreach",
+      "type": "LLM_BASIC",
+      "label": "LLM Cold Outreach",
+      "config": {
+        "prompt": "Draft a concise, value-driven outreach message for a cold lead. Aim to re-engage with a clear call to action. Lead details: {{ $json }}",
+        "output_field": "outreach_message"
+      }
+    },
+    {
+      "id": "n10_merge_outreach",
+      "type": "MERGE",
+      "label": "Merge Outreach Results",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "n11_convert_to_csv",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert to CSV",
+      "config": {
+        "operation": "csv",
+        "file_name": "all_leads",
+        "put_output_file_in_field": "data"
+      }
+    },
+    {
+      "id": "n12_write_csv_file",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write CSV File",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/all_leads.csv",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "n13_filter_top_leads",
+      "type": "FILTER",
+      "label": "Filter Top Leads",
+      "config": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={$json.lead_category}",
+              "rightValue": "hot",
+              "operator": {
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n14_aggregate_hot_leads",
+      "type": "CODE",
+      "label": "Aggregate Hot Leads",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "output_items = [{\"hot_leads\": [item.json for item in items]}]"
+      }
+    },
+    {
+      "id": "n15_llm_markdown_summary",
+      "type": "LLM_BASIC",
+      "label": "LLM Markdown Summary",
+      "config": {
+        "prompt": "Generate a markdown summary of the top opportunities. Include company name, revenue, lead category, and the drafted outreach message for each. Highlight key reasons they are hot leads. Format as a bulleted list for each lead, followed by a general summary of the top opportunities. Data: {{ $json.hot_leads }}",
+        "output_field": "markdown_summary"
+      }
+    },
+    {
+      "id": "n16_convert_to_md_file",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert to Markdown File",
+      "config": {
+        "operation": "toText",
+        "file_name": "top_opportunities_summary",
+        "text": "{{ $json.markdown_summary }}",
+        "put_output_file_in_field": "data"
+      }
+    },
+    {
+      "id": "n17_write_md_file",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write Markdown File",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/top_opportunities_summary.md",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "n18_set_artifact_paths",
+      "type": "SET",
+      "label": "Set Artifact Paths",
+      "config": {
+        "json_output": {
+          "csv_path": "/tmp/all_leads.csv",
+          "markdown_path": "/tmp/top_opportunities_summary.md"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01_trigger",
+      "to": "n02_mock_crm_data"
+    },
+    {
+      "from": "n01_trigger",
+      "to": "n03_mock_web_events"
+    },
+    {
+      "from": "n02_mock_crm_data",
+      "to": "n04_merge_lead_data",
+      "input_name": "input0"
+    },
+    {
+      "from": "n03_mock_web_events",
+      "to": "n04_merge_lead_data",
+      "input_name": "input1"
+    },
+    {
+      "from": "n04_merge_lead_data",
+      "to": "n05_score_leads"
+    },
+    {
+      "from": "n05_score_leads",
+      "to": "n06_split_leads"
+    },
+    {
+      "from": "n06_split_leads",
+      "to": "n07_llm_hot_outreach",
+      "output_name": "output0"
+    },
+    {
+      "from": "n06_split_leads",
+      "to": "n08_llm_warm_outreach",
+      "output_name": "output1"
+    },
+    {
+      "from": "n06_split_leads",
+      "to": "n09_llm_cold_outreach",
+      "output_name": "output2"
+    },
+    {
+      "from": "n07_llm_hot_outreach",
+      "to": "n10_merge_outreach"
+    },
+    {
+      "from": "n08_llm_warm_outreach",
+      "to": "n10_merge_outreach"
+    },
+    {
+      "from": "n09_llm_cold_outreach",
+      "to": "n10_merge_outreach"
+    },
+    {
+      "from": "n10_merge_outreach",
+      "to": "n11_convert_to_csv"
+    },
+    {
+      "from": "n11_convert_to_csv",
+      "to": "n12_write_csv_file"
+    },
+    {
+      "from": "n10_merge_outreach",
+      "to": "n13_filter_top_leads"
+    },
+    {
+      "from": "n13_filter_top_leads",
+      "to": "n14_aggregate_hot_leads"
+    },
+    {
+      "from": "n14_aggregate_hot_leads",
+      "to": "n15_llm_markdown_summary"
+    },
+    {
+      "from": "n15_llm_markdown_summary",
+      "to": "n16_convert_to_md_file"
+    },
+    {
+      "from": "n16_convert_to_md_file",
+      "to": "n17_write_md_file"
+    },
+    {
+      "from": "n12_write_csv_file",
+      "to": "n18_set_artifact_paths"
+    },
+    {
+      "from": "n17_write_md_file",
+      "to": "n18_set_artifact_paths"
+    }
+  ]
+}

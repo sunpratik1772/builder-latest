@@ -1,0 +1,48 @@
+type_id: EXECUTE_COMMAND
+description: The Execute Command node runs shell commands on the host machine that
+  runs n8n.
+ui:
+  display_name: Execute Command
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 19
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: executeOnce
+    type: boolean
+    description: Execute once or per input item
+    required: false
+    default: true
+  - name: command
+    type: string
+    description: Shell command to execute
+    required: true
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/'
+extras:
+  docs_slug: n8n-nodes-base.executecommand
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/
+  scrape_mode: deep_all_sections

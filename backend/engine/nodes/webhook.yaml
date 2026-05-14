@@ -1,49 +1,103 @@
 type_id: WEBHOOK
-description: "Receive data via webhook"
-
+description: Use the Webhook node to create webhooks, which can receive data from
+  apps and services when an event occurs. It's a trigger node, which means it can
+  start an n8n workflow. This allows services to connect to n8n and run a workflow.
 ui:
-  color: "#8B5CF6"
-  icon: Webhook
+  display_name: Webhook
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: trigger
-      label: Triggers
-      order: 1
-      color: "#EF4444"
-    node_order: 2
-
-input_ports: []
-
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 65
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Webhook payload"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
+  - name: multiple_methods
+    type: boolean
+    description: Whether multiple HTTP methods are allowed.
+    required: false
+    default: false
+  - name: http_method
+    type: string
+    description: HTTP method
+    required: false
+    default: GET
+    enum: [GET, POST, PUT, PATCH, DELETE, HEAD]
+  - name: http_methods
+    type: array
+    description: Allowed HTTP methods when multiple_methods is enabled.
+    required: false
+    default: [GET, POST]
   - name: path
     type: string
-    description: "Webhook path (auto-generated if empty)"
+    description: Webhook path
     required: false
-    
-  - name: method
+  - name: authentication
     type: string
-    description: "HTTP method to accept"
-    enum: [GET, POST, PUT, DELETE, ANY]
-    default: POST
+    description: Authentication mode
     required: false
-    
+    default: none
+    enum: [none, basicAuth, headerAuth, jwtAuth]
+  - name: expected_token
+    type: string
+    description: Expected auth token for basic/header/jwt modes
+    required: false
+  - name: ip_whitelist
+    type: string
+    description: Comma-separated allowed IP addresses
+    required: false
   - name: response_mode
     type: string
-    description: "How to respond to webhook"
-    enum: [on_received, last_node, response_node]
-    default: on_received
+    description: Webhook response mode.
     required: false
-
+    default: onReceived
+    enum: [onReceived, lastNode, responseNode, streaming]
+  - name: response_code
+    type: integer
+    description: HTTP response code for successful webhook requests.
+    required: false
+    default: 200
+  - name: response_data
+    type: object
+    description: Custom response body when using immediate response mode.
+    required: false
+  - name: response_headers
+    type: object
+    description: Extra response headers.
+    required: false
+    default: {}
+  - name: options
+    type: object
+    description: Optional webhook settings (ignoreBots, rawBody, binaryData, binaryPropertyName, ipWhitelist, noResponseBody).
+    required: false
+    default: {}
+  - name: request
+    type: object
+    description: Incoming request envelope (headers, params, query, body, token, ip)
+    required: false
 semantics:
   requires: []
-  provides: [webhook_data]
-
+  provides: []
 constraints:
-  - "Triggers workflow when webhook is called"
-  - "Returns webhook body as items"
-  - "Generates unique webhook URL"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/'
+extras:
+  docs_slug: n8n-nodes-base.webhook
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/
+  scrape_mode: deep_all_sections

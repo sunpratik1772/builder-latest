@@ -1,46 +1,50 @@
 type_id: LIMIT
-description: "Limit the number of items"
-
+description: Use the Limit node to remove items beyond a defined maximum number. You
+  can choose whether n8n takes the items from the beginning or end of the input data.
 ui:
-  color: "#F59E0B"
-  icon: Scissors
+  display_name: Limit
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
       id: transform
       label: Transform
-      order: 20
-      color: "#A78BFA"
-    node_order: 14
-
+      order: 15
+      color: '#6366F1'
+    node_order: 34
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to limit"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Limited items"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
   - name: max_items
     type: integer
-    description: "Maximum number of items to output"
+    description: Maximum number of items to keep
+    required: false
     default: 1
-    required: true
-    
   - name: keep
     type: string
-    description: "Which items to keep"
-    enum: [first, last]
-    default: first
+    description: Keep from beginning or end
     required: false
-
+    default: first_items
+    enum: [first_items, last_items]
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Returns at most max_items items"
-  - "If input has fewer items than max_items, returns all"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/'
+extras:
+  docs_slug: n8n-nodes-base.limit
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/
+  scrape_mode: deep_all_sections

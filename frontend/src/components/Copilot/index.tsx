@@ -104,6 +104,14 @@ function buildPendingPhases(): PhaseState[] {
   ]
 }
 
+function normalizeTextareaHeight(el: HTMLTextAreaElement | null): void {
+  if (!el) return
+  el.style.height = 'auto'
+  // Keep the input compact but allow a few lines before scrolling.
+  const next = Math.min(160, Math.max(44, el.scrollHeight))
+  el.style.height = `${next}px`
+}
+
 function shouldEditExistingWorkflow(prompt: string): boolean {
   const text = prompt.toLowerCase()
   if (/\b(create|generate|build|make|new)\b/.test(text)) return false
@@ -518,6 +526,10 @@ export default function Copilot() {
   }, [copilotMessages, isLoading, phases])
 
   useEffect(() => {
+    normalizeTextareaHeight(inputRef.current)
+  }, [input])
+
+  useEffect(() => {
     let active = true
     api.getCopilotGuardrails()
       .then((payload) => {
@@ -602,17 +614,6 @@ export default function Copilot() {
             }
           }
         }
-        // When a phase completes, eagerly mark the next still-pending
-        // row as running so users see the baton being passed even if
-        // the backend hasn't yet emitted its `running` frame.
-        if (ev.status === 'done') {
-          for (let i = existing + 1; i < copy.length; i++) {
-            if (copy[i].status === 'pending') {
-              copy[i] = { ...copy[i], status: 'running' }
-              break
-            }
-          }
-        }
         return copy
       }
       // Auto-fix rows aren't in the skeleton — splice in next to the
@@ -638,7 +639,11 @@ export default function Copilot() {
     setIsLoading(true)
     // Seed the timeline with the full ghost plan so the user sees the
     // whole pipeline upfront. Each row lights up as its event arrives.
-    setPhases(useGenerate ? buildPendingPhases() : [])
+    setPhases(
+      useGenerate
+        ? buildPendingPhases().map((p, i) => (i === 0 ? { ...p, status: 'running' } : p))
+        : [],
+    )
 
     // Build context only for explicit edit/fix requests. Plain "create /
     // generate / build" prompts are greenfield and replace whatever is on
@@ -1043,7 +1048,10 @@ export default function Copilot() {
           <textarea
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value)
+              normalizeTextareaHeight(e.target)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
             }}
@@ -1054,7 +1062,7 @@ export default function Copilot() {
                   ? 'Describe a fix or edit (the canvas workflow is attached)…'
                   : 'Describe a workflow…'
             }
-            rows={2}
+            rows={1}
             data-testid="copilot-input"
             className="flex-1 rounded-lg px-3 py-2 resize-none outline-none transition-colors"
             style={{
@@ -1063,6 +1071,8 @@ export default function Copilot() {
               color: 'var(--text-0)',
               border: '1px solid var(--border)',
               lineHeight: 1.5,
+              minHeight: 44,
+              maxHeight: 160,
             }}
             onFocus={(e) => { (e.target as HTMLTextAreaElement).style.border = '1px solid color-mix(in srgb, var(--accent) 50%, transparent)' }}
             onBlur={(e) => { (e.target as HTMLTextAreaElement).style.border = '1px solid var(--border)' }}

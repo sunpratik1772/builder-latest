@@ -1,0 +1,118 @@
+type_id: DATE_TIME
+description: The Date & Time node manipulates date and time data and convert it to
+  different formats.
+ui:
+  display_name: Date & Time
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 11
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: action
+  type: string
+  description: Operation to run.
+  required: false
+  default: getCurrentDate
+  enum: [getCurrentDate, addToDate, subtractFromDate, formatDate, extractDate, extractDatePart, getTimeBetweenDates, roundDate]
+- name: date
+  type: string
+  description: Base ISO datetime for operations requiring a single date.
+  required: false
+- name: date1
+  type: string
+  description: First ISO datetime for getTimeBetweenDates.
+  required: false
+- name: date2
+  type: string
+  description: Second ISO datetime for getTimeBetweenDates.
+  required: false
+- name: duration
+  type: integer
+  description: Numeric duration used by add/subtract operations.
+  required: false
+  default: 0
+- name: unit
+  type: string
+  description: Unit for duration or interval output.
+  required: false
+  default: days
+  enum: [milliseconds, seconds, minutes, hours, days, weeks, months, years]
+- name: units
+  type: array
+  description: Units list for getTimeBetweenDates.
+  required: false
+  default: [seconds]
+- name: format
+  type: string
+  description: Format preset or custom marker for formatDate action.
+  required: false
+  default: custom
+  enum: [custom, MM/DD/YYYY, YYYY/MM/DD, MMMM DD YYYY, MM-DD-YYYY, YYYY-MM-DD]
+- name: customFormat
+  type: string
+  description: strftime custom format when format is custom.
+  required: false
+  default: "%Y-%m-%dT%H:%M:%S%z"
+- name: part
+  type: string
+  description: Date part for extractDatePart action.
+  required: false
+  default: year
+  constraints:
+    enum: [year, month, week, day, hour, minute, second, weekday]
+- name: output_field_name
+  type: string
+  description: Field name used to write operation result.
+  required: false
+  default: date
+- name: mode
+  type: string
+  description: Rounding mode for roundDate operation.
+  required: false
+  default: roundDown
+  enum: [roundDown, roundUp]
+- name: toNearest
+  type: string
+  description: Rounding unit for roundDate operation.
+  required: false
+  default: day
+  enum: [year, month, week, day, hour, minute, second]
+- name: include_time
+  type: boolean
+  description: Include time for getCurrentDate action.
+  required: false
+  default: true
+- name: options
+  type: object
+  description: Optional settings (includeInputFields, timezone, fromFormat, isoString).
+  required: false
+  default: {}
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/'
+extras:
+  docs_slug: n8n-nodes-base.datetime
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/
+  scrape_mode: deep_all_sections

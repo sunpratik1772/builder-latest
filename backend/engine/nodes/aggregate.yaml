@@ -1,60 +1,72 @@
 type_id: AGGREGATE
-description: "Group items and perform aggregations"
-
+description: Use the Aggregate node to take separate items, or portions of them, and
+  group them together into individual items.
 ui:
-  color: "#7C3AED"
-  icon: Layers
+  display_name: Aggregate
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
       id: transform
       label: Transform
-      order: 20
-      color: "#A78BFA"
-    node_order: 16
-
+      order: 15
+      color: '#6366F1'
+    node_order: 2
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to aggregate"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Aggregated results"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
-  - name: group_by
-    type: array
-    description: "Fields to group by"
-    default: []
+  - name: aggregate
+    type: string
+    description: Aggregate mode
     required: false
-    
-  - name: aggregations
-    type: array
-    description: "Aggregation operations"
-    required: true
-    default: []
-    schema:
-      items:
-        type: object
-        properties:
-          field:
-            type: string
-            description: "Field to aggregate"
-          operation:
-            type: string
-            enum: [count, sum, avg, min, max, first, last]
-            description: "Aggregation operation"
-          output_field:
-            type: string
-            description: "Name for output field"
-
+    default: aggregateIndividualFields
+    enum: [aggregateIndividualFields, aggregateAllItemData]
+  - name: fieldsToAggregate
+    type: object
+    description: Field definitions when aggregate=aggregateIndividualFields
+    required: false
+  - name: destinationFieldName
+    type: string
+    description: Output field for aggregateAllItemData mode
+    required: false
+    default: data
+  - name: include
+    type: string
+    description: Which source fields to include for aggregateAllItemData mode
+    required: false
+    default: allFields
+    enum: [allFields, specifiedFields, allFieldsExcept]
+  - name: fieldsToInclude
+    type: string
+    description: Comma-separated fields when include=specifiedFields
+    required: false
+  - name: fieldsToExclude
+    type: string
+    description: Comma-separated fields when include=allFieldsExcept
+    required: false
+  - name: options
+    type: object
+    description: Additional aggregate options
+    required: false
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "group_by empty means aggregate all items together"
-  - "Each aggregation creates one output field"
-  - "count operation doesn't require a field name"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/'
+extras:
+  docs_slug: n8n-nodes-base.aggregate
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/
+  scrape_mode: deep_all_sections

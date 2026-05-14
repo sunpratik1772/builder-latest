@@ -1,85 +1,100 @@
-"""AGGREGATE Node - Group and aggregate"""
+"""AGGREGATE node with individual-fields and all-item-data modes."""
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict, List
-from collections import defaultdict
+from typing import Any
+
 from ..context import RunContext
 from ..node_spec import NodeSpec, _spec_from_yaml
 
 
-def handle_aggregate(node: dict, ctx: RunContext) -> None:
-    """Aggregate items"""
-    cfg = node.get("config", {})
-    node_id = node.get("id", "aggregate")
-    
-    input_items = ctx.get(f"{node_id}_input", [])
-    group_by = cfg.get("group_by", [])
-    aggregations = cfg.get("aggregations", [])
-    
-    if not aggregations:
-        ctx.set(f"{node_id}_output", input_items)
+def _get_field(item: dict[str, Any], name: str, disable_dot: bool) -> Any:
+    if disable_dot or "." not in name:
+        return item.get(name)
+    cur: Any = item
+    for part in name.split("."):
+        cur = cur.get(part) if isinstance(cur, dict) else None
+        if cur is None:
+            return None
+    return cur
+
+
+def _set_field(item: dict[str, Any], name: str, value: Any, disable_dot: bool) -> None:
+    if disable_dot or "." not in name:
+        item[name] = value
         return
-    
-    if group_by:
-        result = _aggregate_groups(input_items, group_by, aggregations)
-    else:
-        result = [_aggregate_all(input_items, aggregations)]
-    
-    ctx.set(f"{node_id}_output", result)
+    cur = item
+    parts = name.split(".")
+    for part in parts[:-1]:
+        nxt = cur.get(part)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            cur[part] = nxt
+        cur = nxt
+    cur[parts[-1]] = value
 
 
-def _aggregate_groups(items: List[Dict], group_by: List[str], aggregations: List[Dict]) -> List[Dict]:
-    """Aggregate with grouping"""
-    groups = defaultdict(list)
-    
-    # Group items
-    for item in items:
-        key = tuple(item.get(field) for field in group_by)
-        groups[key].append(item)
-    
-    # Aggregate each group
-    result = []
-    for key, group_items in groups.items():
-        agg_result = _aggregate_all(group_items, aggregations)
-        
-        # Add group keys
-        for i, field in enumerate(group_by):
-            agg_result[field] = key[i]
-        
-        result.append(agg_result)
-    
-    return result
+def handle_aggregate(node: dict, ctx: RunContext) -> None:
+    """Aggregate values from many items into one item."""
+    cfg = node.get("config", {}) or {}
+    node_id = node.get("id", "aggregate")
+    src = ctx.get(f"{node_id}_input", [])
+    items = src if isinstance(src, list) else [src]
+
+    mode = str(cfg.get("aggregate", "aggregateIndividualFields"))
+    options = cfg.get("options", {}) or {}
+    include = str(cfg.get("include", "allFields"))
+
+    if mode == "aggregateAllItemData":
+        dest = str(cfg.get("destinationFieldName", cfg.get("put_output_in_field", "data")))
+        include_fields = [x.strip() for x in str(cfg.get("fieldsToInclude", "")).split(",") if x.strip()]
+        exclude_fields = [x.strip() for x in str(cfg.get("fieldsToExclude", "")).split(",") if x.strip()]
+        out_list: list[dict[str, Any]] = []
+        for row in items:
+            if not isinstance(row, dict):
+                continue
+            if include == "specifiedFields":
+                filtered = {k: row.get(k) for k in include_fields}
+            elif include == "allFieldsExcept":
+                filtered = {k: v for k, v in row.items() if k not in exclude_fields}
+            else:
+                filtered = dict(row)
+            out_list.append(filtered)
+        ctx.set(f"{node_id}_output", [{dest: out_list}])
+        return
+
+    disable_dot = bool(options.get("disableDotNotation", cfg.get("disable_dot_notation", False)))
+    merge_lists = bool(options.get("mergeLists", cfg.get("merge_lists", False)))
+    keep_missing = bool(options.get("keepMissing", cfg.get("keep_missing_and_null_values", False)))
+    fields = (cfg.get("fieldsToAggregate") or {}).get("fieldToAggregate") or []
+
+    out: dict[str, Any] = {}
+    for spec in fields:
+        in_name = str(spec.get("fieldToAggregate", ""))
+        if not in_name:
+            continue
+        rename = bool(spec.get("renameField", False))
+        out_name = str(spec.get("outputFieldName", "")).strip() if rename else ""
+        key = out_name or in_name.split(".")[-1]
+        vals: list[Any] = []
+        for row in items:
+            if not isinstance(row, dict):
+                continue
+            val = _get_field(row, in_name, disable_dot)
+            if val is None and not keep_missing:
+                continue
+            if isinstance(val, list):
+                clean = val if keep_missing else [x for x in val if x is not None]
+                if merge_lists:
+                    vals.extend(clean)
+                else:
+                    vals.append(clean)
+            else:
+                vals.append(val)
+        _set_field(out, key, vals, disable_dot)
+
+    ctx.set(f"{node_id}_output", [out])
 
 
-def _aggregate_all(items: List[Dict], aggregations: List[Dict]) -> Dict:
-    """Aggregate all items"""
-    result = {}
-    
-    for agg in aggregations:
-        field = agg.get("field", "")
-        operation = agg.get("operation", "count")
-        output_field = agg.get("output_field", f"{operation}_{field}")
-        
-        if operation == "count":
-            result[output_field] = len(items)
-        elif operation == "sum":
-            values = [item.get(field, 0) for item in items]
-            result[output_field] = sum(float(v) for v in values if v is not None)
-        elif operation == "avg":
-            values = [float(item.get(field, 0)) for item in items if item.get(field) is not None]
-            result[output_field] = sum(values) / len(values) if values else 0
-        elif operation == "min":
-            values = [item.get(field) for item in items if item.get(field) is not None]
-            result[output_field] = min(values) if values else None
-        elif operation == "max":
-            values = [item.get(field) for item in items if item.get(field) is not None]
-            result[output_field] = max(values) if values else None
-        elif operation == "first":
-            result[output_field] = items[0].get(field) if items else None
-        elif operation == "last":
-            result[output_field] = items[-1].get(field) if items else None
-    
-    return result
 
-
-NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix(".yaml"), handle_aggregate)
+NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix('.yaml'), handle_aggregate)

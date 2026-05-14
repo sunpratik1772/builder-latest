@@ -1,25 +1,33 @@
-"""LIMIT Node - Limit number of items"""
+"""LIMIT node - keep first/last N items."""
 from __future__ import annotations
+
 from pathlib import Path
+
 from ..context import RunContext
 from ..node_spec import NodeSpec, _spec_from_yaml
 
 
 def handle_limit(node: dict, ctx: RunContext) -> None:
-    """Limit number of items"""
-    cfg = node.get("config", {})
+    """Trim item list by max_items and keep mode."""
+    cfg = node.get("config", {}) or {}
     node_id = node.get("id", "limit")
-    
-    input_items = ctx.get(f"{node_id}_input", [])
-    max_items = cfg.get("max_items", 1)
-    keep = cfg.get("keep", "first")
-    
-    if keep == "first":
-        result = input_items[:max_items]
-    else:  # last
-        result = input_items[-max_items:] if len(input_items) >= max_items else input_items
-    
-    ctx.set(f"{node_id}_output", result)
+    src = ctx.get(f"{node_id}_input", [])
+    items = src if isinstance(src, list) else [src]
+
+    try:
+        max_items = int(cfg.get("max_items", cfg.get("maxItems", len(items))) or len(items))
+    except Exception:
+        max_items = len(items)
+    max_items = max(0, max_items)
+
+    keep = str(cfg.get("keep", "first_items")).lower()
+    if keep in {"last_items", "last", "end"}:
+        out = items[-max_items:] if max_items else []
+    else:
+        out = items[:max_items]
+
+    ctx.set(f"{node_id}_output", out)
 
 
-NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix(".yaml"), handle_limit)
+
+NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix('.yaml'), handle_limit)

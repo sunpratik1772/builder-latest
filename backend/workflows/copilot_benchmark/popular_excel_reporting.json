@@ -1,0 +1,293 @@
+{
+  "workflow_id": "order_processing_and_reporting",
+  "name": "Order Processing and Reporting",
+  "schema_version": "1.0",
+  "description": "Processes mock order JSON, generates a multi-tab Excel report, produces a business summary, and saves artifacts to disk.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Start Workflow with Mock Orders",
+      "config": {
+        "emitted_items": [
+          {
+            "json_data": "[{\"order_id\": \"1\", \"product\": \"Laptop\", \"quantity\": 2, \"price\": 1200, \"customer_id\": \"C001\"}, {\"order_id\": \"2\", \"product\": \"Mouse\", \"quantity\": 5, \"price\": 25, \"customer_id\": \"C002\"}, {\"order_id\": \"3\", \"product\": \"Keyboard\", \"quantity\": 1, \"price\": 75, \"customer_id\": \"C001\"}, {\"order_id\": \"4\", \"product\": \"Laptop\", \"quantity\": 1, \"price\": 1250, \"customer_id\": \"C003\"}, {\"order_id\": \"5\", \"product\": \"Monitor\", \"quantity\": 2, \"price\": 300, \"customer_id\": \"C002\"}, {\"order_id\": \"6\", \"product\": \"Webcam\", \"quantity\": 3, \"price\": 50, \"customer_id\": \"C001\"}, {\"order_id\": \"7\", \"product\": \"Headphones\", \"quantity\": 4, \"price\": 150, \"customer_id\": \"C003\"}]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "JSON",
+      "label": "Parse Order JSON",
+      "config": {
+        "operation": "parse",
+        "field_name": "json_data",
+        "options": {
+          "outputPropertyName": "parsed_data"
+        }
+      },
+      "output_name": "parsed_orders_json"
+    },
+    {
+      "id": "n03",
+      "type": "SPLIT_OUT",
+      "label": "Split Orders into Individual Items",
+      "config": {
+        "field_to_split_out": "parsed_data",
+        "include": "allOtherFields"
+      },
+      "output_name": "individual_orders"
+    },
+    {
+      "id": "n04",
+      "type": "SET",
+      "label": "Add Region to Orders",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "value": "{{ $json.customer_id === 'C001' ? 'North' : ($json.customer_id === 'C002' ? 'South' : 'East') }}",
+              "assignTo": "region",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "output_name": "orders_with_region"
+    },
+    {
+      "id": "n05",
+      "type": "SUMMARIZE",
+      "label": "Summarize by Region",
+      "config": {
+        "fieldsToSplitBy": "region",
+        "fieldsToSummarize": [
+          {
+            "aggregation": "count",
+            "field": "order_id",
+            "outputName": "order_count"
+          }
+        ]
+      },
+      "output_name": "region_summary"
+    },
+    {
+      "id": "n06",
+      "type": "SUMMARIZE",
+      "label": "Summarize Top Products",
+      "config": {
+        "fieldsToSplitBy": "product",
+        "fieldsToSummarize": [
+          {
+            "aggregation": "sum",
+            "field": "quantity",
+            "outputName": "total_quantity"
+          }
+        ]
+      },
+      "output_name": "top_products"
+    },
+    {
+      "id": "n07",
+      "type": "MERGE",
+      "label": "Combine Summaries for LLM",
+      "config": {
+        "mode": "combine",
+        "combine_by": "combineByPosition"
+      },
+      "output_name": "combined_summaries_for_llm"
+    },
+    {
+      "id": "n08",
+      "type": "LLM_BASIC",
+      "label": "Generate Business Summary",
+      "config": {
+        "system_prompt": "You are a business analyst. Summarize the provided order data, focusing on regional performance and top products, in one concise paragraph.",
+        "prompt": "Here is the regional order summary: {{ $json.input1 }}. Here are the top products by quantity: {{ $json.input2 }}. Provide a one-paragraph business summary.",
+        "output_field": "summary_text"
+      },
+      "output_name": "business_summary_llm_output"
+    },
+    {
+      "id": "n09",
+      "type": "SET",
+      "label": "Store Business Summary",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "value": "{{ $json.summary_text }}",
+              "assignTo": "business_summary",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "output_name": "final_summary_item"
+    },
+    {
+      "id": "n10",
+      "type": "SPREADSHEET_FILE",
+      "label": "Write Orders Excel",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "/tmp/Orders_Report_{{ $now().toFormat('yyyyMMdd_HHmmss') }}.xlsx"
+      },
+      "output_name": "orders_excel_output"
+    },
+    {
+      "id": "n11",
+      "type": "SPREADSHEET_FILE",
+      "label": "Write Region Summary Excel",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "/tmp/RegionSummary_Report_{{ $now().toFormat('yyyyMMdd_HHmmss') }}.xlsx"
+      },
+      "output_name": "region_excel_output"
+    },
+    {
+      "id": "n12",
+      "type": "SPREADSHEET_FILE",
+      "label": "Write Top Products Excel",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "/tmp/TopProducts_Report_{{ $now().toFormat('yyyyMMdd_HHmmss') }}.xlsx"
+      },
+      "output_name": "products_excel_output"
+    },
+    {
+      "id": "n13",
+      "type": "SPREADSHEET_FILE",
+      "label": "Write Business Summary Excel",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "/tmp/BusinessSummary_Report_{{ $now().toFormat('yyyyMMdd_HHmmss') }}.xlsx"
+      },
+      "output_name": "summary_excel_output"
+    },
+    {
+      "id": "n14",
+      "type": "MERGE",
+      "label": "Collect All Excel Paths",
+      "config": {
+        "mode": "append"
+      },
+      "output_name": "all_excel_outputs"
+    },
+    {
+      "id": "n15",
+      "type": "AGGREGATE",
+      "label": "Aggregate All File Paths",
+      "config": {
+        "aggregate": "aggregateIndividualFields",
+        "fieldsToAggregate": {
+          "all_artifact_paths": {
+            "field": "file_path",
+            "aggregation": "mergeIntoArray"
+          }
+        }
+      },
+      "output_name": "aggregated_paths"
+    },
+    {
+      "id": "n16",
+      "type": "SET",
+      "label": "Capture Final Artifact Paths",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "value": "{{ $json.all_artifact_paths }}",
+              "assignTo": "final_artifact_paths",
+              "type": "json"
+            }
+          ]
+        }
+      },
+      "output_name": "final_workflow_output"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n04",
+      "to": "n06"
+    },
+    {
+      "from": "n05",
+      "to": "n07"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n07",
+      "to": "n08"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n04",
+      "to": "n10"
+    },
+    {
+      "from": "n05",
+      "to": "n11"
+    },
+    {
+      "from": "n06",
+      "to": "n12"
+    },
+    {
+      "from": "n09",
+      "to": "n13"
+    },
+    {
+      "from": "n10",
+      "to": "n14"
+    },
+    {
+      "from": "n11",
+      "to": "n14"
+    },
+    {
+      "from": "n12",
+      "to": "n14"
+    },
+    {
+      "from": "n13",
+      "to": "n14"
+    },
+    {
+      "from": "n14",
+      "to": "n15"
+    },
+    {
+      "from": "n15",
+      "to": "n16"
+    }
+  ]
+}

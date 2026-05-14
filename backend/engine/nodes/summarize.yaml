@@ -1,0 +1,69 @@
+type_id: SUMMARIZE
+description: Use the Summarize node to aggregate items together, in a manner similar
+  to Excel pivot tables.
+ui:
+  display_name: Summarize
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: ai
+      label: AI
+      order: 30
+      color: '#8B5CF6'
+    node_order: 61
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: fieldsToSummarize
+  type: array
+  description: Aggregation rules list (aggregation, field, includeEmpty, separator options).
+  required: false
+  default: []
+- name: fieldsToSplitBy
+  type: string
+  description: Comma-separated group-by fields.
+  required: false
+- name: options
+  type: object
+  description: Summarization options.
+  required: false
+- name: disableDotNotation
+  type: boolean
+  description: Disable parent.child field traversal.
+  required: false
+  default: false
+- name: outputFormat
+  type: string
+  description: Output mode for grouped summaries.
+  required: false
+  default: separateItems
+  constraints:
+    enum: [separateItems, singleItem]
+- name: skipEmptySplitFields
+  type: boolean
+  description: Ignore records without valid split keys.
+  required: false
+  default: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/'
+extras:
+  docs_slug: n8n-nodes-base.summarize
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,79 @@
+type_id: CRYPTO
+description: Use the Crypto node to encrypt data in workflows.
+ui:
+  display_name: Crypto
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 9
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: action
+    type: string
+    description: Crypto action
+    required: false
+    default: hash
+    enum: [generate, hash, hmac, sign]
+  - name: value
+    type: string
+    description: Source value for hash/hmac/sign
+    required: false
+  - name: dataPropertyName
+    type: string
+    description: Destination property for output
+    required: false
+    default: data
+  - name: type
+    type: string
+    description: Hash algorithm
+    required: false
+    default: SHA256
+  - name: encoding
+    type: string
+    description: Output encoding
+    required: false
+    default: hex
+    enum: [hex, base64]
+  - name: encodingType
+    type: string
+    description: Random generation encoding type
+    required: false
+    default: uuid
+    enum: [uuid, ascii, base64, hex]
+  - name: stringLength
+    type: integer
+    description: Random string length for non-uuid generation
+    required: false
+    default: 32
+  - name: secret
+    type: string
+    description: Secret for hmac/sign actions
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/'
+extras:
+  docs_slug: n8n-nodes-base.crypto
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/
+  scrape_mode: deep_all_sections

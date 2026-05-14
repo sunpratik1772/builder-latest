@@ -1,0 +1,69 @@
+type_id: READ_WRITE_FILES_FROM_DISK
+description: Use the Read/Write Files from Disk node to read and write files from/to
+  the machine where n8n is running.
+ui:
+  display_name: Read/Write Files from Disk
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 47
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Read file(s) from disk or write file to disk.
+  required: false
+  default: read
+  constraints:
+    enum: [read, write]
+- name: file_selector
+  type: string
+  description: Comma-separated file paths for read operation.
+  required: false
+- name: put_output_file_in_field
+  type: string
+  description: Output field that receives read file bytes.
+  required: false
+  default: data
+- name: file_path_and_name
+  type: string
+  description: Destination file path for write operation.
+  required: false
+- name: input_binary_field
+  type: string
+  description: Input field containing file bytes for write operation.
+  required: false
+  default: data
+- name: append
+  type: boolean
+  description: Append to destination file when true.
+  required: false
+  default: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/'
+extras:
+  docs_slug: n8n-nodes-base.readwritefile
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/
+  scrape_mode: deep_all_sections

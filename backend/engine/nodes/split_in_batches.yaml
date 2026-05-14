@@ -1,51 +1,52 @@
 type_id: SPLIT_IN_BATCHES
-description: "Split items into batches for processing"
-
+description: The Loop Over Items node helps you loop through data when needed.
 ui:
-  color: "#F59E0B"
-  icon: Package
+  display_name: Loop Over Items (Split in Batches)
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: control
-      label: Control Flow
-      order: 5
-      color: "#FF6D5A"
-    node_order: 4
-
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 36
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to batch"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Batch of items"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
   - name: batch_size
     type: integer
-    description: "Number of items per batch"
-    default: 10
-    required: true
-    
+    description: Number of items emitted each iteration
+    required: false
+    default: 1
   - name: options
     type: object
-    default: {}
+    description: Additional options
     required: false
-    schema:
-      properties:
-        reset:
-          type: boolean
-          description: "Reset batching between executions"
-          default: true
-
+  - name: reset
+    type: boolean
+    description: Reset loop state and treat current input as new sequence
+    required: false
+    default: false
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Splits input into batches of batch_size items"
-  - "Last batch may have fewer items"
-  - "Node executes multiple times until all batches are processed"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/'
+extras:
+  docs_slug: n8n-nodes-base.splitinbatches
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/
+  scrape_mode: deep_all_sections

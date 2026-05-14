@@ -1,0 +1,297 @@
+{
+  "workflow_id": "lead_scoring_automation",
+  "name": "Lead Scoring Automation",
+  "schema_version": "1.0",
+  "description": "Automates lead scoring, generates outreach messages, and exports results as CSV and a markdown summary.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Start Lead Scoring Workflow",
+      "config": {
+        "emitted_items": []
+      }
+    },
+    {
+      "id": "n02",
+      "type": "DEBUG_HELPER",
+      "label": "Generate Mock CRM Data",
+      "config": {
+        "category": "randomData",
+        "randomDataType": "user",
+        "randomDataCount": 25,
+        "randomDataSingleArray": false
+      }
+    },
+    {
+      "id": "n03",
+      "type": "DEBUG_HELPER",
+      "label": "Generate Mock Web Event Data",
+      "config": {
+        "category": "randomData",
+        "randomDataType": "user",
+        "randomDataCount": 25,
+        "randomDataSingleArray": false
+      }
+    },
+    {
+      "id": "n04",
+      "type": "MERGE",
+      "label": "Merge CRM and Web Events",
+      "config": {
+        "mode": "combine",
+        "combine_by": "matchingFields",
+        "fields_to_match": [
+          {
+            "field1": "name",
+            "field2": "name"
+          }
+        ],
+        "output_type": "enrich_input_1"
+      }
+    },
+    {
+      "id": "n05",
+      "type": "CODE",
+      "label": "Calculate Lead Score",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\nimport random\n\noutput_items = []\nfor item in items:\n    data = item.json\n    score = 0\n\n    # Mock scoring logic based on available 'user' data from DEBUG_HELPER\n    # Assume 'email' and 'name' are present\n    if 'email' in data and '@example.com' not in data['email']:\n        score += 30 # More realistic email implies higher quality\n    if 'name' in data and len(data['name']) > 10: # Longer name, maybe more detailed profile\n        score += 20\n    \n    # Add a random component for variety in scores\n    score += random.randint(0, 50)\n\n    data['lead_score'] = score\n    if score >= 80:\n        data['lead_category'] = 'Hot'\n    elif score >= 40:\n        data['lead_category'] = 'Warm'\n    else:\n        data['lead_category'] = 'Cold'\n    output_items.append(item)"
+      }
+    },
+    {
+      "id": "n06",
+      "type": "SWITCH",
+      "label": "Route Leads by Category",
+      "config": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": [
+                {
+                  "field": "lead_category",
+                  "operator": "equalTo",
+                  "value": "Hot"
+                }
+              ]
+            },
+            {
+              "conditions": [
+                {
+                  "field": "lead_category",
+                  "operator": "equalTo",
+                  "value": "Warm"
+                }
+              ]
+            },
+            {
+              "conditions": [
+                {
+                  "field": "lead_category",
+                  "operator": "equalTo",
+                  "value": "Cold"
+                }
+              ]
+            }
+          ]
+        },
+        "number_of_outputs": 3
+      }
+    },
+    {
+      "id": "n07",
+      "type": "LLM_BASIC",
+      "label": "Draft Hot Lead Outreach",
+      "config": {
+        "prompt": "Draft a personalized outreach message for a hot lead named {{ $json.name }} (email: {{ $json.email }}). Highlight their high engagement and suggest a direct call to action. Keep it concise and professional.",
+        "output_field": "outreach_message",
+        "model": "gemini-2.5-flash"
+      }
+    },
+    {
+      "id": "n08",
+      "type": "LLM_BASIC",
+      "label": "Draft Warm Lead Outreach",
+      "config": {
+        "prompt": "Draft a personalized outreach message for a warm lead named {{ $json.name }} (email: {{ $json.email }}). Acknowledge their interest and offer helpful resources or a demo. Keep it informative and engaging.",
+        "output_field": "outreach_message",
+        "model": "gemini-2.5-flash"
+      }
+    },
+    {
+      "id": "n09",
+      "type": "LLM_BASIC",
+      "label": "Draft Cold Lead Outreach",
+      "config": {
+        "prompt": "Draft a gentle re-engagement message for a cold lead named {{ $json.name }} (email: {{ $json.email }}). Offer a simple value proposition or a check-in. Keep it brief and low-pressure.",
+        "output_field": "outreach_message",
+        "model": "gemini-2.5-flash"
+      }
+    },
+    {
+      "id": "n10",
+      "type": "MERGE",
+      "label": "Merge Outreach Messages",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "n11",
+      "type": "CONVERT_TO_FILE",
+      "label": "Export Leads to CSV",
+      "config": {
+        "operation": "csv",
+        "file_name": "leads_with_outreach.csv",
+        "put_output_file_in_field": "csv_output_binary"
+      }
+    },
+    {
+      "id": "n12",
+      "type": "FILTER",
+      "label": "Filter Hot Leads for Summary",
+      "config": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "field": "lead_category",
+              "operator": "equalTo",
+              "value": "Hot"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n13",
+      "type": "LLM_BASIC",
+      "label": "Generate Markdown Content",
+      "config": {
+        "system_prompt": "You are a marketing analyst. Summarize the top opportunities from the provided hot leads, focusing on their names, emails, and lead scores. Present it as a concise markdown report.",
+        "prompt": "Here are the hot leads: {{ $json }}",
+        "output_field": "markdown_summary_content",
+        "model": "gemini-2.5-flash"
+      }
+    },
+    {
+      "id": "n14",
+      "type": "CONVERT_TO_FILE",
+      "label": "Export Markdown Summary",
+      "config": {
+        "operation": "toText",
+        "file_name": "top_opportunities_summary.md",
+        "text": "{{ $json.markdown_summary_content }}",
+        "put_output_file_in_field": "markdown_output_binary"
+      }
+    },
+    {
+      "id": "n15",
+      "type": "SET",
+      "label": "Collect Artifact Paths",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "value": "{{ $binary.csv_output_binary.fileName }}",
+              "name": "csv_artifact_path",
+              "type": "string"
+            },
+            {
+              "value": "{{ $binary.markdown_output_binary.fileName }}",
+              "name": "markdown_artifact_path",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n16",
+      "type": "NO_OP",
+      "label": "Final Output"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n01",
+      "to": "n03"
+    },
+    {
+      "from": "n02",
+      "to": "n04"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n05",
+      "to": "n06"
+    },
+    {
+      "from": "n06",
+      "to": "n07",
+      "port": "output_0"
+    },
+    {
+      "from": "n06",
+      "to": "n08",
+      "port": "output_1"
+    },
+    {
+      "from": "n06",
+      "to": "n09",
+      "port": "output_2"
+    },
+    {
+      "from": "n07",
+      "to": "n10"
+    },
+    {
+      "from": "n08",
+      "to": "n10"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    },
+    {
+      "from": "n10",
+      "to": "n11"
+    },
+    {
+      "from": "n10",
+      "to": "n12"
+    },
+    {
+      "from": "n11",
+      "to": "n15"
+    },
+    {
+      "from": "n12",
+      "to": "n13"
+    },
+    {
+      "from": "n13",
+      "to": "n14"
+    },
+    {
+      "from": "n14",
+      "to": "n15"
+    },
+    {
+      "from": "n15",
+      "to": "n16"
+    }
+  ]
+}

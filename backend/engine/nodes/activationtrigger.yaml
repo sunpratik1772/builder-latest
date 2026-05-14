@@ -1,0 +1,55 @@
+type_id: ACTIVATION_TRIGGER
+description: The Activation Trigger node gets triggered when an event gets fired by
+  n8n or a workflow.
+ui:
+  display_name: Activation Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 1
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: events
+  type: array
+  description: Lifecycle events to monitor.
+  required: false
+  default: []
+- name: activationMode
+  type: string
+  description: Current activation mode for trigger execution.
+  required: false
+  default: manual
+  enum: [activate, init, update, manual]
+- name: workflow_id
+  type: string
+  description: Workflow identifier in emitted payload.
+  required: false
+  default: workflow-1
+- name: current_workflow_id
+  type: string
+  description: Runtime workflow id used to enforce same-workflow triggering.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.activationtrigger/'
+extras:
+  docs_slug: n8n-nodes-base.activationtrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.activationtrigger/
+  scrape_mode: deep_all_sections

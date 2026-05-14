@@ -1,0 +1,293 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "whatsapp_sales_agent_dbsherpa",
+  "name": "WhatsApp Sales Agent (dbSherpa equivalent)",
+  "version": "1.0.0",
+  "description": "dbSherpa JSON equivalent of the provided n8n WhatsApp + AI brochure assistant workflow. Uses a single WHATSAPP node type for trigger and send operations.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "When clicking Test workflow",
+      "config": {
+        "emitted_items": [
+          {
+            "bootstrap": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "n02",
+      "type": "HTTP_REQUEST",
+      "label": "get Product Brochure",
+      "config": {
+        "method": "GET",
+        "url": "https://usa.yamaha.com/files/download/brochure/1/1474881/Yamaha-Powered-Loudspeakers-brochure-2024-en-web.pdf"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "EXTRACT_FROM_FILE",
+      "label": "Extract from File",
+      "config": {
+        "operation": "pdf"
+      }
+    },
+    {
+      "id": "n04",
+      "type": "NO_OP",
+      "label": "Create Product Catalogue",
+      "config": {
+        "memory_key": "whatsapp-75",
+        "mode": "insert",
+        "clear_store": true
+      }
+    },
+    {
+      "id": "n05",
+      "type": "NO_OP",
+      "label": "Default Data Loader",
+      "config": {
+        "json_mode": "expressionData",
+        "json_data": "={{ $('Extract from File').item.json.text }}"
+      }
+    },
+    {
+      "id": "n06",
+      "type": "NO_OP",
+      "label": "Recursive Character Text Splitter",
+      "config": {
+        "chunk_size": 2000,
+        "chunk_overlap": 0
+      }
+    },
+    {
+      "id": "n07",
+      "type": "NO_OP",
+      "label": "Embeddings OpenAI (catalog)",
+      "config": {
+        "model": "text-embedding-3-small"
+      }
+    },
+    {
+      "id": "n08",
+      "type": "WHATSAPP",
+      "label": "WhatsApp Trigger",
+      "config": {
+        "mode": "trigger",
+        "updates": [
+          "messages"
+        ],
+        "emitted_items": [
+          {
+            "messages": [
+              {
+                "type": "text",
+                "from": "{{context.whatsapp_from}}",
+                "text": {
+                  "body": "{{context.whatsapp_text}}"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "n09",
+      "type": "SWITCH",
+      "label": "Handle Message Types",
+      "config": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "Supported",
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "text"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "Not Supported",
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    },
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "text"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "type": "LLM_BASIC",
+      "label": "AI Sales Agent",
+      "config": {
+        "model": "gemini-2.5-flash",
+        "temperature": 0.2,
+        "output_field": "output",
+        "prompt": "Customer message: {{ $json.messages.0.text.body }}\\n\\nUse the brochure knowledge base tool outputs when available.",
+        "system_prompt": "You are an assistant for Yamaha Powered Loudspeakers 2024 brochure navigation. Be factual and concise. If information is unavailable, say so."
+      }
+    },
+    {
+      "id": "n11",
+      "type": "NO_OP",
+      "label": "Window Buffer Memory",
+      "config": {
+        "session_key": "=whatsapp-75-{{ $json.messages[0].from }}",
+        "session_id_type": "customKey"
+      }
+    },
+    {
+      "id": "n12",
+      "type": "NO_OP",
+      "label": "Product Catalogue",
+      "config": {
+        "memory_key": "whatsapp-75"
+      }
+    },
+    {
+      "id": "n13",
+      "type": "NO_OP",
+      "label": "Vector Store Tool",
+      "config": {
+        "name": "query_product_brochure",
+        "description": "Call this tool to query the product brochure. Valid for the year 2024."
+      }
+    },
+    {
+      "id": "n14",
+      "type": "NO_OP",
+      "label": "OpenAI Chat Model",
+      "config": {
+        "model": "gpt-4o-2024-08-06"
+      }
+    },
+    {
+      "id": "n15",
+      "type": "NO_OP",
+      "label": "OpenAI Chat Model1",
+      "config": {
+        "model": "gpt-4o-2024-08-06"
+      }
+    },
+    {
+      "id": "n16",
+      "type": "NO_OP",
+      "label": "Embeddings OpenAI",
+      "config": {
+        "model": "text-embedding-3-small"
+      }
+    },
+    {
+      "id": "n17",
+      "type": "WHATSAPP",
+      "label": "Reply To User",
+      "config": {
+        "mode": "send",
+        "phone_number_id": "477115632141067",
+        "recipient_phone_number": "={{ $json.messages[0].from }}",
+        "text_body": "={{ $json.output }}"
+      }
+    },
+    {
+      "id": "n18",
+      "type": "WHATSAPP",
+      "label": "Reply To User1",
+      "config": {
+        "mode": "send",
+        "phone_number_id": "477115632141067",
+        "recipient_phone_number": "={{ $json.messages[0].from }}",
+        "text_body": "I'm unable to process non-text messages. Please send only text messages. Thanks!"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n06",
+      "to": "n05"
+    },
+    {
+      "from": "n05",
+      "to": "n07"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "sourceHandle": "output0",
+      "to": "n10"
+    },
+    {
+      "from": "n09",
+      "sourceHandle": "output1",
+      "to": "n18"
+    },
+    {
+      "from": "n11",
+      "to": "n10"
+    },
+    {
+      "from": "n13",
+      "to": "n10"
+    },
+    {
+      "from": "n14",
+      "to": "n10"
+    },
+    {
+      "from": "n12",
+      "to": "n13"
+    },
+    {
+      "from": "n16",
+      "to": "n12"
+    },
+    {
+      "from": "n15",
+      "to": "n13"
+    },
+    {
+      "from": "n10",
+      "to": "n17"
+    }
+  ]
+}

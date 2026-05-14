@@ -1,0 +1,239 @@
+{
+  "workflow_id": "wf_user_objective_build_a_revops_workflow_from_mock_crm_web_eve",
+  "name": "Compiled: User objective:\nBuild a RevOps workflow from mock CRM, web e",
+  "schema_version": "1.0",
+  "description": "Workflow compiled via strict multi-agent pipeline.",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "Manual Trigger",
+      "config": {}
+    },
+    {
+      "id": "n02",
+      "type": "SET",
+      "label": "Set",
+      "config": {
+        "assignments": {
+          "crm_data": {
+            "account_id": "ACC001",
+            "company_name": "Example Corp",
+            "industry": "Software",
+            "mrr": 15000,
+            "contacts": [
+              {
+                "name": "Alice Johnson",
+                "email": "alice.j@example.com",
+                "role": "Head of Sales"
+              },
+              {
+                "name": "Bob Williams",
+                "email": "bob.w@example.com",
+                "role": "Marketing Director"
+              }
+            ]
+          },
+          "web_events": [
+            {
+              "event_type": "page_view",
+              "page_url": "/product-features",
+              "timestamp": "2023-10-26T09:00:00Z"
+            },
+            {
+              "event_type": "resource_download",
+              "resource_name": "RevOps_Guide.pdf",
+              "timestamp": "2023-10-26T09:15:00Z"
+            },
+            {
+              "event_type": "demo_request_form_view",
+              "timestamp": "2023-10-26T09:30:00Z"
+            }
+          ],
+          "support_sentiment": {
+            "ticket_id": "SUPT001",
+            "sentiment_score": 0.92,
+            "summary": "Customer expressed high satisfaction with recent support interaction regarding new feature setup.",
+            "category": "Positive Feedback"
+          }
+        },
+        "inputs": {
+          "input": "{{ MANUAL_TRIGGER.output }}"
+        }
+      }
+    },
+    {
+      "id": "n03",
+      "type": "AI_TRANSFORM",
+      "label": "Ai Transform",
+      "config": {
+        "instructions": "Draft tailored outreach messages for email, WhatsApp, and Slack styles based on the segmented accounts and intent scores. Focus on a persuasive and concise tone.",
+        "transformation_code": "function transform(input) {\n  // Placeholder for AI-generated code to draft outreach messages\n  // This code would typically use an LLM call based on the instructions\n  const account = input.account_data;\n  const intent_score = input.intent_score;\n  const segment = input.segment;\n\n  let email_draft = `Subject: Exclusive Offer for ${account.company_name} - Tailored for Your Needs!\n\nHi ${account.contact_person},\n\nBased on your recent activity and our analysis, we understand you're looking for solutions in [relevant area]. We've tailored an exclusive offer just for ${account.company_name} that we believe will significantly benefit your operations.\n\nWould you be open to a quick chat next week to explore how we can help?\n\nBest regards,\n[Your Name]`;\n\n  let whatsapp_draft = `Hey ${account.contact_person}! \ud83d\udc4b We noticed your interest in [relevant area]. We have a special offer for ${account.company_name} that could be a game-changer. Want to learn more?`;\n\n  let slack_draft = `Hi ${account.contact_person} (via Slack Connect)! We've identified a great opportunity for ${account.company_name} in [relevant area]. Let's connect to discuss a tailored solution.`;\n\n  return {\n    email_draft: email_draft,\n    whatsapp_draft: whatsapp_draft,\n    slack_draft: slack_draft,\n    account_id: account.id\n  };\n}",
+        "inputs": {
+          "input": "{{ SET.output }}"
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "type": "SWITCH",
+      "label": "Switch",
+      "config": {
+        "mode": "rules",
+        "rules": {
+          "0": {
+            "conditions": [
+              {
+                "lhs": "{{ input.channel_preference }}",
+                "op": "eq",
+                "rhs": "email"
+              }
+            ]
+          },
+          "1": {
+            "conditions": [
+              {
+                "lhs": "{{ input.channel_preference }}",
+                "op": "eq",
+                "rhs": "whatsapp"
+              }
+            ]
+          },
+          "2": {
+            "conditions": [
+              {
+                "lhs": "{{ input.channel_preference }}",
+                "op": "eq",
+                "rhs": "slack"
+              }
+            ]
+          }
+        },
+        "number_of_outputs": 3,
+        "fallback_output": "none",
+        "send_data_to_all_matching_outputs": false,
+        "ignore_case": false,
+        "less_strict_type_validation": false,
+        "inputs": {
+          "input": "{{ AI_TRANSFORM.output }}"
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "WHATSAPP",
+      "label": "Whatsapp",
+      "config": {
+        "mode": "send",
+        "inputs": {
+          "input": "{{ SWITCH.output }}"
+        }
+      }
+    },
+    {
+      "id": "n06",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert To File",
+      "config": {
+        "inputs": {
+          "input": "{{ SWITCH.output }}"
+        }
+      }
+    },
+    {
+      "id": "n07",
+      "type": "SPREADSHEET_FILE",
+      "label": "Spreadsheet File",
+      "config": {
+        "operation": "write",
+        "file_format": "csv",
+        "inputs": {
+          "input": "{{ SWITCH.output }}"
+        }
+      }
+    },
+    {
+      "id": "n08",
+      "type": "MERGE",
+      "label": "Merge",
+      "config": {
+        "mode": "append",
+        "combine_by": "combineByPosition",
+        "output_type": "keep_everything",
+        "inputs": {
+          "input": [
+            "{{ WHATSAPP.output }}",
+            "{{ CONVERT_TO_FILE.output }}",
+            "{{ SPREADSHEET_FILE.output }}"
+          ]
+        }
+      }
+    },
+    {
+      "id": "n09",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Artifact",
+      "config": {
+        "operation": "csv",
+        "put_output_file_in_field": "data",
+        "file_name": "wf_user_objective_build_a_revops_workflow_from_mock_crm_web_eve_artifact"
+      }
+    },
+    {
+      "id": "n10",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Write Artifact",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/wf_user_objective_build_a_revops_workflow_from_mock_crm_web_eve_artifact.csv",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n02",
+      "to": "n03"
+    },
+    {
+      "from": "n03",
+      "to": "n04"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n04",
+      "to": "n06"
+    },
+    {
+      "from": "n04",
+      "to": "n07"
+    },
+    {
+      "from": "n05",
+      "to": "n08"
+    },
+    {
+      "from": "n06",
+      "to": "n08"
+    },
+    {
+      "from": "n07",
+      "to": "n08"
+    },
+    {
+      "from": "n08",
+      "to": "n09"
+    },
+    {
+      "from": "n09",
+      "to": "n10"
+    }
+  ]
+}

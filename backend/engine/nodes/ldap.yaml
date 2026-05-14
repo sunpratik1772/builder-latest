@@ -1,0 +1,101 @@
+type_id: LDAP
+description: This node allows you to interact with your LDAP servers to create, find,
+  and update objects.
+ui:
+  display_name: LDAP
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 33
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: LDAP operation to execute.
+  required: false
+  default: search
+  enum:
+  - compare
+  - create
+  - delete
+  - rename
+  - search
+  - update
+- name: dn
+  type: string
+  description: Distinguished name for compare/create/delete/rename/update.
+  required: false
+- name: attribute_id
+  type: string
+  description: Attribute id for compare operation.
+  required: false
+- name: value
+  type: string
+  description: Compare value.
+  required: false
+- name: new_dn
+  type: string
+  description: Target distinguished name for rename.
+  required: false
+- name: attributes
+  type: object
+  description: Create/update attributes payload.
+  required: false
+  default: {}
+- name: base_dn
+  type: string
+  description: Base distinguished name for search.
+  required: false
+- name: search_for
+  type: string
+  description: Search class selector or custom marker.
+  required: false
+  default: (objectclass=*)
+- name: attribute
+  type: string
+  description: Attribute used for search matching.
+  required: false
+  default: cn
+- name: search_text
+  type: string
+  description: Search text (* wildcard supported).
+  required: false
+  default: '*'
+- name: return_all
+  type: boolean
+  description: Return all search results.
+  required: false
+  default: true
+- name: limit
+  type: integer
+  description: Max results when return_all is false.
+  required: false
+  default: 50
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ldap/'
+extras:
+  docs_slug: n8n-nodes-base.ldap
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ldap/
+  scrape_mode: deep_all_sections

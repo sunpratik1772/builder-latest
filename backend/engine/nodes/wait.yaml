@@ -1,47 +1,123 @@
 type_id: WAIT
-description: "Wait/delay execution"
-
+description: Use the Wait node pause your workflow's execution. When the workflow
+  pauses it offloads the execution data to the database. When the resume condition
+  is met, the workflow reloads the data and the execution continues.
 ui:
-  color: "#6B7280"
-  icon: Clock
+  display_name: Wait
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: control
-      label: Control Flow
-      order: 5
-      color: "#FF6D5A"
-    node_order: 6
-
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 64
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to pass through after waiting"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Items (unchanged)"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
+  - name: resume
+    type: string
+    description: Wait resume mode
+    required: false
+    default: timeInterval
+    enum: [timeInterval, specificTime, webhook, form]
   - name: amount
-    type: integer
-    description: "Amount of time to wait"
+    type: number
+    description: Wait amount for timeInterval mode
+    required: false
     default: 1
-    required: true
-    
   - name: unit
     type: string
-    description: "Time unit"
-    enum: [seconds, minutes, hours]
+    description: Wait unit for timeInterval mode
+    required: false
     default: seconds
-    required: true
-
+    enum: [seconds, minutes, hours, days]
+  - name: dateTime
+    type: string
+    description: ISO datetime for specificTime mode
+    required: false
+  - name: limitWaitTime
+    type: boolean
+    description: Whether webhook/form wait has a timeout limit.
+    required: false
+    default: false
+  - name: limitType
+    type: string
+    description: Limit strategy for webhook/form wait timeout.
+    required: false
+    default: afterTimeInterval
+    enum: [afterTimeInterval, atSpecifiedTime]
+  - name: resumeAmount
+    type: number
+    description: Timeout amount when limitType is afterTimeInterval.
+    required: false
+    default: 1
+  - name: resumeUnit
+    type: string
+    description: Timeout unit when limitType is afterTimeInterval.
+    required: false
+    default: hours
+    enum: [seconds, minutes, hours, days]
+  - name: maxDateAndTime
+    type: string
+    description: Timeout datetime when limitType is atSpecifiedTime.
+    required: false
+  - name: httpMethod
+    type: string
+    description: Webhook HTTP method for resume=webhook.
+    required: false
+    default: GET
+    enum: [GET, POST, PUT, PATCH, DELETE, HEAD]
+  - name: authentication
+    type: string
+    description: Authentication mode for resume webhook.
+    required: false
+    default: none
+    enum: [none, basicAuth, headerAuth, jwtAuth]
+  - name: responseCode
+    type: integer
+    description: Response status code for resume webhook.
+    required: false
+    default: 200
+  - name: responseMode
+    type: string
+    description: Response handling mode for resume webhook.
+    required: false
+    default: onReceived
+    enum: [onReceived, lastNode, responseNode]
+  - name: options
+    type: object
+    description: Extra webhook/form options such as webhookSuffix and response settings.
+    required: false
+    default: {}
+  - name: webhook_payload
+    type: object
+    description: Payload emitted when resume=webhook
+    required: false
+  - name: form_payload
+    type: object
+    description: Payload emitted when resume=form
+    required: false
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Pauses execution for specified duration"
-  - "Items pass through unchanged"
-  - "Useful for rate limiting or scheduling"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/'
+extras:
+  docs_slug: n8n-nodes-base.wait
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/
+  scrape_mode: deep_all_sections

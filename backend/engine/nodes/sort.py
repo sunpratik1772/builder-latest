@@ -1,65 +1,90 @@
-"""SORT Node - Sort items"""
+"""SORT node with simple/random/code modes."""
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict, List
+import random
+from typing import Any
+
 from ..context import RunContext
 from ..node_spec import NodeSpec, _spec_from_yaml
 
 
-def handle_sort(node: dict, ctx: RunContext) -> None:
-    """Sort items by fields"""
-    cfg = node.get("config", {})
-    node_id = node.get("id", "sort")
-    
-    input_items = ctx.get(f"{node_id}_input", [])
-    sort_by = cfg.get("sort_by", [])
-    
-    if not sort_by or not input_items:
-        ctx.set(f"{node_id}_output", input_items)
-        return
-    
-    result = sorted(input_items, key=lambda item: _make_sort_key(item, sort_by))
-    ctx.set(f"{node_id}_output", result)
-
-
-def _make_sort_key(item: Dict, sort_by: List[Dict]) -> tuple:
-    """Create sort key tuple"""
-    key = []
-    for sort_field in sort_by:
-        field_name = sort_field.get("field_name", "")
-        direction = sort_field.get("direction", "asc")
-        
-        value = _get_nested(item, field_name)
-        
-        # Handle None values
-        if value is None:
-            value = ""
-        
-        # Reverse for descending
-        if direction == "desc":
-            if isinstance(value, (int, float)):
-                value = -value
-            else:
-                # Can't negate strings, use custom comparator
-                pass
-        
-        key.append(value)
-    
-    return tuple(key)
-
-
-def _get_nested(obj: Dict, path: str) -> Any:
-    """Get nested value"""
-    if not path:
-        return None
-    keys = path.split(".")
-    value = obj
-    for key in keys:
-        if isinstance(value, dict):
-            value = value.get(key)
-        else:
+def _get_field(item: dict[str, Any], name: str, disable_dot: bool) -> Any:
+    if disable_dot or "." not in name:
+        return item.get(name)
+    cur: Any = item
+    for part in name.split("."):
+        cur = cur.get(part) if isinstance(cur, dict) else None
+        if cur is None:
             return None
-    return value
+    return cur
 
 
-NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix(".yaml"), handle_sort)
+def handle_sort(node: dict, ctx: RunContext) -> None:
+    """Sort items based on config."""
+    cfg = node.get("config", {}) or {}
+    node_id = node.get("id", "sort")
+    src = ctx.get(f"{node_id}_input", [])
+    items = list(src) if isinstance(src, list) else [src]
+    mode = str(cfg.get("type", "simple")).lower()
+
+    if mode == "random":
+        random.shuffle(items)
+        ctx.set(f"{node_id}_output", items)
+        return
+
+    if mode == "code":
+        # Safe fallback: keep stable order when custom JS comparator isn't supported.
+        ctx.set(f"{node_id}_output", items)
+        return
+
+    sort_fields_ui = cfg.get("sortFieldsUi") or {}
+    sort_fields = sort_fields_ui.get("sortField") or cfg.get("sort_fields") or []
+    disable_dot = bool((cfg.get("options") or {}).get("disableDotNotation", cfg.get("disable_dot_notation", False)))
+
+    def key_for(item: Any) -> tuple:
+        if not isinstance(item, dict):
+            return (1, str(item))
+        row = []
+        for spec in sort_fields:
+            name = spec.get("fieldName") or spec.get("field_name") or spec.get("field")
+            if not name:
+                continue
+            val = _get_field(item, str(name), disable_dot)
+            if isinstance(val, str):
+                val = val.lower()
+            row.append(val)
+        return tuple(row)
+
+    # Multi-field sort honoring each field direction by stable passes.
+    out = items
+    if sort_fields:
+        for spec in reversed(sort_fields):
+            name = spec.get("fieldName") or spec.get("field_name") or spec.get("field")
+            if not name:
+                continue
+            order_raw = str(spec.get("order", spec.get("direction", "ascending"))).lower()
+            reverse = order_raw in {"descending", "desc"}
+            out = sorted(
+                out,
+                key=lambda it: _get_field(it, str(name), disable_dot) if isinstance(it, dict) else None,
+                reverse=reverse,
+            )
+            # normalize case-insensitive ordering similar to n8n
+            out = sorted(
+                out,
+                key=lambda it: (
+                    (_get_field(it, str(name), disable_dot) or "").lower()
+                    if isinstance(_get_field(it, str(name), disable_dot), str)
+                    else _get_field(it, str(name), disable_dot)
+                ),
+                reverse=reverse,
+            )
+    else:
+        out = sorted(out, key=key_for)
+
+    ctx.set(f"{node_id}_output", out)
+
+
+
+NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix('.yaml'), handle_sort)

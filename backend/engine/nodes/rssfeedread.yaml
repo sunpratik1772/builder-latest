@@ -1,0 +1,47 @@
+type_id: RSS_READ
+description: Use the RSS Read node to read data from RSS feeds published on the internet.
+ui:
+  display_name: RSS Read
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 52
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: url
+    type: string
+    description: RSS feed URL
+    required: true
+  - name: options
+    type: object
+    description: Reader options including ignoreSSL and customFields.
+    required: false
+    default: {}
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/'
+extras:
+  docs_slug: n8n-nodes-base.rssfeedread
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/
+  scrape_mode: deep_all_sections

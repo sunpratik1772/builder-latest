@@ -1,0 +1,57 @@
+type_id: N8N_TRIGGER
+description: The n8n Trigger node triggers when the workflow containing this node
+  updates or gets published, or when the n8n instance starts or restarts. This node
+  only responds to events in its own workflow; changes to other workflows won't trigger
+  it.
+ui:
+  display_name: n8n Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 45
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: events
+  type: array
+  description: Selected lifecycle events.
+  required: false
+  default: []
+- name: activationMode
+  type: string
+  description: Current activation context mode.
+  required: false
+  default: manual
+  enum: [activate, update, init, manual]
+- name: workflow_id
+  type: string
+  description: Workflow id emitted with event payload.
+  required: false
+  default: workflow-1
+- name: current_workflow_id
+  type: string
+  description: Runtime workflow id used to enforce same-workflow triggering.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8ntrigger/'
+extras:
+  docs_slug: n8n-nodes-base.n8ntrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8ntrigger/
+  scrape_mode: deep_all_sections

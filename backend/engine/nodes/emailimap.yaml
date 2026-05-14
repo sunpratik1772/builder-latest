@@ -1,0 +1,72 @@
+type_id: EMAIL_TRIGGER_IMAP
+description: Use the IMAP Email node to receive emails using an IMAP email server.
+  This node is a trigger node.
+ui:
+  display_name: Email Trigger (IMAP)
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 15
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: mailboxName
+  type: string
+  description: Mailbox folder to poll.
+  required: false
+  default: INBOX
+- name: action
+  type: string
+  description: Whether to mark received emails as read.
+  required: false
+  default: none
+  constraints:
+    enum: [none, markAsRead]
+- name: download_attachments
+  type: boolean
+  description: Download and include attachment payloads.
+  required: false
+  default: false
+- name: format
+  type: string
+  description: Email payload output format.
+  required: false
+  default: simple
+  constraints:
+    enum: [raw, resolved, simple]
+- name: emails
+  type: array
+  description: Incoming email objects (adapter payload).
+  required: false
+  default: []
+- name: custom_email_rules
+  type: string
+  description: Custom IMAP search criteria string.
+  required: false
+- name: force_reconnect_every_minutes
+  type: integer
+  description: Minutes between forced reconnect attempts.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/'
+extras:
+  docs_slug: n8n-nodes-base.emailimap
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/
+  scrape_mode: deep_all_sections

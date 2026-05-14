@@ -1,56 +1,54 @@
 type_id: FILTER
-description: "Keep only items that match conditions"
-
+description: Filter items based on a condition. If the item meets the condition, the
+  Filter node passes it on to the next node in the Filter node output. If the item
+  doesn't meet the condition, the Filter node omits the item from its output.
 ui:
-  color: "#FF6D5A"
-  icon: Filter
+  display_name: Filter
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
       id: transform
       label: Transform
-      order: 20
-      color: "#A78BFA"
-    node_order: 12
-
+      order: 15
+      color: '#6366F1'
+    node_order: 24
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to filter"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Filtered items"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
   - name: conditions
-    type: array
-    description: "Filter conditions"
-    required: true
-    default: []
-    schema:
-      items:
-        type: object
-        properties:
-          field_name:
-            type: string
-          operation:
-            type: string
-          value:
-            type: any
-            
-  - name: combine_operation
-    type: string
-    description: "How to combine multiple conditions"
-    enum: [AND, OR]
-    default: AND
+    type: object
+    description: Condition tree with combinator and conditions array
     required: false
-
+  - name: ignore_case
+    type: boolean
+    description: Case-insensitive comparison for strings
+    required: false
+    default: false
+  - name: less_strict_type_validation
+    type: boolean
+    description: Attempt loose type coercion before compare
+    required: false
+    default: false
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Only items matching the conditions are kept"
-  - "Empty conditions means keep all items"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/'
+extras:
+  docs_slug: n8n-nodes-base.filter
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/
+  scrape_mode: deep_all_sections

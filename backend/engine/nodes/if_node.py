@@ -1,329 +1,178 @@
-"""
-IF Node - Conditional routing based on comparison operations
-Implements n8n IF node logic with comprehensive comparison operations
-"""
+"""IF node with n8n-style condition groups."""
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict, List
-import re
-from datetime import datetime
+from typing import Any
 
 from ..context import RunContext
 from ..node_spec import NodeSpec, _spec_from_yaml
 
 
-def handle_if(node: dict, ctx: RunContext) -> None:
-    """
-    Execute IF node logic - route items based on conditions.
-    Items matching conditions are published to ctx with '_true' suffix.
-    Items not matching are published with '_false' suffix.
-    """
-    cfg = node.get("config", {})
-    node_id = node.get("id", "if")
-    
-    # Get input items from context — auto-wired key first, fall back to legacy `items`.
-    input_items = ctx.get(f"{node_id}_input") or ctx.get("items") or []
-    
-    # Get configuration
-    conditions = cfg.get("conditions", [])
-    combine_op = cfg.get("combine_operation", "AND")
-    options = cfg.get("options", {})
-    ignore_case = options.get("ignore_case", False)
-    less_strict = options.get("less_strict_type_validation", False)
-    
-    if not conditions:
-        # No conditions - all items go to false branch
-        ctx.set(f"{node_id}_true", [])
-        ctx.set(f"{node_id}_false", input_items)
-        return
-    
-    true_items = []
-    false_items = []
-    
-    # Evaluate each item
-    for item in input_items:
-        if _evaluate_item(item, conditions, combine_op, ignore_case, less_strict):
+def _resolve_expr(item: dict[str, Any], expr: Any, *, items_len: int | None = None) -> Any:
+    if not isinstance(expr, str):
+        return expr
+    raw = expr.strip()
+    if raw.startswith("={{") and raw.endswith("}}"):
+        raw = raw[3:-2].strip()
+    elif raw.startswith("={") and raw.endswith("}"):
+        raw = raw[2:-1].strip()
+    if raw == "$items.length":
+        return items_len
+    if not raw.startswith("$json"):
+        return expr
+    raw = raw.removeprefix("$json")
+    if raw.startswith("."):
+        raw = raw[1:]
+    cur: Any = item
+    for part in raw.split("."):
+        if not part:
+            continue
+        if "[" in part and part.endswith("]"):
+            name, idx_s = part[:-1].split("[", 1)
+            if name:
+                cur = cur.get(name) if isinstance(cur, dict) else None
+            if cur is None:
+                return None
+            try:
+                idx = int(idx_s)
+            except ValueError:
+                return None
+            if not isinstance(cur, list) or idx >= len(cur):
+                return None
+            cur = cur[idx]
+        else:
+            cur = cur.get(part) if isinstance(cur, dict) else None
+        if cur is None:
+            return None
+    return cur
+
+
+def _coerce_pair(left: Any, right: Any, loose: bool) -> tuple[Any, Any]:
+    if not loose:
+        return left, right
+    for caster in (int, float):
+        try:
+            if isinstance(left, str) and not isinstance(right, str):
+                return caster(left), right
+            if isinstance(right, str) and not isinstance(left, str):
+                return left, caster(right)
+            if isinstance(left, str) and isinstance(right, str):
+                return caster(left), caster(right)
+        except Exception:
+            pass
+    return left, right
+
+
+def _condition_match(item: dict[str, Any], cond: dict[str, Any], *, loose: bool, items_len: int) -> bool:
+    left = _resolve_expr(item, cond.get("leftValue"), items_len=items_len)
+    right = _resolve_expr(item, cond.get("rightValue"), items_len=items_len)
+    op = ((cond.get("operator") or {}).get("operation") or "equals").lower()
+    left, right = _coerce_pair(left, right, loose)
+
+    if op in {"equals"}:
+        return left == right
+    if op in {"notequals", "not_equals"}:
+        return left != right
+    if op in {"contains"}:
+        return isinstance(left, (str, list)) and right in left
+    if op in {"notcontains", "doesnotcontain"}:
+        return not (isinstance(left, (str, list)) and right in left)
+    if op in {"greaterthan", "isgreaterthan"}:
+        return left is not None and right is not None and left > right
+    if op in {"lessthan", "islessthan"}:
+        return left is not None and right is not None and left < right
+    if op in {"largerequal", "greaterorequal", "isgreaterthanorequalto"}:
+        return left is not None and right is not None and left >= right
+    if op in {"smallerequal", "lessorequal", "islessthanorequalto"}:
+        return left is not None and right is not None and left <= right
+    if op in {"isempty"}:
+        return left in (None, "", [], {})
+    if op in {"isnotempty"}:
+        return left not in (None, "", [], {})
+    if op in {"exists"}:
+        return left is not None
+    if op in {"notexists", "doesnotexist"}:
+        return left is None
+    return False
+
+
+def _legacy_condition_to_runtime(cond: dict[str, Any]) -> dict[str, Any]:
+    field = str(cond.get("field") or "").strip()
+    left = cond.get("leftValue")
+    if left is None and field:
+        left = f"={{$json.{field}}}"
+    right = cond.get("rightValue", cond.get("value"))
+    operator = cond.get("operator")
+    if isinstance(operator, dict):
+        op_name = operator.get("operation") or "equals"
+    else:
+        op_name = str(operator or "equals")
+    op_map = {
+        "equalto": "equals",
+        "equals": "equals",
+        "stringequal": "equals",
+        "notequalto": "notEquals",
+        "notequals": "notEquals",
+        "greaterthan": "greaterThan",
+        "lessthan": "lessThan",
+        "greaterthanorequalto": "largerEqual",
+        "lessthanorequalto": "smallerEqual",
+        "contains": "contains",
+        "notcontains": "notContains",
+    }
+    return {
+        "leftValue": left,
+        "rightValue": right,
+        "operator": {"operation": op_map.get(op_name.lower(), op_name)},
+    }
+
+
+def handle_if_node(node: dict, ctx: RunContext) -> None:
+    """Split input into true/false outputs based on conditions."""
+    cfg = node.get("config", {}) or {}
+    node_id = node.get("id", "if_node")
+    src = ctx.get(f"{node_id}_input", [])
+    items = src if isinstance(src, list) else [src]
+
+    root = cfg.get("conditions") or {}
+    conditions = root.get("conditions") or cfg.get("conditions_array") or []
+    combinator = str(root.get("combinator", cfg.get("combine_operation", "and"))).lower()
+    loose = bool(cfg.get("less_strict_type_validation", False))
+    runtime_conditions = []
+    for cond in conditions:
+        if not isinstance(cond, dict):
+            continue
+        if "leftValue" in cond and isinstance(cond.get("operator"), dict):
+            runtime_conditions.append(cond)
+        else:
+            runtime_conditions.append(_legacy_condition_to_runtime(cond))
+
+    true_items: list[Any] = []
+    false_items: list[Any] = []
+    for item in items:
+        if not isinstance(item, dict):
+            false_items.append(item)
+            continue
+        if not conditions:
+            matched = False
+        else:
+            checks = [
+                _condition_match(item, c or {}, loose=loose, items_len=len(items))
+                for c in runtime_conditions
+            ]
+            matched = any(checks) if combinator == "or" else all(checks)
+        if matched:
             true_items.append(item)
         else:
             false_items.append(item)
-    
-    # Publish results
+
     ctx.set(f"{node_id}_true", true_items)
     ctx.set(f"{node_id}_false", false_items)
+    ctx.set(
+        f"{node_id}_output",
+        {"true_count": len(true_items), "false_count": len(false_items)},
+    )
 
 
-def _evaluate_item(item: Dict, conditions: List[Dict], 
-                   combine_op: str, ignore_case: bool, less_strict: bool) -> bool:
-    """Evaluate if item matches conditions"""
-    results = []
-    
-    for condition in conditions:
-        result = _evaluate_condition(item, condition, ignore_case, less_strict)
-        results.append(result)
-    
-    # Combine results based on AND/OR
-    if combine_op == "AND":
-        return all(results)
-    else:  # OR
-        return any(results)
 
-
-def _evaluate_condition(item: Dict, condition: Dict, 
-                       ignore_case: bool, less_strict: bool) -> bool:
-    """Evaluate single condition"""
-    data_type = condition.get("data_type", "string")
-    field_name = condition.get("field_name", "")
-    operation = condition.get("operation", "equals")
-    compare_value = condition.get("compare_value")
-    
-    # Get field value from item (support dot notation)
-    field_value = _get_nested_value(item, field_name)
-    
-    # Route to appropriate comparison method
-    if data_type == "string":
-        return _compare_string(field_value, operation, compare_value, ignore_case)
-    elif data_type == "number":
-        return _compare_number(field_value, operation, compare_value, less_strict)
-    elif data_type == "boolean":
-        return _compare_boolean(field_value, operation, compare_value)
-    elif data_type == "date_time":
-        return _compare_datetime(field_value, operation, compare_value)
-    elif data_type == "array":
-        return _compare_array(field_value, operation, compare_value)
-    elif data_type == "object":
-        return _compare_object(field_value, operation)
-    
-    return False
-
-
-def _get_nested_value(obj: Dict, path: str) -> Any:
-    """Get value from nested dict using dot notation"""
-    if not path:
-        return None
-    keys = path.split(".")
-    value = obj
-    for key in keys:
-        if isinstance(value, dict):
-            value = value.get(key)
-        else:
-            return None
-    return value
-
-
-def _compare_string(value: Any, operation: str, compare_value: Any, 
-                   ignore_case: bool) -> bool:
-    """String comparison operations"""
-    # Existence checks
-    if operation == "exists":
-        return value is not None
-    if operation == "does_not_exist":
-        return value is None
-    if operation == "is_empty":
-        return value == "" or value is None
-    if operation == "is_not_empty":
-        return value != "" and value is not None
-    
-    # Convert to string
-    str_value = str(value) if value is not None else ""
-    str_compare = str(compare_value) if compare_value is not None else ""
-    
-    if ignore_case:
-        str_value = str_value.lower()
-        str_compare = str_compare.lower()
-    
-    # Comparison operations
-    if operation == "equals":
-        return str_value == str_compare
-    elif operation == "not_equals":
-        return str_value != str_compare
-    elif operation == "contains":
-        return str_compare in str_value
-    elif operation == "not_contains":
-        return str_compare not in str_value
-    elif operation == "starts_with":
-        return str_value.startswith(str_compare)
-    elif operation == "not_starts_with":
-        return not str_value.startswith(str_compare)
-    elif operation == "ends_with":
-        return str_value.endswith(str_compare)
-    elif operation == "not_ends_with":
-        return not str_value.endswith(str_compare)
-    elif operation == "regex":
-        try:
-            return bool(re.search(str_compare, str_value))
-        except:
-            return False
-    elif operation == "not_regex":
-        try:
-            return not bool(re.search(str_compare, str_value))
-        except:
-            return True
-    
-    return False
-
-
-def _compare_number(value: Any, operation: str, compare_value: Any, 
-                   less_strict: bool) -> bool:
-    """Number comparison operations"""
-    # Existence checks
-    if operation == "exists":
-        return value is not None
-    if operation == "does_not_exist":
-        return value is None
-    if operation == "is_empty":
-        return value is None
-    if operation == "is_not_empty":
-        return value is not None
-    
-    # Convert to number
-    try:
-        num_value = float(value) if value is not None else 0
-        num_compare = float(compare_value) if compare_value is not None else 0
-    except (ValueError, TypeError):
-        if less_strict:
-            return False
-        raise
-    
-    # Comparison operations
-    if operation == "equals":
-        return num_value == num_compare
-    elif operation == "not_equals":
-        return num_value != num_compare
-    elif operation == "greater_than":
-        return num_value > num_compare
-    elif operation == "less_than":
-        return num_value < num_compare
-    elif operation == "greater_equal":
-        return num_value >= num_compare
-    elif operation == "less_equal":
-        return num_value <= num_compare
-    
-    return False
-
-
-def _compare_boolean(value: Any, operation: str, compare_value: Any) -> bool:
-    """Boolean comparison operations"""
-    # Existence checks
-    if operation == "exists":
-        return value is not None
-    if operation == "does_not_exist":
-        return value is None
-    if operation == "is_empty":
-        return value is None
-    if operation == "is_not_empty":
-        return value is not None
-    
-    # Convert to boolean
-    bool_value = bool(value) if value is not None else False
-    
-    # Comparison operations
-    if operation == "is_true":
-        return bool_value is True
-    elif operation == "is_false":
-        return bool_value is False
-    elif operation == "equals":
-        return bool_value == bool(compare_value)
-    elif operation == "not_equals":
-        return bool_value != bool(compare_value)
-    
-    return False
-
-
-def _compare_datetime(value: Any, operation: str, compare_value: Any) -> bool:
-    """DateTime comparison operations"""
-    # Existence checks
-    if operation == "exists":
-        return value is not None
-    if operation == "does_not_exist":
-        return value is None
-    if operation == "is_empty":
-        return value is None
-    if operation == "is_not_empty":
-        return value is not None
-    
-    # Parse datetime
-    try:
-        if isinstance(value, str):
-            dt_value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        elif isinstance(value, datetime):
-            dt_value = value
-        else:
-            return False
-        
-        if isinstance(compare_value, str):
-            dt_compare = datetime.fromisoformat(compare_value.replace("Z", "+00:00"))
-        elif isinstance(compare_value, datetime):
-            dt_compare = compare_value
-        else:
-            return False
-    except:
-        return False
-    
-    # Comparison operations
-    if operation == "equals":
-        return dt_value == dt_compare
-    elif operation == "not_equals":
-        return dt_value != dt_compare
-    elif operation == "after":
-        return dt_value > dt_compare
-    elif operation == "before":
-        return dt_value < dt_compare
-    elif operation == "after_equal":
-        return dt_value >= dt_compare
-    elif operation == "before_equal":
-        return dt_value <= dt_compare
-    
-    return False
-
-
-def _compare_array(value: Any, operation: str, compare_value: Any) -> bool:
-    """Array comparison operations"""
-    # Existence checks
-    if operation == "exists":
-        return value is not None
-    if operation == "does_not_exist":
-        return value is None
-    if operation == "is_empty":
-        return not value or len(value) == 0
-    if operation == "is_not_empty":
-        return value and len(value) > 0
-    
-    if not isinstance(value, (list, tuple)):
-        return False
-    
-    # Comparison operations
-    if operation == "contains":
-        return compare_value in value
-    elif operation == "not_contains":
-        return compare_value not in value
-    elif operation == "length_equals":
-        return len(value) == int(compare_value)
-    elif operation == "length_not_equals":
-        return len(value) != int(compare_value)
-    elif operation == "length_greater":
-        return len(value) > int(compare_value)
-    elif operation == "length_less":
-        return len(value) < int(compare_value)
-    elif operation == "length_greater_equal":
-        return len(value) >= int(compare_value)
-    elif operation == "length_less_equal":
-        return len(value) <= int(compare_value)
-    
-    return False
-
-
-def _compare_object(value: Any, operation: str) -> bool:
-    """Object comparison operations"""
-    if operation == "exists":
-        return value is not None
-    elif operation == "does_not_exist":
-        return value is None
-    elif operation == "is_empty":
-        return not value or (isinstance(value, dict) and len(value) == 0)
-    elif operation == "is_not_empty":
-        return value and (not isinstance(value, dict) or len(value) > 0)
-    
-    return False
-
-
-NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix(".yaml"), handle_if)
+NODE_SPEC: NodeSpec = _spec_from_yaml(Path(__file__).with_suffix('.yaml'), handle_if_node)

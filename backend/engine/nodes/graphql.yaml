@@ -1,0 +1,83 @@
+type_id: GRAPHQL
+description: GraphQL is an open-source data query and manipulation language for APIs,
+  and a runtime for fulfilling queries with existing data. Use the GraphQL node to
+  query a GraphQL endpoint.
+ui:
+  display_name: GraphQL
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 27
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: requestMethod
+    type: string
+    description: HTTP request method
+    required: false
+    default: POST
+    enum: [GET, POST]
+  - name: requestFormat
+    type: string
+    description: Request payload format for POST
+    required: false
+    default: json
+    enum: [json, graphql]
+  - name: endpoint
+    type: string
+    description: GraphQL endpoint URL
+    required: true
+  - name: query
+    type: string
+    description: GraphQL query
+    required: true
+  - name: variables
+    type: object
+    description: GraphQL variables object
+    required: false
+  - name: operationName
+    type: string
+    description: GraphQL operation name
+    required: false
+  - name: headers
+    type: object
+    description: Header map
+    required: false
+  - name: responseFormat
+    type: string
+    description: Response format
+    required: false
+    default: json
+    enum: [json, string]
+  - name: dataPropertyName
+    type: string
+    description: Destination field when responseFormat=string
+    required: false
+    default: data
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.graphql/'
+extras:
+  docs_slug: n8n-nodes-base.graphql
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.graphql/
+  scrape_mode: deep_all_sections

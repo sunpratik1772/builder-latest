@@ -1,0 +1,49 @@
+type_id: EXECUTION_DATA
+description: Use this node to save metadata for workflow executions. You can then
+  search by this data in the **Executions** list.
+ui:
+  display_name: Execution Data
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 22
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: operation
+    type: string
+    description: Execution data operation
+    required: false
+    default: save
+    enum: [save]
+  - name: dataToSave
+    type: object
+    description: Fixed collection of key/value pairs to persist
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/'
+extras:
+  docs_slug: n8n-nodes-base.executiondata
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/
+  scrape_mode: deep_all_sections

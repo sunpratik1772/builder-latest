@@ -1,0 +1,76 @@
+type_id: GIT
+description: Git is a free and open-source distributed version control system designed
+  to handle everything from small to large projects with speed and efficiency.
+ui:
+  display_name: Git
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 26
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: operation
+    type: string
+    description: Git operation
+    required: false
+    default: status
+  - name: repositoryPath
+    type: string
+    description: Local repository path
+    required: false
+  - name: sourceRepository
+    type: string
+    description: Source repo URL/path for clone
+    required: false
+  - name: pathsToAdd
+    type: string
+    description: Comma-separated file paths for add
+    required: false
+  - name: message
+    type: string
+    description: Commit message
+    required: false
+  - name: key
+    type: string
+    description: Config key for addConfig
+    required: false
+  - name: value
+    type: string
+    description: Config value for addConfig
+    required: false
+  - name: branchName
+    type: string
+    description: Branch name for switchBranch
+    required: false
+  - name: name
+    type: string
+    description: Tag name for tag operation
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/'
+extras:
+  docs_slug: n8n-nodes-base.git
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/
+  scrape_mode: deep_all_sections

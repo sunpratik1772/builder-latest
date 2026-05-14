@@ -1,0 +1,118 @@
+type_id: N8N
+description: A node to integrate with n8n itself. This node allows you to consume
+  the n8n API in your workflows.
+ui:
+  display_name: n8n
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 42
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: resource
+  type: string
+  description: n8n API resource.
+  required: false
+  default: workflow
+  enum: [audit, credential, execution, workflow]
+- name: operation
+  type: string
+  description: Resource operation.
+  required: false
+  default: getMany
+- name: workflowId
+  type: string
+  description: Target workflow identifier.
+  required: false
+- name: workflowObject
+  type: object
+  description: Workflow payload for create/update.
+  required: false
+  default: {}
+- name: executionId
+  type: string
+  description: Target execution identifier.
+  required: false
+- name: credentialId
+  type: string
+  description: Target credential identifier.
+  required: false
+- name: credentialType
+  type: string
+  description: Credential type slug.
+  required: false
+- name: name
+  type: string
+  description: Resource name used in create operations.
+  required: false
+- name: data
+  type: object
+  description: Credential data payload.
+  required: false
+  default: {}
+- name: categories
+  type: array
+  description: Security audit categories.
+  required: false
+  default: [instance, nodes]
+- name: daysAbandonedWorkflow
+  type: integer
+  description: Number of inactive days used by audit operation.
+  required: false
+  default: 90
+- name: returnAll
+  type: boolean
+  description: Whether list operations should return all items.
+  required: false
+  default: true
+- name: limit
+  type: integer
+  description: Maximum number of items when returnAll is false.
+  required: false
+  default: 50
+- name: status
+  type: string
+  description: Execution status filter for getMany executions.
+  required: false
+- name: returnOnlyActiveWorkflows
+  type: boolean
+  description: Filter workflows list to active only.
+  required: false
+  default: false
+- name: tags
+  type: string
+  description: Comma-separated workflow tag filter.
+  required: false
+- name: options
+  type: object
+  description: Additional operation options (includeExecutionDetails).
+  required: false
+  default: {}
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/'
+extras:
+  docs_slug: n8n-nodes-base.n8n
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/
+  scrape_mode: deep_all_sections

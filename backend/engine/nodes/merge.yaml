@@ -1,72 +1,72 @@
 type_id: MERGE
-description: "Combine data from multiple inputs using various merge strategies"
-
+description: Use the Merge node to combine data from multiple streams, once data of
+  all streams is available.
 ui:
-  color: "#FF6D5A"
-  icon: Combine
+  display_name: Merge
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
-      id: control
-      label: Control Flow
-      order: 5
-      color: "#FF6D5A"
-    node_order: 3
-
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 41
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input1
-    type: object
-    description: "First input data stream"
-    optional: false
-  - name: input2
-    type: object
-    description: "Second input data stream"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Merged data"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
   - name: mode
     type: string
-    description: "How to merge the data"
-    enum: [append, combine, choose_branch]
+    description: Merge mode
+    required: false
     default: append
-    required: true
-    
+    enum: [append, combine, choose]
   - name: combine_by
     type: string
-    description: "How to combine when mode=combine"
-    enum: [matching_fields, position, all_combinations]
-    default: matching_fields
+    description: Combine strategy when mode=combine
     required: false
-    
+    default: combineByPosition
+    enum: [combineByPosition, matchingFields, allPossibleCombinations]
   - name: fields_to_match
     type: array
-    description: "Field names to match on (for matching_fields mode)"
-    default: []
+    description: Field names used for matchingFields strategy
     required: false
-    
   - name: output_type
     type: string
-    description: "What to keep when combining"
-    enum: [keep_matches, keep_non_matches, keep_everything, enrich_input1, enrich_input2]
+    description: Output strategy for matchingFields mode
+    required: false
     default: keep_matches
+    enum: [keep_matches, keep_non_matches, keep_everything, enrich_input_1, enrich_input_2]
+  - name: include_any_unpaired_items
+    type: boolean
+    description: Keep unpaired rows in combineByPosition mode
     required: false
-
-  - name: clash_handling
+    default: false
+  - name: output
     type: string
-    description: "Which input to prioritize on field clash"
-    enum: [prefer_input1, prefer_input2, add_input_number]
-    default: prefer_input2
+    description: Branch selection when mode=choose
     required: false
-
+    default: input1
+    enum: [input1, input2, single_empty_item]
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "Append mode concatenates all items from both inputs"
-  - "Combine mode merges items based on combine_by setting"
-  - "Choose branch mode outputs data from one input only"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/'
+extras:
+  docs_slug: n8n-nodes-base.merge
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/
+  scrape_mode: deep_all_sections

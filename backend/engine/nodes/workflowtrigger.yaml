@@ -1,0 +1,55 @@
+type_id: WORKFLOW_TRIGGER
+description: The Workflow Trigger node gets triggered when a workflow is updated or
+  activated.
+ui:
+  display_name: Workflow Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 66
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: events
+  type: array
+  description: Lifecycle events to react to.
+  required: false
+  default: []
+- name: activationMode
+  type: string
+  description: Current activation mode.
+  required: false
+  default: manual
+  enum: [activate, update, manual]
+- name: workflow_id
+  type: string
+  description: Workflow identifier in payload.
+  required: false
+  default: workflow-1
+- name: current_workflow_id
+  type: string
+  description: Runtime workflow id used to enforce same-workflow triggering.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.workflowtrigger/'
+extras:
+  docs_slug: n8n-nodes-base.workflowtrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.workflowtrigger/
+  scrape_mode: deep_all_sections

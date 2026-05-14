@@ -1,0 +1,71 @@
+type_id: LOCAL_FILE_TRIGGER
+description: The Local File Trigger node starts a workflow when it detects changes
+  on the file system. These changes involve a file or folder getting added, changed,
+  or deleted.
+ui:
+  display_name: Local File Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 35
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: trigger_on
+  type: string
+  description: Watch a specific file or a folder.
+  required: false
+  default: file
+  constraints:
+    enum: [file, folder]
+- name: path
+  type: string
+  description: Path to watched file or folder.
+  required: false
+- name: events
+  type: array
+  description: Change events to emit for folder mode.
+  required: false
+  default: []
+- name: options
+  type: object
+  description: Trigger watcher options.
+  required: false
+  default: {}
+- name: ignore
+  type: string
+  description: Ignore substring/glob-like value for paths.
+  required: false
+- name: max_folder_depth
+  type: integer
+  description: Max watched folder depth (-1 for unlimited).
+  required: false
+  default: -1
+- name: emit_initial
+  type: boolean
+  description: Emit initial snapshot as events.
+  required: false
+  default: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.localfiletrigger/'
+extras:
+  docs_slug: n8n-nodes-base.localfiletrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.localfiletrigger/
+  scrape_mode: deep_all_sections

@@ -71,8 +71,11 @@ class CopilotGenerateRequest(BaseModel):
         description="Scenario or edit instruction used by the agent harness to draft or repair a workflow.",
     )
     critic_iterations: int = Field(
-        3,
-        description="Maximum LLM repair attempts after deterministic validation failures.",
+        2,
+        description=(
+            "Maximum LLM repair attempts after deterministic validation failures. "
+            "Default is 2 for better first-pass reliability with low added latency."
+        ),
     )
     # Optional editing context. When the user is iterating on an
     # existing workflow (fixing errors, adding nodes, renaming things)
@@ -100,5 +103,12 @@ class CopilotGenerateRequest(BaseModel):
         description=(
             "Canvas node id the user currently selected, used to resolve instructions "
             "like 'change this threshold'."
+        ),
+    )
+    compiler_mode: Optional[str] = Field(
+        "classic",
+        description=(
+            "Generation mode hint. Runtime currently uses the classic planner/validator/repair "
+            "harness for all modes; non-classic values are accepted for backward compatibility."
         ),
     )

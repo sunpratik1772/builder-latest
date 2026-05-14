@@ -1,0 +1,76 @@
+type_id: GUARDRAILS
+description: Use the Guardrails node to enforce safety, security, and content policies
+  on text. You can use it to validate user input *before* sending it to an AI model,
+  or to check the *output* from an AI model before using it in your workflow.
+ui:
+  display_name: Guardrails
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: ai
+      label: AI
+      order: 30
+      color: '#8B5CF6'
+    node_order: 28
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Passed items or sanitized output
+  optional: false
+- name: passed
+  type: object
+  description: Items that pass checks
+  optional: true
+- name: failed
+  type: object
+  description: Items that fail checks
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Guardrails operation.
+  required: false
+  default: check
+  enum:
+  - check
+  - checkTextForViolations
+  - sanitize
+  - sanitizeText
+- name: text_to_check
+  type: string
+  description: Text value to inspect.
+  required: false
+- name: text_field
+  type: string
+  description: Input field containing text when text_to_check is not set.
+  required: false
+  default: text
+- name: guardrails
+  type: array
+  description: Guardrail definitions list.
+  required: false
+  default: []
+- name: custom_system_message
+  type: string
+  description: Optional custom global guardrails instructions.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.guardrails/'
+extras:
+  docs_slug: n8n-nodes-langchain.guardrails
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.guardrails/
+  scrape_mode: deep_all_sections

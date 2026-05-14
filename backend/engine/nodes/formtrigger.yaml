@@ -1,0 +1,78 @@
+type_id: N8N_FORM_TRIGGER
+description: Use the n8n Form trigger to start a workflow when a user submits a form,
+  taking the input data from the form. The node generates the form web page for you
+  to use.
+ui:
+  display_name: n8n Form Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 44
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: authentication
+  type: string
+  description: Trigger authentication mode.
+  required: false
+  default: none
+  enum: [none, basicAuth]
+- name: path
+  type: string
+  description: Custom form path/slug.
+  required: false
+- name: formTitle
+  type: string
+  description: Form title shown to users.
+  required: false
+- name: formDescription
+  type: string
+  description: Form description/subtitle.
+  required: false
+- name: responseMode
+  type: string
+  description: When to respond to submit request.
+  required: false
+  default: onReceived
+  enum: [onReceived, lastNode, responseNode]
+- name: formFields
+  type: array
+  description: Trigger form elements definition.
+  required: false
+  default: []
+- name: options
+  type: object
+  description: Extra trigger options.
+  required: false
+  default: {}
+- name: expected_token
+  type: string
+  description: Expected authentication token for basic auth adapter mode.
+  required: false
+- name: auth_token
+  type: string
+  description: Provided authentication token for basic auth adapter mode.
+  required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/'
+extras:
+  docs_slug: n8n-nodes-base.formtrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/
+  scrape_mode: deep_all_sections

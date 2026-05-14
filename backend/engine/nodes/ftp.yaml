@@ -1,0 +1,79 @@
+type_id: FTP
+description: The FTP node is useful to access and upload files to an FTP or SFTP server.
+ui:
+  display_name: FTP
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 25
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: operation
+    type: string
+    description: FTP operation
+    required: false
+    default: list
+    enum: [list, download, upload, delete, rename]
+  - name: root_path
+    type: string
+    description: Local adapter root path representing remote server root
+    required: false
+  - name: path
+    type: string
+    description: Remote path
+    required: false
+  - name: output_field
+    type: string
+    description: Output field for downloaded bytes
+    required: false
+    default: data
+  - name: old_path
+    type: string
+    description: Source path for rename operation
+    required: false
+  - name: new_path
+    type: string
+    description: Destination path for rename operation
+    required: false
+  - name: binary_file
+    type: boolean
+    description: Upload from binary field or plain text content
+    required: false
+    default: true
+  - name: input_binary_field
+    type: string
+    description: Input field holding bytes for upload
+    required: false
+    default: data
+  - name: file_content
+    type: string
+    description: Plain text file content for upload
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ftp/'
+extras:
+  docs_slug: n8n-nodes-base.ftp
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ftp/
+  scrape_mode: deep_all_sections

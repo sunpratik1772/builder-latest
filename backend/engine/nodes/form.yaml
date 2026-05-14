@@ -1,0 +1,100 @@
+type_id: N8N_FORM
+description: Use the n8n Form node to create user-facing forms with multiple steps.
+  You can add other nodes with custom logic between to process user input. You must
+  start the workflow with the n8n Form Trigger node.
+ui:
+  display_name: n8n Form
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 43
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Form page mode.
+  required: false
+  default: page
+  constraints:
+    enum: [page, completion]
+- name: defineForm
+  type: string
+  description: Define form using fields collection or JSON.
+  required: false
+  default: fields
+  constraints:
+    enum: [fields, json]
+- name: formFields
+  type: array
+  description: Form fields definition when defineForm=fields.
+  required: false
+  default: []
+- name: jsonOutput
+  type: array
+  description: JSON form field definition when defineForm=json.
+  required: false
+  default: []
+- name: formTitle
+  type: string
+  description: Form page title.
+  required: false
+- name: formDescription
+  type: string
+  description: Form page subtitle/description.
+  required: false
+- name: respondWith
+  type: string
+  description: Completion response mode.
+  required: false
+  default: text
+  constraints:
+    enum: [text, redirect, showText, returnBinary]
+- name: completionTitle
+  type: string
+  description: Completion page title.
+  required: false
+- name: completionMessage
+  type: string
+  description: Completion page message text.
+  required: false
+- name: redirectUrl
+  type: string
+  description: Redirect URL for redirect mode.
+  required: false
+- name: responseText
+  type: string
+  description: Text/HTML payload for showText mode.
+  required: false
+- name: inputDataFieldName
+  type: string
+  description: Field containing binary data for returnBinary mode.
+  required: false
+  default: data
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/'
+extras:
+  docs_slug: n8n-nodes-base.form
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/
+  scrape_mode: deep_all_sections

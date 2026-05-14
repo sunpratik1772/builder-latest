@@ -1,0 +1,105 @@
+{
+  "workflow_name": "Flex 06 - LLM Multi-Pass",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "prompts",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n    {'topic': 'pricing strategy', 'context': 'SaaS SMB segment, churn risk medium'},\n    {'topic': 'support automation', 'context': 'Ticket volume increasing 14% monthly'},\n    {'topic': 'data quality', 'context': 'Duplicates found in 6% of records'},\n]"
+      }
+    },
+    {
+      "id": "llm_draft",
+      "type": "LLM_BASIC",
+      "config": {
+        "model": "gemini-2.5-flash",
+        "prompt": "Write two concise bullets on {{$json.topic}} using: {{$json.context}}",
+        "output_field": "draft",
+        "temperature": 0.2
+      }
+    },
+    {
+      "id": "llm_refine",
+      "type": "LLM_BASIC",
+      "config": {
+        "model": "gemini-2.5-flash",
+        "prompt": "Rewrite into one clear sentence: {{$json.draft}}",
+        "output_field": "refined",
+        "temperature": 0.1
+      }
+    },
+    {
+      "id": "aggregate",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "error_count = 0\nlines = ['# LLM Multi-pass Report', '']\nfor idx, row in enumerate(items):\n    draft = str(row.get('draft', ''))\n    refined = str(row.get('refined', ''))\n    if draft.startswith('[LLM error') or refined.startswith('[LLM error'):\n        error_count = error_count + 1\n    lines.append(f\"## Item {idx + 1}: {row.get('topic', 'unknown')}\")\n    lines.append(f'- Draft: {draft}')\n    lines.append(f'- Refined: {refined}')\n    lines.append('')\nresult = [{\n    'markdown': '\\n'.join(lines),\n    'llm_error_count': error_count,\n    'total_items': len(items),\n}]"
+      }
+    },
+    {
+      "id": "llm_to_csv",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "csv",
+        "put_output_file_in_field": "data",
+        "file_name": "llm_results"
+      }
+    },
+    {
+      "id": "write_llm_csv",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/llm_results.csv",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "write_llm_markdown",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/llm_report.md",
+        "input_binary_field": "markdown"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "prompts"
+    },
+    {
+      "from": "prompts",
+      "to": "llm_draft"
+    },
+    {
+      "from": "llm_draft",
+      "to": "llm_refine"
+    },
+    {
+      "from": "llm_refine",
+      "to": "aggregate"
+    },
+    {
+      "from": "llm_refine",
+      "to": "llm_to_csv"
+    },
+    {
+      "from": "llm_to_csv",
+      "to": "write_llm_csv"
+    },
+    {
+      "from": "aggregate",
+      "to": "write_llm_markdown"
+    }
+  ]
+}

@@ -30,6 +30,8 @@ If you're new here:
 Nothing in this file knows about specific node types. New nodes plug
 in via the registry — no edits needed here.
 """
+from __future__ import annotations
+
 import json
 import logging
 import re
@@ -108,8 +110,10 @@ def _assert_port_type(port: PortSpec, value: object) -> str | None:
         if not isinstance(value, str):
             return f"expected str, got {type(value).__name__}"
     elif port.type is PortType.OBJECT:
-        if not isinstance(value, dict):
-            return f"expected object/dict, got {type(value).__name__}"
+        # n8n-style nodes often pass lists of JSON objects between steps.
+        # Treat both dict and list as valid object payloads.
+        if not isinstance(value, (dict, list)):
+            return f"expected object/dict/list, got {type(value).__name__}"
     return None
 
 
@@ -321,16 +325,59 @@ def _wire_inputs(node: dict, edges: list[dict], ctx: RunContext) -> None:
         src, tgt = _edge_endpoints(edge)
         if tgt != dst:
             continue
-        incoming.append((src, edge.get("sourceHandle"), edge.get("targetHandle")))
+        incoming.append(
+            (
+                src,
+                edge.get(
+                    "sourceHandle",
+                    edge.get("from_port", edge.get("branch", edge.get("port"))),
+                ),
+                edge.get("targetHandle", edge.get("to_port")),
+            )
+        )
 
     if not incoming:
         return
 
+    def _norm_handle(raw) -> str | None:
+        if raw is None:
+            return None
+        h = str(raw).strip()
+        if not h:
+            return None
+        # Legacy edge annotations from converted n8n graphs.
+        # Examples: "output:0", "output_0", "0", "true", "false".
+        if h.startswith("output:"):
+            return "output" + h.split(":", 1)[1]
+        if h == "main":
+            return "true"
+        if h == "else":
+            return "false"
+        if h == "output_0":
+            return "output0"
+        if h == "output_1":
+            return "output1"
+        return h
+
     # Group by target handle. Default target: "input".
     by_target: dict[str, list] = {}
     for src, src_handle, tgt_handle in incoming:
-        key = tgt_handle or "input"
-        by_target.setdefault(key, []).append((src, src_handle))
+        key = _norm_handle(tgt_handle) or "input"
+        by_target.setdefault(key, []).append((src, _norm_handle(src_handle)))
+
+    # Compatibility fallback: many generated graphs omit explicit target
+    # handles for 2-input nodes. When all incoming edges collapse into the
+    # default "input", split them deterministically into input1/input2.
+    node_type = str(node.get("type", ""))
+    if (
+        node_type in {"MERGE", "COMPARE_DATASETS"}
+        and "input" in by_target
+        and len(by_target) == 1
+        and len(by_target["input"]) >= 2
+    ):
+        collapsed = by_target.pop("input")
+        by_target["input1"] = [collapsed[0]]
+        by_target["input2"] = collapsed[1:]
 
     for tgt_handle, srcs in by_target.items():
         merged: list = []

@@ -1,51 +1,53 @@
 type_id: XML
-description: "Parse and manipulate XML data"
-
+description: Use the XML node to convert data from and to XML.
 ui:
-  color: "#F59E0B"
-  icon: Code
+  display_name: XML
+  color: '#6B7280'
+  icon: Box
   palette:
     section:
       id: transform
       label: Transform
-      order: 20
-      color: "#A78BFA"
-    node_order: 19
-
+      order: 15
+      color: '#6366F1'
+    node_order: 67
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
 input_ports:
-  - name: input
-    type: object
-    description: "Items to process"
-    optional: false
-
+- name: input
+  type: object
+  description: Input items
+  optional: false
 output_ports:
-  - name: output
-    type: object
-    description: "Processed XML data"
-
+- name: output
+  type: object
+  description: Output items
+  optional: false
 params:
-  - name: operation
+  - name: mode
     type: string
-    description: "XML operation"
-    enum: [parse, stringify, extract]
-    default: parse
-    required: true
-    
-  - name: field_name
-    type: string
-    description: "Field containing XML string"
+    description: Conversion mode
     required: false
-    
-  - name: xpath
+    default: xmlToJson
+    enum: [jsonToxml, xmlToJson]
+  - name: dataPropertyName
     type: string
-    description: "XPath to extract"
+    description: Property containing source data or destination XML
     required: false
-
+    default: data
+  - name: options
+    type: object
+    description: XML conversion options
+    required: false
 semantics:
   requires: []
   provides: []
-
 constraints:
-  - "parse converts XML strings to objects"
-  - "stringify converts objects to XML strings"
-  - "extract pulls specific values using XPath"
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/'
+extras:
+  docs_slug: n8n-nodes-base.xml
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/
+  scrape_mode: deep_all_sections

@@ -1,0 +1,258 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "paul_graham_essays_converted_dbsherpa",
+  "name": "Paul Graham Essays (Converted)",
+  "version": "1.0.0",
+  "description": "Converted from n8n JSON via convert_n8n_to_dbsherpa.py",
+  "nodes": [
+    {
+      "id": "n01",
+      "type": "MANUAL_TRIGGER",
+      "label": "When clicking \"Execute Workflow\"",
+      "config": {
+        "n8n_type": "n8n-nodes-base.manualTrigger",
+        "parameters": {}
+      }
+    },
+    {
+      "id": "n02",
+      "type": "HTTP_REQUEST",
+      "label": "Fetch Essay List",
+      "config": {
+        "method": "GET",
+        "url": "http://www.paulgraham.com/articles.html"
+      }
+    },
+    {
+      "id": "n03",
+      "type": "NO_OP",
+      "label": "OpenAI Chat Model",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4o-mini"
+          },
+          "options": {}
+        }
+      }
+    },
+    {
+      "id": "n04",
+      "type": "HTML",
+      "label": "Extract essay names",
+      "config": {
+        "operation": "extractHtmlContent",
+        "extraction_values": {
+          "values": [
+            {
+              "key": "essay",
+              "attribute": "href",
+              "cssSelector": "table table a",
+              "returnArray": true,
+              "returnValue": "attribute"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n05",
+      "type": "SPLIT_OUT",
+      "label": "Split out into items",
+      "config": {
+        "field_to_split_out": "essay"
+      }
+    },
+    {
+      "id": "n06",
+      "type": "HTTP_REQUEST",
+      "label": "Fetch essay texts",
+      "config": {
+        "method": "GET",
+        "url": "=http://www.paulgraham.com/{{ $json.essay }}"
+      }
+    },
+    {
+      "id": "n07",
+      "type": "HTML",
+      "label": "Extract title",
+      "config": {
+        "operation": "extractHtmlContent",
+        "extraction_values": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": "title"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n08",
+      "type": "LLM_BASIC",
+      "label": "Summarization Chain",
+      "config": {
+        "model": "gpt-4o-mini",
+        "prompt": "Summarize the following text:\n\n{{ $json.data }}",
+        "system_prompt": "You summarize essays clearly and concisely."
+      }
+    },
+    {
+      "id": "n09",
+      "type": "SET",
+      "label": "Clean up",
+      "config": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7b337b47-a1c6-470e-881f-0c038b4917e5",
+              "name": "title",
+              "type": "string",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "id": "ca820521-4fff-4971-84b5-e6e2dbd8bb7a",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $json.response.text }}"
+            },
+            {
+              "id": "0fd9b5e3-44dd-49a3-82c1-3a4aa4698376",
+              "name": "url",
+              "type": "string",
+              "value": "=http://www.paulgraham.com/{{ $('Limit to first 3').first().json.essay }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "type": "MERGE",
+      "label": "Merge",
+      "config": {
+        "mode": "combine",
+        "combine_by": "combineByPosition"
+      }
+    },
+    {
+      "id": "n11",
+      "type": "NO_OP",
+      "label": "Default Data Loader",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "parameters": {
+          "options": {},
+          "jsonData": "={{ $('Extract Text Only').item.json.data }}",
+          "jsonMode": "expressionData"
+        }
+      }
+    },
+    {
+      "id": "n12",
+      "type": "NO_OP",
+      "label": "Recursive Character Text Splitter",
+      "config": {
+        "n8n_type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+        "parameters": {
+          "options": {},
+          "chunkSize": 6000
+        }
+      }
+    },
+    {
+      "id": "n13",
+      "type": "LIMIT",
+      "label": "Limit to first 3",
+      "config": {
+        "max_items": 3
+      }
+    },
+    {
+      "id": "n14",
+      "type": "HTML",
+      "label": "Extract Text Only",
+      "config": {
+        "operation": "extractHtmlContent",
+        "extraction_values": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "body",
+              "skipSelectors": "img,nav"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n10",
+      "to": "n09"
+    },
+    {
+      "from": "n07",
+      "to": "n10"
+    },
+    {
+      "from": "n02",
+      "to": "n04"
+    },
+    {
+      "from": "n13",
+      "to": "n06"
+    },
+    {
+      "from": "n14",
+      "to": "n08"
+    },
+    {
+      "from": "n06",
+      "to": "n07"
+    },
+    {
+      "from": "n06",
+      "to": "n14"
+    },
+    {
+      "from": "n03",
+      "to": "n08",
+      "sourceHandle": "ai_languageModel",
+      "targetHandle": "ai_languageModel"
+    },
+    {
+      "from": "n11",
+      "to": "n08",
+      "sourceHandle": "ai_document",
+      "targetHandle": "ai_document"
+    },
+    {
+      "from": "n04",
+      "to": "n05"
+    },
+    {
+      "from": "n08",
+      "to": "n10",
+      "targetHandle": "input2"
+    },
+    {
+      "from": "n05",
+      "to": "n13"
+    },
+    {
+      "from": "n01",
+      "to": "n02"
+    },
+    {
+      "from": "n12",
+      "to": "n11",
+      "sourceHandle": "ai_textSplitter",
+      "targetHandle": "ai_textSplitter"
+    }
+  ]
+}

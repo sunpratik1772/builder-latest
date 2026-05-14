@@ -1,0 +1,50 @@
+type_id: SSE_TRIGGER
+description: Server-Sent Events (SSE) is a server push technology enabling a client
+  to receive automatic updates from a server using HTTP connection. The SSE Trigger
+  node is used to receive server-sent events.
+ui:
+  display_name: SSE Trigger
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: '#0EA5E9'
+    node_order: 58
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports: []
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: url
+  type: string
+  description: URL to subscribe for SSE messages.
+  required: false
+- name: events
+  type: array
+  description: Captured SSE messages (raw strings or JSON objects).
+  required: false
+  default: []
+- name: emitted_items
+  type: array
+  description: Alias field for predefined emitted SSE payloads.
+  required: false
+  default: []
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssetrigger/'
+extras:
+  docs_slug: n8n-nodes-base.ssetrigger
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssetrigger/
+  scrape_mode: deep_all_sections

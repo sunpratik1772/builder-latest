@@ -22,11 +22,11 @@ from pathlib import Path
 from typing import Iterator
 
 from agent.harness.runner import AgentRunner
-from agent.harness.state import AgentPhase
 from agent.planner import Planner
 from agent.prompt_builder import PromptBuilder
 from agent.repair.auto_fixer import AutoFixer
 from agent.validator_adapter import ValidatorAdapter
+from .prompt_enhancer import PromptEnhancer
 from llm import GeminiAdapter, get_default_adapter
 
 
@@ -55,6 +55,7 @@ class WorkflowCopilot:
             validator=ValidatorAdapter(),
             auto_fixer=AutoFixer(),
         )
+        self._prompt_enhancer = PromptEnhancer()
         # Chat history is user/session state, not a process-global property.
         # The HTTP layer may cache this WorkflowCopilot for expensive planner
         # setup, so histories are keyed by explicit session_id. Calls without a
@@ -99,6 +100,7 @@ class WorkflowCopilot:
         current_workflow: dict | None = None,
         recent_errors: list[dict] | None = None,
         selected_node_id: str | None = None,
+        compiler_mode: str = "classic",
     ) -> dict:
         """Run the harness to completion and translate final state to the
         legacy response envelope.
@@ -107,8 +109,11 @@ class WorkflowCopilot:
         edit-mode: it receives the DAG + any attached errors and is
         asked to produce a targeted fix rather than a greenfield
         workflow."""
+        enhanced = self._prompt_enhancer.enhance(user_request)
+        effective_request = enhanced.enhanced_prompt
+
         state = self._runner.run(
-            user_request,
+            effective_request,
             max_attempts=iterations,
             current_workflow=current_workflow,
             recent_errors=recent_errors,
@@ -127,6 +132,13 @@ class WorkflowCopilot:
                 "attempts": state.attempts,
                 "validation": state.validation,
                 "auto_fixes_applied": state.auto_fixes_applied,
+                "canonicalization_changed": bool(state.canonicalization_applied),
+                "canonicalization_applied": state.canonicalization_applied,
+                "runtime_smoke_passed": state.runtime_smoke_passed,
+                "runtime_smoke_error": state.runtime_smoke_error,
+                "compiler_mode": "classic",
+                "compiler_mode_requested": compiler_mode,
+                "prompt_profile": enhanced.profile,
             }
         return {
             "success": bool(state.is_valid),
@@ -135,6 +147,13 @@ class WorkflowCopilot:
             "attempts": state.attempts,
             "validation": state.validation,
             "auto_fixes_applied": state.auto_fixes_applied,
+            "canonicalization_changed": bool(state.canonicalization_applied),
+            "canonicalization_applied": state.canonicalization_applied,
+            "runtime_smoke_passed": state.runtime_smoke_passed,
+            "runtime_smoke_error": state.runtime_smoke_error,
+            "compiler_mode": "classic",
+            "compiler_mode_requested": compiler_mode,
+            "prompt_profile": enhanced.profile,
         }
 
     def generate_with_critic_stream(
@@ -144,6 +163,7 @@ class WorkflowCopilot:
         current_workflow: dict | None = None,
         recent_errors: list[dict] | None = None,
         selected_node_id: str | None = None,
+        compiler_mode: str = "classic",
     ) -> Iterator[dict]:
         """Stream AgentEvents to the legacy dict shape the frontend already
         consumes. See `generate_with_critic` for the edit-mode contract.
@@ -152,11 +172,18 @@ class WorkflowCopilot:
         `/copilot/generate/stream`; keep frontend phase/status handling in
         sync with `agent/harness/state.py`.
         """
+        enhanced = self._prompt_enhancer.enhance(user_request)
+        effective_request = enhanced.enhanced_prompt
+
         for event in self._runner.stream(
-            user_request,
+            effective_request,
             max_attempts=iterations,
             current_workflow=current_workflow,
             recent_errors=recent_errors,
             selected_node_id=selected_node_id,
         ):
-            yield event.to_json()
+            payload = event.to_json()
+            payload["compiler_mode"] = "classic"
+            payload["compiler_mode_requested"] = compiler_mode
+            payload["prompt_profile"] = enhanced.profile
+            yield payload

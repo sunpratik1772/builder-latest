@@ -1,0 +1,41 @@
+type_id: NO_OP
+description: Use the No Operation, do nothing node when you don't want to perform
+  any operations. The purpose of this node is to make the workflow easier to read
+  and understand where the flow of data stops. This can help others visually get a
+  better understanding of the workflow.
+ui:
+  display_name: No Operation, do nothing
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 46
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params: []
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/'
+extras:
+  docs_slug: n8n-nodes-base.noop
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/
+  scrape_mode: deep_all_sections

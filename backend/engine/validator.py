@@ -278,47 +278,58 @@ def _validate_topology(
         if dst in incoming:
             incoming[dst] += 1
 
-    # Exactly one ALERT_TRIGGER, first in the graph, id 'n01'.
-    alert_triggers = [nid for nid, n in nodes_by_id.items() if n.get("type") == "ALERT_TRIGGER"]
-    if not alert_triggers:
-        result.add(_VC.NO_ENTRY, "Workflow must contain an ALERT_TRIGGER node.")
-    elif len(alert_triggers) > 1:
-        result.add(
-            _VC.MULTIPLE_ENTRIES,
-            f"Workflow has {len(alert_triggers)} ALERT_TRIGGER nodes; expected exactly one.",
-        )
-    else:
-        entry_id = alert_triggers[0]
-        if entry_id != "n01":
-            result.add(
-                _VC.WRONG_ENTRY_ID,
-                f"ALERT_TRIGGER must have id 'n01' (found '{entry_id}').",
-                node_id=entry_id,
-                field="id",
-            )
-        if incoming.get(entry_id, 0) > 0:
-            result.add(
-                _VC.ENTRY_HAS_INPUT,
-                "ALERT_TRIGGER must be the first node; it has incoming edges.",
-                node_id=entry_id,
-            )
+    # Legacy surveillance profile required ALERT_TRIGGER + REPORT_OUTPUT.
+    # In the n8n-style runtime, those node types may not exist; switch to
+    # adaptive topology checks based on the active registry.
+    has_legacy_entry = "ALERT_TRIGGER" in NODE_SPECS
+    has_legacy_exit = "REPORT_OUTPUT" in NODE_SPECS
 
-    # At least one REPORT_OUTPUT at the exit.
-    report_nodes = [nid for nid, n in nodes_by_id.items() if n.get("type") == "REPORT_OUTPUT"]
-    if not report_nodes:
-        result.add(
-            _VC.NO_EXIT,
-            "Workflow must end with a REPORT_OUTPUT node.",
-            severity="warning",
-        )
-    else:
-        for nid in report_nodes:
-            if outgoing.get(nid, 0) > 0:
+    if has_legacy_entry:
+        alert_triggers = [nid for nid, n in nodes_by_id.items() if n.get("type") == "ALERT_TRIGGER"]
+        if not alert_triggers:
+            result.add(_VC.NO_ENTRY, "Workflow must contain an ALERT_TRIGGER node.")
+        elif len(alert_triggers) > 1:
+            result.add(
+                _VC.MULTIPLE_ENTRIES,
+                f"Workflow has {len(alert_triggers)} ALERT_TRIGGER nodes; expected exactly one.",
+            )
+        else:
+            entry_id = alert_triggers[0]
+            if entry_id != "n01":
                 result.add(
-                    _VC.EXIT_HAS_OUTPUT,
-                    "REPORT_OUTPUT must be a terminal node; it has outgoing edges.",
-                    node_id=nid,
+                    _VC.WRONG_ENTRY_ID,
+                    f"ALERT_TRIGGER must have id 'n01' (found '{entry_id}').",
+                    node_id=entry_id,
+                    field="id",
                 )
+            if incoming.get(entry_id, 0) > 0:
+                result.add(
+                    _VC.ENTRY_HAS_INPUT,
+                    "ALERT_TRIGGER must be the first node; it has incoming edges.",
+                    node_id=entry_id,
+                )
+    else:
+        # Generic mode: at least one root node should exist.
+        roots = [nid for nid in nodes_by_id if incoming.get(nid, 0) == 0]
+        if not roots:
+            result.add(_VC.NO_ENTRY, "Workflow should have at least one entry node (no incoming edges).")
+
+    if has_legacy_exit:
+        report_nodes = [nid for nid, n in nodes_by_id.items() if n.get("type") == "REPORT_OUTPUT"]
+        if not report_nodes:
+            result.add(
+                _VC.NO_EXIT,
+                "Workflow must end with a REPORT_OUTPUT node.",
+                severity="warning",
+            )
+        else:
+            for nid in report_nodes:
+                if outgoing.get(nid, 0) > 0:
+                    result.add(
+                        _VC.EXIT_HAS_OUTPUT,
+                        "REPORT_OUTPUT must be a terminal node; it has outgoing edges.",
+                        node_id=nid,
+                    )
 
     # Orphan detection — every node except ALERT_TRIGGER should have an
     # upstream edge, and every non-terminal node should have a downstream
@@ -326,7 +337,7 @@ def _validate_topology(
     # orphans are legal while a user is mid-build.
     for nid, node in nodes_by_id.items():
         node_type = node.get("type")
-        if node_type == "ALERT_TRIGGER":
+        if node_type in {"ALERT_TRIGGER", "MANUAL_TRIGGER", "WEBHOOK", "SCHEDULE_TRIGGER", "CHAT_TRIGGER"}:
             continue
         if incoming.get(nid, 0) == 0:
             result.add(
@@ -459,6 +470,110 @@ def _validate_node_config(node: dict, result: ValidationResult) -> None:
                     node_id=node_id,
                     field=f"config.{param.name}",
                 )
+    _validate_runtime_compat(node, result)
+
+
+def _validate_runtime_compat(node: dict, result: ValidationResult) -> None:
+    """Catch config dialects that parse but fail at runtime handlers."""
+    node_id = node.get("id", "<unknown>")
+    node_type = node.get("type")
+    config = node.get("config") or {}
+    if not isinstance(config, dict):
+        return
+
+    if node_type == "CODE":
+        language = str(config.get("language", "")).strip().lower()
+        js_code = str(config.get("jsCode", config.get("js_code", "")) or "").strip()
+        py_code = str(config.get("pythonCode", config.get("python_code", "")) or "").strip()
+        # Runtime executes Python for CODE nodes; JavaScript is only allowed as
+        # a bridge when jsCode starts with "py:" and contains Python content.
+        if language in {"javascript", "js"} and js_code and not js_code.startswith("py:"):
+            result.add(
+                _VC.BAD_PARAM_TYPE,
+                (
+                    f"Node '{node_id}' uses JavaScript CODE that is not runtime-compatible. "
+                    "Use language='python' with pythonCode, or jsCode prefixed with 'py:' containing Python."
+                ),
+                node_id=node_id,
+                field="config.language",
+            )
+        if "import pandas" in py_code or "xlsxwriter" in py_code:
+            result.add(
+                _VC.BAD_PARAM_TYPE,
+                (
+                    f"Node '{node_id}' CODE imports pandas/xlsxwriter, which is not guaranteed in runtime. "
+                    "Use SPREADSHEET_FILE or CONVERT_TO_FILE + READ_WRITE_FILES_FROM_DISK for artifacts."
+                ),
+                node_id=node_id,
+                field="config.pythonCode",
+            )
+
+    if node_type == "SWITCH" and str(config.get("mode", "rules")).lower() == "rules":
+        rules = ((config.get("rules") or {}).get("values") or [])
+        if isinstance(rules, list):
+            for ridx, rule in enumerate(rules):
+                if not isinstance(rule, dict):
+                    continue
+                raw = rule.get("conditions")
+                if isinstance(raw, list):
+                    result.add(
+                        _VC.BAD_PARAM_TYPE,
+                        (
+                            f"Node '{node_id}' rules[{ridx}] uses legacy condition list form. "
+                            "Use {'conditions': {'combinator':'and|or','conditions':[...runtime conditions...]}}."
+                        ),
+                        node_id=node_id,
+                        field=f"config.rules.values[{ridx}].conditions",
+                    )
+                    continue
+                if isinstance(raw, dict):
+                    inner = raw.get("conditions")
+                    if isinstance(inner, list):
+                        for cidx, cond in enumerate(inner):
+                            if not isinstance(cond, dict):
+                                continue
+                            if "leftValue" in cond and isinstance(cond.get("operator"), dict):
+                                continue
+                            result.add(
+                                _VC.BAD_PARAM_TYPE,
+                                (
+                                    f"Node '{node_id}' rules[{ridx}] condition[{cidx}] uses legacy field/operator/value form. "
+                                    "Use leftValue/rightValue/operator.operation."
+                                ),
+                                node_id=node_id,
+                                field=f"config.rules.values[{ridx}].conditions.conditions[{cidx}]",
+                            )
+
+    if node_type == "FILTER":
+        raw = config.get("conditions")
+        if isinstance(raw, list):
+            result.add(
+                _VC.BAD_PARAM_TYPE,
+                (
+                    f"Node '{node_id}' uses legacy FILTER conditions list form. "
+                    "Use {'conditions': {'combinator':'and|or','conditions':[...runtime conditions...]}}."
+                ),
+                node_id=node_id,
+                field="config.conditions",
+            )
+            return
+        if isinstance(raw, dict):
+            inner = raw.get("conditions")
+            if isinstance(inner, list):
+                for cidx, cond in enumerate(inner):
+                    if not isinstance(cond, dict):
+                        continue
+                    if "leftValue" in cond and isinstance(cond.get("operator"), dict):
+                        continue
+                    result.add(
+                        _VC.BAD_PARAM_TYPE,
+                        (
+                            f"Node '{node_id}' FILTER condition[{cidx}] uses legacy field/operator/value form. "
+                            "Use leftValue/rightValue/operator.operation."
+                        ),
+                        node_id=node_id,
+                        field=f"config.conditions.conditions[{cidx}]",
+                    )
 
 
 # ---------------------------------------------------------------------------

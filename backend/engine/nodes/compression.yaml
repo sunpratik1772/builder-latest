@@ -1,0 +1,72 @@
+type_id: COMPRESSION
+description: Use the Compression node to compress and decompress files. Supports Zip
+  and Gzip formats.
+ui:
+  display_name: Compression
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 6
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Compress or decompress binary payload(s).
+  required: false
+  default: decompress
+  constraints:
+    enum: [compress, decompress]
+- name: binaryPropertyName
+  type: string
+  description: Comma-separated input binary field names.
+  required: false
+  default: data
+- name: output_format
+  type: string
+  description: Output format for compress operation.
+  required: false
+  default: zip
+  constraints:
+    enum: [zip, gzip]
+- name: file_name
+  type: string
+  description: Optional file name metadata for produced archive.
+  required: false
+- name: put_output_file_in_field
+  type: string
+  description: Field prefix used for generated binary output.
+  required: false
+  default: data
+- name: output_prefix
+  type: string
+  description: Prefix used for decompressed output fields.
+  required: false
+  default: file_
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.compression/'
+extras:
+  docs_slug: n8n-nodes-base.compression
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.compression/
+  scrape_mode: deep_all_sections

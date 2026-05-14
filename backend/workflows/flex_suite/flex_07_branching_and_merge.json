@@ -1,0 +1,203 @@
+{
+  "workflow_name": "Flex 07 - Branching and Merge",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "gen_leads",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n    {'lead': 'Acme', 'score': 91, 'channel': 'enterprise'},\n    {'lead': 'BetaCo', 'score': 77, 'channel': 'smb'},\n    {'lead': 'CafeNow', 'score': 62, 'channel': 'smb'},\n    {'lead': 'DeltaOps', 'score': 88, 'channel': 'enterprise'},\n]"
+      }
+    },
+    {
+      "id": "quality_gate",
+      "type": "IF",
+      "config": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{$json.score}}",
+              "rightValue": 70,
+              "operator": {
+                "operation": "greaterThan"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "hot_routing",
+      "type": "SWITCH",
+      "config": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.channel}}",
+                    "rightValue": "enterprise",
+                    "operator": {
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.channel}}",
+                    "rightValue": "smb",
+                    "operator": {
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "fallback_output": "none"
+      }
+    },
+    {
+      "id": "tag_enterprise",
+      "type": "SET",
+      "config": {
+        "json_output": {
+          "lead": "={{ $json.lead }}",
+          "score": "={{ $json.score }}",
+          "channel": "={{ $json.channel }}",
+          "segment": "enterprise_hot"
+        }
+      }
+    },
+    {
+      "id": "tag_smb",
+      "type": "SET",
+      "config": {
+        "json_output": {
+          "lead": "={{ $json.lead }}",
+          "score": "={{ $json.score }}",
+          "channel": "={{ $json.channel }}",
+          "segment": "smb_hot"
+        }
+      }
+    },
+    {
+      "id": "tag_cold",
+      "type": "SET",
+      "config": {
+        "json_output": {
+          "lead": "={{ $json.lead }}",
+          "score": "={{ $json.score }}",
+          "channel": "={{ $json.channel }}",
+          "segment": "cold"
+        }
+      }
+    },
+    {
+      "id": "merge_hot",
+      "type": "MERGE",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "merge_all",
+      "type": "MERGE",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "to_csv",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "csv",
+        "put_output_file_in_field": "data",
+        "file_name": "lead_segments"
+      }
+    },
+    {
+      "id": "write_csv",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/flex_outputs/lead_segments.csv",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "gen_leads"
+    },
+    {
+      "from": "gen_leads",
+      "to": "quality_gate"
+    },
+    {
+      "from": "quality_gate",
+      "to": "hot_routing",
+      "sourceHandle": "true"
+    },
+    {
+      "from": "quality_gate",
+      "to": "tag_cold",
+      "sourceHandle": "false"
+    },
+    {
+      "from": "hot_routing",
+      "to": "tag_enterprise",
+      "sourceHandle": "output0"
+    },
+    {
+      "from": "hot_routing",
+      "to": "tag_smb",
+      "sourceHandle": "output1"
+    },
+    {
+      "from": "tag_enterprise",
+      "to": "merge_hot",
+      "targetHandle": "input1"
+    },
+    {
+      "from": "tag_smb",
+      "to": "merge_hot",
+      "targetHandle": "input2"
+    },
+    {
+      "from": "merge_hot",
+      "to": "merge_all",
+      "targetHandle": "input1"
+    },
+    {
+      "from": "tag_cold",
+      "to": "merge_all",
+      "targetHandle": "input2"
+    },
+    {
+      "from": "merge_all",
+      "to": "to_csv"
+    },
+    {
+      "from": "to_csv",
+      "to": "write_csv"
+    }
+  ]
+}

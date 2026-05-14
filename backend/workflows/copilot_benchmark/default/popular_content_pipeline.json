@@ -1,0 +1,187 @@
+{
+  "nodes": [
+    {
+      "id": "n01_manual_trigger",
+      "type": "MANUAL_TRIGGER",
+      "label": "Manual Trigger",
+      "config": {
+        "emitted_items": [
+          {
+            "article_id": "article_1",
+            "snippet": "Recent market trends indicate a strong bullish sentiment in tech stocks, driven by AI advancements and robust Q3 earnings reports. Investors are reallocating capital towards growth sectors.",
+            "keywords": [
+              "tech stocks",
+              "AI",
+              "bullish",
+              "Q3 earnings"
+            ]
+          },
+          {
+            "article_id": "article_2",
+            "snippet": "The latest inflation data shows a slight increase, prompting central banks to consider tighter monetary policies. This could impact bond yields and consumer spending in the coming months.",
+            "keywords": [
+              "inflation",
+              "central banks",
+              "monetary policy",
+              "bond yields"
+            ]
+          },
+          {
+            "article_id": "article_3",
+            "snippet": "New regulations in the cryptocurrency market are expected to bring more stability but might also stifle innovation. Major exchanges are preparing for compliance audits.",
+            "keywords": [
+              "cryptocurrency",
+              "regulations",
+              "market stability",
+              "compliance"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "n03_summarize_articles",
+      "type": "LLM_BASIC",
+      "label": "Summarize Articles",
+      "config": {
+        "prompt": "Summarize the following article snippet, focusing on key market insights and trends: {{ $json.snippet }}",
+        "system_prompt": "You are a concise, accurate summarizer of financial news.",
+        "output_field": "summary",
+        "model": "gemini-2.5-flash",
+        "temperature": 0.2
+      }
+    },
+    {
+      "id": "n04_split_for_social_posts",
+      "type": "SPLIT_IN_BATCHES",
+      "label": "Split for Social Posts",
+      "config": {
+        "batch_size": 1
+      }
+    },
+    {
+      "id": "n05_draft_social_posts",
+      "type": "LLM_BASIC",
+      "label": "Draft Social Posts",
+      "config": {
+        "prompt": "Based on this summary: {{ $json.summary }}, draft a concise and engaging social media post (e.g., for Twitter or LinkedIn). Include relevant keywords: {{ $json.keywords }}. Keep it under 280 characters.",
+        "system_prompt": "You are a social media manager drafting posts for financial news. Be engaging and concise.",
+        "output_field": "social_post_draft",
+        "model": "gemini-2.5-flash",
+        "temperature": 0.7
+      }
+    },
+    {
+      "id": "n06_merge_social_posts",
+      "type": "MERGE",
+      "label": "Merge Social Posts",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "n07_calculate_quality_scores",
+      "type": "CODE",
+      "label": "Calculate Quality Scores",
+      "config": {
+        "language": "pythonNative",
+        "pythonCode": "import pandas as pd\n\ndef calculate_score(post, keywords):\n    score = 0\n    if post:\n        score += len(post) / 280 * 5 # Score based on length utilization\n        for keyword in keywords:\n            if keyword.lower() in post.lower():\n                score += 2 # Bonus for keyword presence\n    return round(min(score, 10), 2)\n\noutput_items = []\nfor item in items:\n    social_post = item.get('social_post_draft', '')\n    keywords = item.get('keywords', [])\n    quality_score = calculate_score(social_post, keywords)\n    item['quality_score'] = quality_score\n    output_items.append(item)\n\nreturn output_items"
+      }
+    },
+    {
+      "id": "n08_convert_quality_scores_to_csv",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Quality Scores to CSV",
+      "config": {
+        "operation": "csv",
+        "file_name": "quality_scores",
+        "put_output_file_in_field": "data"
+      }
+    },
+    {
+      "id": "n09_save_quality_scores",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Quality Scores CSV",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/quality_scores.csv",
+        "input_binary_field": "data"
+      }
+    },
+    {
+      "id": "n10_synthesize_final_report",
+      "type": "LLM_BASIC",
+      "label": "Synthesize Final Report",
+      "config": {
+        "prompt": "Here are the original articles, their summaries, drafted social posts, and quality scores:\n\nOriginal Articles: {{ JSON.stringify($node[\"n01_manual_trigger\"].json, null, 2) }}\n\nProcessed Content (Summaries, Social Posts, Quality Scores): {{ JSON.stringify($node[\"n07_calculate_quality_scores\"].json, null, 2) }}\n\nGenerate a comprehensive final report summarizing the content processing workflow, highlighting key insights from the articles, the effectiveness of the social posts, and the overall quality assessment. Provide actionable recommendations for improving social post quality.",
+        "system_prompt": "You are an analytical report writer for a content marketing team. Your goal is to provide a clear, insightful report on content performance and suggest improvements.",
+        "output_field": "final_report_text",
+        "model": "gemini-2.5-flash",
+        "temperature": 0.3
+      }
+    },
+    {
+      "id": "n11_convert_final_report_to_txt",
+      "type": "CONVERT_TO_FILE",
+      "label": "Convert Final Report to TXT",
+      "config": {
+        "operation": "text",
+        "file_name": "final_report",
+        "put_output_file_in_field": "data",
+        "text": "{{ $json.final_report_text }}"
+      }
+    },
+    {
+      "id": "n12_save_final_report",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "label": "Save Final Report TXT",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/tmp/final_report.txt",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n01_manual_trigger",
+      "to": "n03_summarize_articles"
+    },
+    {
+      "from": "n03_summarize_articles",
+      "to": "n04_split_for_social_posts"
+    },
+    {
+      "from": "n04_split_for_social_posts",
+      "to": "n05_draft_social_posts"
+    },
+    {
+      "from": "n05_draft_social_posts",
+      "to": "n06_merge_social_posts"
+    },
+    {
+      "from": "n06_merge_social_posts",
+      "to": "n07_calculate_quality_scores"
+    },
+    {
+      "from": "n07_calculate_quality_scores",
+      "to": "n08_convert_quality_scores_to_csv"
+    },
+    {
+      "from": "n08_convert_quality_scores_to_csv",
+      "to": "n09_save_quality_scores"
+    },
+    {
+      "from": "n07_calculate_quality_scores",
+      "to": "n10_synthesize_final_report"
+    },
+    {
+      "from": "n10_synthesize_final_report",
+      "to": "n11_convert_final_report_to_txt"
+    },
+    {
+      "from": "n11_convert_final_report_to_txt",
+      "to": "n12_save_final_report"
+    }
+  ]
+}
