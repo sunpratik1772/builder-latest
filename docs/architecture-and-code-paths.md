@@ -4,14 +4,14 @@
 
 ```mermaid
 flowchart LR
-  UI[frontend Studio] --> API[backend/app FastAPI]
-  API --> RUN[/run dag_runner]
-  RUN --> REG[engine/registry NODE_SPECS]
-  REG --> H[engine/nodes/*.py handlers]
-  H --> MCP[mcp_bridge HTTP]
-  H --> LLM[Gemini via agent node]
-  API --> COP[/copilot workflow_generator]
-  COP --> PIPE[orchestrator_pipeline + contracts]
+  UI["Studio UI"] --> API["FastAPI app"]
+  API --> RUN["POST /run"]
+  RUN --> REG["registry NODE_SPECS"]
+  REG --> H["node handlers"]
+  H --> MCP["MCP bridge HTTP"]
+  H --> LLM["agent node Gemini"]
+  API --> COP["Copilot API"]
+  COP --> PIPE["orchestrator + contracts"]
 ```
 
 1. User builds a DAG in React (`frontend/src/components/WorkflowCanvas`).
