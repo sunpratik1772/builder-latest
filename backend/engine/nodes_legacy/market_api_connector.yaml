@@ -1,0 +1,67 @@
+type_id: MARKET_API_CONNECTOR
+description: Fetch communications rows (and other demo datasets) with comms-scoped filters — participant, trader, keyword, and time window.
+ui:
+  display_name: market_api_connector
+  color: "#10B981"
+  icon: PlugZap
+  palette:
+    section:
+      id: integration
+      label: Integration
+      order: 30
+      color: "#10B981"
+    node_order: 3
+input_ports: []
+output_ports:
+  - name: output
+    type: object
+    description: API-scoped rows
+params:
+  - name: datasets
+    type: array
+    description: Datasets to return from the API result
+    default: [comms_messages]
+    required: false
+  - name: output_columns
+    type: string_list
+    widget: chips
+    description: Columns to output from the selected dataset(s). Leave empty for all schema columns.
+    required: false
+  - name: db_path
+    type: string
+    description: Optional SQLite database path
+    required: false
+  - name: alert_id
+    type: string
+    description: Optional alert id override (resolves alert context)
+    required: false
+  - name: participant_id
+    type: string
+    description: Filter comms by participant id
+    required: false
+  - name: trader_id
+    type: string
+    description: Filter comms by trader id
+    required: false
+  - name: keyword
+    type: string
+    description: Keyword filter (matches comms keyword or message text)
+    required: false
+  - name: start_time
+    type: string
+    description: Inclusive start of message time window
+    required: false
+  - name: end_time
+    type: string
+    description: Inclusive end of message time window
+    required: false
+  - name: limit
+    type: integer
+    description: Optional maximum number of rows per selected dataset
+    default: 0
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+  - Comms filters apply to comms_messages; use DB_MARKET_CONNECTOR / DB_SOLR_CONNECTOR for ticks and core tables.

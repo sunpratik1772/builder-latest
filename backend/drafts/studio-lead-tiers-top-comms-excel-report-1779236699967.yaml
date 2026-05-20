@@ -1,0 +1,167 @@
+schema_version: '1.0'
+workflow_id: studio-leads-comms-excel-report
+name: "Studio: Lead tiers + Top Comms \u2192 Excel report"
+version: '1.0'
+description: Scores leads, filters A/B tiers, generates AI report, publishes to Confluence,
+  creates Jira follow-ups, and exports qualified leads and top 20 comms to a multi-tab
+  Excel file.
+nodes:
+- id: start
+  type: manual_trigger
+  label: Start
+  config: {}
+  position:
+    x: 40
+    y: 300
+- id: leads
+  type: csv_extract
+  label: Leads
+  config:
+    source: leads.csv
+  position:
+    x: 240
+    y: 300
+- id: tier_code
+  type: code
+  label: 'Starlark: priority tiers'
+  config:
+    code_summary: "Assigns each sales lead a letter tier from its numeric score: A\
+      \ for 85+, B for 70\u201384, C below 70. Also marks whether the lead is qualified\
+      \ for outreach so marketing can filter the list without reading raw scores."
+    code: "def tier_rows(rows):\n    out = []\n    for r in rows:\n        score =\
+      \ r.get(\"score\", 0)\n        if score >= 85:\n            tier = \"A\"\n \
+      \       elif score >= 70:\n            tier = \"B\"\n        else:\n       \
+      \     tier = \"C\"\n        out.append({\n            \"lead_id\": r.get(\"\
+      lead_id\", \"\"),\n            \"company\": r.get(\"company\", \"\"),\n    \
+      \        \"region\": r.get(\"region\", \"\"),\n            \"score\": score,\n\
+      \            \"stage\": r.get(\"stage\", \"\"),\n            \"tier\": tier,\n\
+      \            \"qualified\": tier == \"A\" or tier == \"B\",\n        })\n  \
+      \  return out\n\noutput = tier_rows(input_data[\"rows\"])"
+  position:
+    x: 480
+    y: 300
+- id: filter_ab
+  type: filter
+  label: Keep A and B tiers
+  config:
+    expression: row.qualified == true
+  position:
+    x: 700
+    y: 300
+- id: rank
+  type: sort
+  label: By score
+  config:
+    sortBy: score
+    order: desc
+  position:
+    x: 920
+    y: 300
+- id: ai_report
+  type: agent
+  label: 'AI: Confluence report body'
+  config:
+    prompt: You are a sales operations analyst writing for Confluence.
+    task: 'Summarize the qualified lead list: count by tier and region, highlight
+      top 2 companies, and list 3 recommended next actions. Use markdown headings.'
+    perRow: false
+    emitPublishRow: true
+    pageTitle: Studio qualified leads report
+    model: gemini-2.5-flash
+  position:
+    x: 1140
+    y: 300
+- id: publish
+  type: mcp
+  label: 'MCP: publish to Confluence'
+  config:
+    integration: studio_bridge
+    tool: confluence_publish_report
+    confluenceSpaceKey: MFS
+    params: {}
+  position:
+    x: 1360
+    y: 300
+- id: mcp_jira
+  type: mcp
+  label: 'MCP: Jira follow-ups'
+  config:
+    integration: studio_bridge
+    tool: jira_create_issue
+    params:
+      project: DEMO
+      issue_type: Task
+  position:
+    x: 1580
+    y: 300
+- id: comms_data
+  type: csv_extract
+  label: Comms Data (Transactions)
+  config:
+    source: transactions.csv
+  position:
+    x: 240
+    y: 500
+- id: sort_comms
+  type: sort
+  label: Sort Comms by Amount
+  config:
+    sortBy: amount
+    order: desc
+  position:
+    x: 480
+    y: 500
+- id: limit_comms
+  type: code
+  label: Top 20 Comms
+  config:
+    code: return rows[:20]
+  position:
+    x: 700
+    y: 500
+- id: select_comms_cols
+  type: select_columns
+  label: Select Comms Columns
+  config:
+    columns: date,merchant,category,amount
+  position:
+    x: 920
+    y: 500
+- id: export
+  type: excel_output
+  label: Leads & Comms Excel
+  config:
+    filename: studio_leads_report.xlsx
+    tabNames:
+    - Qualified Leads
+    - Top 20 Comms
+  position:
+    x: 1140
+    y: 500
+edges:
+- from: start
+  to: leads
+- from: leads
+  to: tier_code
+- from: tier_code
+  to: filter_ab
+- from: filter_ab
+  to: rank
+- from: rank
+  to: ai_report
+- from: ai_report
+  to: publish
+- from: publish
+  to: mcp_jira
+- from: start
+  to: comms_data
+- from: comms_data
+  to: sort_comms
+- from: sort_comms
+  to: limit_comms
+- from: limit_comms
+  to: select_comms_cols
+- from: rank
+  to: export
+- from: select_comms_cols
+  to: export

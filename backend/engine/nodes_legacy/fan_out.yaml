@@ -1,0 +1,50 @@
+type_id: FAN_OUT
+description: Duplicate one input stream into configurable parallel branch outputs.
+ui:
+  display_name: Fan Out
+  color: '#F59E0B'
+  icon: GitBranch
+  palette:
+    section:
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 12
+input_ports:
+- name: input
+  type: object
+  description: Input items to copy to each branch
+  optional: true
+output_ports:
+- name: output
+  type: object
+  description: Original input items
+  optional: false
+params:
+- name: branch_count
+  type: integer
+  description: Number of numbered outputs to create as output1, output2, etc.
+  required: false
+  default: 2
+- name: branchCount
+  type: integer
+  description: CamelCase alias for branch_count
+  required: false
+- name: branches
+  type: string
+  description: Optional comma-separated branch names also written as node scoped outputs
+  required: false
+- name: emit_context
+  type: boolean
+  description: Emit alert context when no input items are provided
+  required: false
+  default: true
+semantics:
+  requires: []
+  provides:
+  - output1
+  - output2
+  - output3
+constraints:
+- Use this node to make intentional parallel branch splits explicit in workflow graphs.

@@ -1,7 +1,7 @@
 /**
  * Theme (dark/light) — tiny Zustand store + a hook to mirror the
  * choice onto `<html data-theme>` so CSS variables in globals.css
- * pick it up. Persisted to localStorage. Default = 'dark'.
+ * pick it up. Persisted to localStorage. Default = 'light' (Cursor cream canvas).
  *
  * Components: read `useThemeStore((s) => s.theme)` and call
  * `s.setTheme(...)` / `s.toggle()`. The Topbar's theme switcher is
@@ -21,14 +21,14 @@ interface ThemeStore {
 const STORAGE_KEY = 'dbsherpa:theme'
 
 function readInitial(): Theme {
-  if (typeof window === 'undefined') return 'dark'
+  if (typeof window === 'undefined') return 'light'
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY)
     if (saved === 'dark' || saved === 'light') return saved
   } catch {
     // ignore; fall back to default
   }
-  return 'dark'
+  return 'light'
 }
 
 export const useThemeStore = create<ThemeStore>((set, get) => ({
@@ -49,5 +49,12 @@ export function useApplyTheme(): void {
   useEffect(() => {
     if (typeof document === 'undefined') return
     document.documentElement.setAttribute('data-theme', theme)
+    const favicon = document.querySelector<HTMLLinkElement>('link#app-favicon')
+    if (favicon) {
+      favicon.href =
+        theme === 'dark'
+          ? '/brand/dbsherpa-logo-dark.png'
+          : '/brand/dbsherpa-logo-light.png'
+    }
   }, [theme])
 }

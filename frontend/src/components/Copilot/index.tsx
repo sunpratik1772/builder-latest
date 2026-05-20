@@ -17,92 +17,30 @@
  */
 import { useState, useRef, useEffect } from 'react'
 import ResizeHandle from '../ResizeHandle'
-import type { LucideIcon } from 'lucide-react'
 import {
-  Sparkles,
-  Brain,
-  ListChecks,
-  Hammer,
-  Search,
-  Wand2,
-  Wrench,
-  CheckCircle2,
-  XCircle,
-  Check,
-  X as XIcon,
+  ArcIcon,
   ArrowUp,
+  GitMerge,
+  Hammer,
   MessageSquare,
-} from 'lucide-react'
+  Wrench,
+  X as XIcon,
+} from '../../icons/arc'
+import ThinkingBlock from './ThinkingBlock'
+import { SherpaMark } from '../SherpaMark'
+import type { ThinkingStep } from './thinkingTypes'
+import { AgentIdleWave } from './AgentChrome'
 import { useWorkflowStore } from '../../store/workflowStore'
 import { api } from '../../services/api'
 import type { CopilotGuardrailsPayload } from '../../services/api'
 import type {
   CopilotMessage,
   CopilotStreamEvent,
-  CopilotPhase,
   CopilotErrorHint,
+  Workflow,
   RunLogEntry,
   ValidationIssue,
 } from '../../types'
-
-const PHASE_LABEL: Record<CopilotPhase, string> = {
-  understanding: 'Understanding the problem',
-  planning: 'Retrieving skills & contracts',
-  generating: 'Drafting workflow',
-  auto_fixing: 'Deterministic auto-fix',
-  critiquing: 'Validating & repairing',
-  finalizing: 'Finalizing workflow',
-  complete: 'Workflow generated',
-  error: 'Error',
-}
-
-const PHASE_ICON: Record<CopilotPhase, LucideIcon> = {
-  understanding: Brain,
-  planning: ListChecks,
-  generating: Hammer,
-  auto_fixing: Wrench,
-  critiquing: Search,
-  finalizing: Wand2,
-  complete: CheckCircle2,
-  error: XCircle,
-}
-
-interface PhaseState {
-  id: string
-  phase: CopilotPhase
-  label: string
-  status: 'pending' | 'running' | 'done' | 'error'
-  detail?: string
-  /** Error codes emitted by the validator on this critic attempt. */
-  errorCodes?: string[]
-  /** True on the final `complete` frame when the validator approved the DAG. */
-  approved?: boolean
-  /** Descriptions of deterministic fixes applied during an auto_fixing pass. */
-  appliedFixes?: string[]
-}
-
-/**
- * Build the full ghost skeleton of phases the agent is going to walk
- * through. We render this immediately on send so the user sees the
- * core plan upfront. Repair passes are progressive: show pass 1 as
- * the validation gate, and add pass 2/3 only if the backend actually
- * enters them.
- */
-function buildPendingPhases(): PhaseState[] {
-  return [
-    { id: 'understanding', phase: 'understanding', label: PHASE_LABEL.understanding, status: 'pending' },
-    { id: 'planning', phase: 'planning', label: PHASE_LABEL.planning, status: 'pending' },
-    { id: 'generating', phase: 'generating', label: PHASE_LABEL.generating, status: 'pending' },
-    {
-      id: 'critiquing:1',
-      phase: 'critiquing',
-      label: `${PHASE_LABEL.critiquing} · pass 1`,
-      status: 'pending',
-    },
-    { id: 'finalizing', phase: 'finalizing', label: PHASE_LABEL.finalizing, status: 'pending' },
-    { id: 'complete', phase: 'complete', label: PHASE_LABEL.complete, status: 'pending' },
-  ]
-}
 
 function normalizeTextareaHeight(el: HTMLTextAreaElement | null): void {
   if (!el) return
@@ -118,165 +56,52 @@ function shouldEditExistingWorkflow(prompt: string): boolean {
   return /\b(fix|repair|edit|update|change|modify|add|remove|delete|replace|this|current|existing|canvas)\b/.test(text)
 }
 
-function CopilotAvatar({ size = 24 }: { size?: number }) {
-  return (
-    <div
-      className="flex items-center justify-center rounded-lg shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: 'linear-gradient(145deg, var(--accent-hi), var(--accent-lo))',
-        color: '#0A0A0A',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22)',
-      }}
-    >
-      <Sparkles size={Math.round(size * 0.54)} strokeWidth={2.2} />
-    </div>
-  )
+function SherpaAvatar({ size = 24 }: { size?: number }) {
+  return <SherpaMark size={size} />
 }
 
-function PhaseTimeline({ phases }: { phases: PhaseState[] }) {
-  if (phases.length === 0) return null
-  return (
-    <div className="mb-3 space-y-1 relative">
-      <div
-        className="font-mono mb-1.5"
-        style={{ fontSize: 9.5, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-3)' }}
-      >
-        Pipeline · {phases.length} {phases.length === 1 ? 'stage' : 'stages'}
-      </div>
-      {phases.map((p, idx) => {
-        const isPending = p.status === 'pending'
-        const isRunning = p.status === 'running'
-        const isError = p.status === 'error'
-        const isDone = p.status === 'done'
-        const color = isError
-          ? 'var(--danger)'
-          : isDone
-            ? 'var(--success)'
-            : isRunning
-              ? 'var(--accent)'
-              : 'var(--text-3)'
-        const IconComp = PHASE_ICON[p.phase] ?? Sparkles
-        const last = idx === phases.length - 1
-        return (
-          <div key={p.id} className="relative" style={{ opacity: isPending ? 0.55 : 1 }}>
-            {!last && (
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute', left: 9, top: 22, bottom: -4, width: 1,
-                  background: 'var(--border-soft)',
-                }}
-              />
-            )}
-            <div
-              className="flex items-start gap-2 px-2 py-1.5 rounded-md"
-              style={{
-                background: isPending ? 'transparent' : 'var(--bg-2)',
-                border: `1px solid ${isPending ? 'var(--border-soft)' : `color-mix(in srgb, ${color} 22%, var(--border-soft))`}`,
-                fontSize: 11.5,
-              }}
-          >
-            <div
-              className="shrink-0 mt-0.5 w-4 h-4 rounded-full flex items-center justify-center"
-              style={{
-                background: isPending ? 'transparent' : `color-mix(in srgb, ${color} 15%, transparent)`,
-                border: `1px ${isPending ? 'dashed' : 'solid'} ${color}`,
-                color,
-              }}
-            >
-              {isPending ? null : isRunning ? (
-                <span className="w-1.5 h-1.5 rounded-full live-blink" style={{ background: color }} />
-              ) : isError ? (
-                <XIcon size={9} strokeWidth={3} />
-              ) : (
-                <Check size={9} strokeWidth={3} />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <IconComp size={11} strokeWidth={2} style={{ color: 'var(--text-2)' }} />
-                <span style={{ color: 'var(--text-0)', fontWeight: 500 }}>{p.label}</span>
-                {p.approved === true && (
-                  <span
-                    className="num"
-                    style={{
-                      fontSize: 9,
-                      letterSpacing: '0.08em',
-                      padding: '1px 5px',
-                      borderRadius: 4,
-                      background: 'color-mix(in srgb, var(--success) 18%, transparent)',
-                      color: 'var(--success)',
-                      border: '1px solid color-mix(in srgb, var(--success) 40%, transparent)',
-                    }}
-                  >
-                    VALID
-                  </span>
-                )}
-              </div>
-              {p.detail && (
-                <div className="truncate mt-0.5" style={{ color: 'var(--text-2)', fontSize: 10.5 }} title={p.detail}>
-                  {p.detail}
-                </div>
-              )}
-              {p.errorCodes && p.errorCodes.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {p.errorCodes.slice(0, 6).map((code, i) => (
-                    <span
-                      key={`${code}-${i}`}
-                      className="num"
-                      style={{
-                        fontSize: 9,
-                        letterSpacing: '0.04em',
-                        padding: '1px 5px',
-                        borderRadius: 4,
-                        background: 'color-mix(in srgb, var(--danger) 10%, transparent)',
-                        color: 'var(--danger)',
-                        border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
-                      }}
-                      title={code}
-                    >
-                      {code}
-                    </span>
-                  ))}
-                  {p.errorCodes.length > 6 && (
-                    <span className="num" style={{ fontSize: 9, color: 'var(--text-3)' }}>
-                      +{p.errorCodes.length - 6}
-                    </span>
-                  )}
-                </div>
-              )}
-              {p.appliedFixes && p.appliedFixes.length > 0 && (
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {p.appliedFixes.slice(0, 4).map((fix, i) => (
-                    <span
-                      key={`fix-${i}`}
-                      style={{
-                        fontSize: 10,
-                        color: 'var(--success)',
-                        fontFamily: 'var(--mono, ui-monospace)',
-                      }}
-                      title={fix}
-                    >
-                      → {fix}
-                    </span>
-                  ))}
-                  {p.appliedFixes.length > 4 && (
-                    <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
-                      +{p.appliedFixes.length - 4} more
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
+function finalizeThinkingStep(prev: ThinkingStep[], now = Date.now()): ThinkingStep[] {
+  if (prev.length === 0) return prev
+  const last = prev[prev.length - 1]
+  if (last.done) return prev
+  const copy = [...prev]
+  copy[copy.length - 1] = {
+    ...last,
+    done: true,
+    durationSec: Math.max(0.05, (now - last.startedAt) / 1000),
+  }
+  return copy
 }
+
+function appendThinkingStep(prev: ThinkingStep[], text: string): ThinkingStep[] {
+  const now = Date.now()
+  return [
+    ...finalizeThinkingStep(prev, now),
+    { id: `s-${now}-${prev.length}`, text, done: false, startedAt: now },
+  ]
+}
+
+function closeAllThinkingSteps(prev: ThinkingStep[]): ThinkingStep[] {
+  return finalizeThinkingStep(prev).map((s) => ({ ...s, done: true }))
+}
+
+function useThinkingQueue() {
+  const chainRef = useRef(Promise.resolve())
+  const enqueue = (fn: () => void, delayMs = 280) => {
+    chainRef.current = chainRef.current.then(
+      () =>
+        new Promise<void>((resolve) => {
+          fn()
+          window.setTimeout(resolve, delayMs)
+        }),
+    )
+  }
+  const reset = () => {
+    chainRef.current = Promise.resolve()
+  }
+  return { enqueue, reset }
+}
+
 
 /**
  * Roll up every error the UI is currently showing into the
@@ -344,28 +169,7 @@ function collectErrorHints(
  * "AI slop" gradient look of stock star icons.
  */
 function AiGlyph({ size = 14 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      style={{ flexShrink: 0 }}
-    >
-      <path
-        d="M8 1.5 L9.4 6.6 L14.5 8 L9.4 9.4 L8 14.5 L6.6 9.4 L1.5 8 L6.6 6.6 Z"
-        fill="currentColor"
-        style={{ color: 'var(--accent)' }}
-      />
-      <path
-        d="M13.5 2.5 L13.95 4.05 L15.5 4.5 L13.95 4.95 L13.5 6.5 L13.05 4.95 L11.5 4.5 L13.05 4.05 Z"
-        fill="currentColor"
-        opacity={0.6}
-        style={{ color: 'var(--accent)' }}
-      />
-    </svg>
-  )
+  return <SherpaMark size={size} />
 }
 
 const EXAMPLE_PROMPTS = [
@@ -401,7 +205,7 @@ function MessageBubble({ msg }: { msg: CopilotMessage }) {
         ) : (
           <>
             <AiGlyph size={9} />
-            <span style={{ color: 'var(--accent)' }}>Copilot</span>
+            <span style={{ color: 'var(--accent)' }}>sherpa</span>
           </>
         )}
         <span style={{ color: 'var(--text-3)' }}>· {time}</span>
@@ -438,14 +242,13 @@ function MessageBubble({ msg }: { msg: CopilotMessage }) {
 
 function TypingDots() {
   return (
-    <div className="flex gap-1 px-3 py-2 rounded-xl rounded-bl-sm" style={{ background: 'var(--bg-2)', border: '1px solid var(--border)' }}>
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="w-1.5 h-1.5 rounded-full animate-bounce"
-          style={{ background: 'var(--accent)', animationDelay: `${i * 150}ms` }}
-        />
-      ))}
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-xl"
+      style={{ background: 'var(--bg-2)', border: '1px solid var(--border-soft)' }}
+      role="status"
+      aria-label="sherpa is typing"
+    >
+      <AgentIdleWave />
     </div>
   )
 }
@@ -468,7 +271,7 @@ function GuardrailsCard({ guardrails, error }: { guardrails: CopilotGuardrailsPa
       {guardrails ? (
         <div style={{ fontSize: 12.5, color: 'var(--text-1)', lineHeight: 1.55 }}>
           <p>
-            Copilot is constrained to{' '}
+            sherpa is constrained to{' '}
             <span style={{ color: 'var(--text-0)', fontWeight: 600 }}>{guardrails.nodes.length} live nodes</span>,{' '}
             <span style={{ color: 'var(--text-0)', fontWeight: 600 }}>{guardrails.data_sources.length} data catalogs</span>, and{' '}
             <span style={{ color: 'var(--text-0)', fontWeight: 600 }}>{guardrails.skills.length} skills</span>.
@@ -514,16 +317,22 @@ export default function Copilot() {
   const [isLoading, setIsLoading] = useState(false)
   const [useGenerate, setUseGenerate] = useState(true)
   const [criticIter, setCriticIter] = useState(3)
-  const [phases, setPhases] = useState<PhaseState[]>([])
+  const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([])
+  const [thinkingOpen, setThinkingOpen] = useState(true)
+  const [streamText, setStreamText] = useState('')
+  const [workflowCreated, setWorkflowCreated] = useState<{ name: string; nodeCount: number } | null>(null)
+  const [streamError, setStreamError] = useState<string | null>(null)
+  const { enqueue, reset: resetThinkingQueue } = useThinkingQueue()
   const [guardrails, setGuardrails] = useState<CopilotGuardrailsPayload | null>(null)
   const [guardrailError, setGuardrailError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const streamTextRef = useRef('')
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [copilotMessages, isLoading, phases])
+  }, [copilotMessages, isLoading, thinkingSteps, streamText])
 
   useEffect(() => {
     normalizeTextareaHeight(inputRef.current)
@@ -560,73 +369,48 @@ export default function Copilot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [copilotDraft])
 
-  function handlePhaseEvent(ev: CopilotStreamEvent) {
-    setPhases((prev) => {
-      const label = ev.label || PHASE_LABEL[ev.phase] || ev.phase
-      // The backend emits one critic frame per repair attempt and one
-      // `auto_fixing` frame per deterministic repair pass. The ghost
-      // skeleton already has critic rows id'd as `critiquing:<n>`; we
-      // line them up by attempt number. Auto-fixing rows are inserted
-      // right after the matching critic row, since they aren't part
-      // of the static plan.
-      const rowId =
-        ev.phase === 'critiquing'
-          ? `critiquing:${ev.attempt ?? prev.filter((p) => p.phase === 'critiquing').length}`
-          : ev.phase === 'auto_fixing'
-            ? `auto_fixing:${prev.filter((p) => p.phase === 'auto_fixing').length + 1}`
-            : ev.phase
-      const existing = prev.findIndex((p) => p.id === rowId)
-      const errorCodes = (ev.validation_errors ?? []).map((e) => e.code)
-      const approved =
-        ev.phase === 'complete'
-          ? ev.validation?.valid ?? undefined
-          : ev.approved ?? undefined
-      const nextLabel = ev.phase === 'complete'
-        ? PHASE_LABEL.complete
-        : label
-      const nextDetail = ev.phase === 'complete' && ev.status === 'done' && ev.workflow
-        ? `${ev.workflow.name}: ${ev.workflow.nodes.length} nodes / ${ev.workflow.edges?.length ?? 0} edges`
-        : ev.detail
-      const next: PhaseState = {
-        id: rowId,
-        phase: ev.phase,
-        label: nextLabel,
-        status: ev.status,
-        detail: nextDetail,
-        errorCodes: errorCodes.length ? errorCodes : undefined,
-        approved,
-        appliedFixes: ev.applied && ev.applied.length ? ev.applied : undefined,
+  function handleStreamEvent(ev: CopilotStreamEvent) {
+    switch (ev.type) {
+      case 'thinking':
+        enqueue(() => {
+          setThinkingSteps((prev) => appendThinkingStep(prev, ev.step))
+        })
+        break
+      case 'text_start':
+        enqueue(() => {
+          setThinkingSteps((prev) => closeAllThinkingSteps(prev))
+        }, 0)
+        break
+      case 'text_chunk': {
+        const next = streamTextRef.current + ev.chunk
+        streamTextRef.current = next
+        setStreamText(next)
+        break
       }
-      if (existing >= 0) {
-        const copy = [...prev]
-        copy[existing] = next
-        // If the backend reaches finalizing/complete, no more critic rows are
-        // coming. The initial ghost plan still contains all requested repair
-        // passes, so close any untouched ones instead of leaving a fake spinner.
-        if (ev.phase === 'finalizing' || ev.phase === 'complete') {
-          for (let i = 0; i < copy.length; i++) {
-            if (copy[i].phase === 'critiquing' && copy[i].status !== 'done' && copy[i].status !== 'error') {
-              copy[i] = {
-                ...copy[i],
-                status: 'done',
-                detail: copy[i].detail ?? 'Validator clean',
-              }
-            }
+      case 'workflow_created':
+        enqueue(() => {
+          setThinkingSteps((prev) => closeAllThinkingSteps(prev))
+          setThinkingOpen(false)
+          setWorkflowCreated({ name: ev.name, nodeCount: ev.nodeCount })
+          if (ev.workflow) {
+            useWorkflowStore.getState().resetRun()
+            setWorkflow(ev.workflow)
           }
-        }
-        return copy
-      }
-      // Auto-fix rows aren't in the skeleton — splice in next to the
-      // most recent critic row so they cluster with their cause.
-      if (ev.phase === 'auto_fixing') {
-        const lastCritic = [...prev].reverse().findIndex((p) => p.phase === 'critiquing')
-        const insertAt = lastCritic === -1 ? prev.length : prev.length - lastCritic
-        const copy = [...prev]
-        copy.splice(insertAt, 0, next)
-        return copy
-      }
-      return [...prev, next]
-    })
+        }, 0)
+        break
+      case 'done':
+        enqueue(() => {
+          setThinkingSteps((prev) => closeAllThinkingSteps(prev))
+          setThinkingOpen(false)
+        }, 0)
+        break
+      case 'error':
+        setStreamError(ev.message)
+        setThinkingOpen(false)
+        break
+      default:
+        break
+    }
   }
 
   async function send() {
@@ -637,13 +421,13 @@ export default function Copilot() {
     const userMsg: CopilotMessage = { role: 'user', content: msg, timestamp: new Date() }
     addCopilotMessage(userMsg)
     setIsLoading(true)
-    // Seed the timeline with the full ghost plan so the user sees the
-    // whole pipeline upfront. Each row lights up as its event arrives.
-    setPhases(
-      useGenerate
-        ? buildPendingPhases().map((p, i) => (i === 0 ? { ...p, status: 'running' } : p))
-        : [],
-    )
+    setThinkingSteps([])
+    setStreamText('')
+    streamTextRef.current = ''
+    setWorkflowCreated(null)
+    setStreamError(null)
+    setThinkingOpen(true)
+    resetThinkingQueue()
 
     // Build context only for explicit edit/fix requests. Plain "create /
     // generate / build" prompts are greenfield and replace whatever is on
@@ -657,18 +441,20 @@ export default function Copilot() {
     try {
       let replyText: string
       if (useGenerate) {
-        let finalWorkflow: NonNullable<CopilotStreamEvent['workflow']> | null = null
-        let finalError: string | null = null
-        let finalValidation: CopilotStreamEvent['validation'] | null = null
+        let gotWorkflow = false
+        let createdName = ''
+        let createdNodes = 0
 
         await api.copilotGenerateStream(
           msg,
           criticIter,
           (ev) => {
-            handlePhaseEvent(ev)
-            if (ev.phase === 'complete' && ev.workflow) finalWorkflow = ev.workflow
-            if (ev.phase === 'complete' && ev.validation) finalValidation = ev.validation
-            if (ev.phase === 'error') finalError = ev.detail || 'Generation failed'
+            handleStreamEvent(ev)
+            if (ev.type === 'workflow_created' && ev.workflow) {
+              gotWorkflow = true
+              createdName = ev.name
+              createdNodes = ev.nodeCount
+            }
           },
           undefined,
           ctxWorkflow,
@@ -676,23 +462,14 @@ export default function Copilot() {
           ctxWorkflow ? selectedNodeId : null,
         )
 
-        if (finalWorkflow) {
-          useWorkflowStore.getState().resetRun()
-          setWorkflow(finalWorkflow)
-          const wf = finalWorkflow as NonNullable<CopilotStreamEvent['workflow']>
-          const vr = finalValidation as CopilotStreamEvent['validation'] | null
-          const header = `Workflow generated: **${wf.name}**\n${wf.nodes.length} nodes, ${wf.edges?.length ?? 0} edges`
-          const validationLine = vr
-            ? vr.valid
-              ? '\n\nValidator: clean ✓'
-              : `\n\nValidator: ${vr.errors.length} unresolved issue(s): ${vr.errors
-                  .slice(0, 5)
-                  .map((e) => e.code + (e.node_id ? `@${e.node_id}` : ''))
-                  .join(', ')}`
-            : ''
-          replyText = `${header}${validationLine}\n\nLoaded into the canvas.\n\n${JSON.stringify(wf, null, 2)}`
+        if (streamTextRef.current.trim()) {
+          replyText = streamTextRef.current.trim()
+        } else if (gotWorkflow) {
+          replyText = `Built **${createdName}** (${createdNodes} nodes). Loaded on the canvas.`
+        } else if (streamError) {
+          replyText = `Generation failed: ${streamError}`
         } else {
-          replyText = `Generation failed: ${finalError ?? 'no workflow produced'}`
+          replyText = 'Generation finished without a workflow.'
         }
       } else {
         // Ask mode — stream the reply chunk-by-chunk so the bubble
@@ -720,11 +497,18 @@ export default function Copilot() {
     } catch (e) {
       addCopilotMessage({
         role: 'assistant',
-        content: `Error: ${(e as Error).message}\n\nMake sure the backend is running at http://localhost:8000`,
+        content: `Error: ${(e as Error).message}\n\nMake sure the backend is running (check /api/health and GEMINI_API_KEY in backend/.env).`,
         timestamp: new Date(),
       })
     } finally {
       setIsLoading(false)
+      if (useGenerate) {
+        setThinkingSteps([])
+        setStreamText('')
+        streamTextRef.current = ''
+        setWorkflowCreated(null)
+        setStreamError(null)
+      }
     }
   }
 
@@ -750,24 +534,44 @@ export default function Copilot() {
       {/* Header — sleek single row: icon + title + close + mode toggle. */}
       <div className="px-4 py-2.5 shrink-0" style={{ borderBottom: '1px solid var(--border-soft)' }}>
         <div className="flex items-center gap-2">
-          <AiGlyph size={14} />
-          <span className="display" style={{ fontSize: 12.5, fontWeight: 540, color: 'var(--text-0)', letterSpacing: '-0.01em' }}>
-            Copilot
+          <button
+            type="button"
+            title="sherpa"
+            aria-label="sherpa"
+            className="flex items-center justify-center"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 7,
+              background: 'var(--bg-3)',
+              border: '1px solid var(--border-soft)',
+              color: 'var(--accent)',
+              cursor: 'default',
+            }}
+          >
+            <SherpaMark size={16} />
+          </button>
+          <span
+            className="display truncate"
+            style={{
+              fontSize: 13.5,
+              fontWeight: 530,
+              color: 'var(--text-0)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            sherpa
           </span>
           <span
             className="font-mono"
             style={{
-              fontSize: 9,
+              fontSize: 9.5,
               color: 'var(--text-3)',
-              padding: '1px 5px',
-              borderRadius: 3,
-              background: 'var(--bg-3)',
-              border: '1px solid var(--border-soft)',
-              letterSpacing: '0.04em',
+              letterSpacing: '0.12em',
               textTransform: 'uppercase',
             }}
           >
-            Gemini 2.5
+            AGENT
           </span>
           <div className="flex-1" />
           {/* Mode toggle: Build (workflow generation) vs Ask (Q&A about the platform) */}
@@ -780,20 +584,20 @@ export default function Copilot() {
               border: '1px solid var(--border-soft)',
             }}
           >
-            <ModePill
+            <IconModePill
               active={useGenerate}
               onClick={() => setUseGenerate(true)}
               testId="copilot-mode-build"
-            >
-              {currentWorkflow ? 'Edit' : 'Build'}
-            </ModePill>
-            <ModePill
+              title={currentWorkflow ? 'Edit workflow' : 'Build workflow'}
+              icon={<ArcIcon icon={Hammer} size={12} />}
+            />
+            <IconModePill
               active={!useGenerate}
               onClick={() => setUseGenerate(false)}
               testId="copilot-mode-ask"
-            >
-              Ask
-            </ModePill>
+              title="Ask"
+              icon={<ArcIcon icon={MessageSquare} size={12} />}
+            />
           </div>
           <button
             onClick={() => useWorkflowStore.getState().setRightPanelMode(null)}
@@ -809,7 +613,7 @@ export default function Copilot() {
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-0)' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
           >
-            <XIcon size={11} strokeWidth={2} />
+            <ArcIcon icon={XIcon} size={11} />
           </button>
         </div>
       </div>
@@ -970,20 +774,61 @@ export default function Copilot() {
           <MessageBubble key={i} msg={msg} />
         ))}
 
-        {(isLoading || phases.length > 0) && useGenerate && (
-          <>
-            {isLoading && phases.length === 0 && (
-              <div className="flex items-center gap-2 mb-3">
-                <CopilotAvatar size={24} />
-                <TypingDots />
-              </div>
-            )}
-            <PhaseTimeline phases={phases} />
-          </>
+        {(isLoading || thinkingSteps.length > 0 || streamText || workflowCreated) && useGenerate && (
+          <div className="mb-3 flex flex-col gap-2 pl-0.5">
+            {(thinkingSteps.length > 0 || isLoading) && (
+                  <ThinkingBlock
+                    steps={thinkingSteps}
+                    open={thinkingOpen}
+                    isStreaming={isLoading}
+                    onToggle={() => setThinkingOpen((o) => !o)}
+                  />
+                )}
+                {streamText && (
+                  <div
+                    className="rounded-md px-3 py-2"
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 1.55,
+                      background: 'var(--bg-2)',
+                      border: '1px solid var(--border-soft)',
+                      color: 'var(--text-0)',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {streamText}
+                    {isLoading && (
+                      <span
+                        className="inline-block w-0.5 h-3.5 ml-0.5 align-middle animate-pulse"
+                        style={{ background: 'var(--accent)' }}
+                      />
+                    )}
+                  </div>
+                )}
+                {workflowCreated && (
+                  <button
+                    type="button"
+                    title={`${workflowCreated.name} · ${workflowCreated.nodeCount} nodes`}
+                    className="flex items-center justify-center"
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                      color: 'var(--accent)',
+                    }}
+                  >
+                    <ArcIcon icon={GitMerge} size={15} />
+                  </button>
+                )}
+                {streamError && (
+                  <div style={{ fontSize: 12, color: 'var(--danger)' }}>{streamError}</div>
+                )}
+          </div>
         )}
         {isLoading && !useGenerate && (
-          <div className="flex items-center gap-2 mb-3">
-            <CopilotAvatar size={24} />
+          <div className="mb-3 pl-0.5">
             <TypingDots />
           </div>
         )}
@@ -1026,7 +871,7 @@ export default function Copilot() {
             : willEdit && selected
               ? `This edit prompt will attach the current canvas. Deictic references like "this" / "here" resolve to ${selected.id} (${selected.type}).`
               : willEdit
-                ? 'This prompt will attach the current canvas so Copilot can make a targeted edit.'
+                ? 'This prompt will attach the current canvas so sherpa can make a targeted edit.'
                 : 'Create/generate prompts start from a fresh workflow and replace the loaded canvas only after validation succeeds.'
           return (
             <div
@@ -1039,7 +884,7 @@ export default function Copilot() {
               }}
               title={title}
             >
-              <Wrench size={10} strokeWidth={2.2} />
+              <ArcIcon icon={Wrench} size={10} strokeWidth={2.2} />
               <span className="num truncate" style={{ flex: 1, minWidth: 0 }}>{label}</span>
             </div>
           )
@@ -1083,19 +928,19 @@ export default function Copilot() {
             data-testid="copilot-send-btn"
             className="px-3 py-2 rounded-lg self-end flex items-center justify-center lift"
             style={{
-              background: isLoading || !input.trim()
-                ? 'var(--bg-3)'
-                : 'linear-gradient(145deg, var(--accent-hi), var(--accent-lo))',
-              color: isLoading || !input.trim() ? 'var(--text-3)' : '#0A0A0A',
+              background: isLoading || !input.trim() ? 'var(--bg-3)' : 'var(--bg-2)',
+              color: isLoading || !input.trim() ? 'var(--text-3)' : 'var(--accent)',
               cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
               minWidth: 40, minHeight: 36,
-              border: isLoading || !input.trim() ? '1px solid var(--border)' : '1px solid color-mix(in srgb, var(--accent-lo) 60%, black)',
+              border: isLoading || !input.trim()
+                ? '1px solid var(--border)'
+                : '1px solid color-mix(in srgb, var(--accent) 45%, var(--border))',
             }}
             aria-label="Send"
           >
             {isLoading
               ? <span className="num">…</span>
-              : <ArrowUp size={14} strokeWidth={2.5} />}
+              : <ArcIcon icon={ArrowUp} size={14} strokeWidth={2.5} />}
           </button>
         </div>
         <p className="num mt-2" style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.02em' }}>
@@ -1129,15 +974,17 @@ function SegTab({ active, onClick, icon, children }: { active: boolean; onClick:
   )
 }
 
-function ModePill({
+function IconModePill({
   active,
   onClick,
-  children,
+  icon,
+  title,
   testId,
 }: {
   active: boolean
   onClick: () => void
-  children: React.ReactNode
+  icon: React.ReactNode
+  title: string
   testId?: string
 }) {
   return (
@@ -1145,23 +992,21 @@ function ModePill({
       type="button"
       onClick={onClick}
       data-testid={testId}
+      title={title}
+      aria-label={title}
       className="flex items-center justify-center"
       style={{
-        height: 22,
-        padding: '0 10px',
+        width: 26,
+        height: 26,
         borderRadius: 5,
-        fontSize: 11,
-        fontWeight: 540,
-        letterSpacing: '-0.005em',
         background: active ? 'var(--bg-0)' : 'transparent',
-        color: active ? 'var(--text-0)' : 'var(--text-2)',
+        color: active ? 'var(--accent)' : 'var(--text-3)',
         border: active ? '1px solid var(--border-strong)' : '1px solid transparent',
         cursor: 'pointer',
-        fontFamily: 'inherit',
         transition: 'background 120ms, color 120ms, border-color 120ms',
       }}
     >
-      {children}
+      {icon}
     </button>
   )
 }

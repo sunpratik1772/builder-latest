@@ -52,6 +52,10 @@ class RunContext:
     disposition: str = ""
     output_branch: str = ""
     report_path: str = ""
+    # Per-node outputs for orchestrator-style handlers (node id -> output dict).
+    output_map: dict[str, Any] = field(default_factory=dict)
+    # Active edge list while execute_nodes runs (internal; do not persist).
+    _active_edges: list[dict] = field(default_factory=list, repr=False)
     # Unique id for this run. Stamped onto every SSE frame, every log
     # line (once we adopt it in `logging`), and the final run result.
     # Lets an operator grep "run_id=abc123" across frontend trace →

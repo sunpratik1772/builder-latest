@@ -1,0 +1,70 @@
+{
+  "workflow_name": "Prompt Demo 1 - Sales CSV Summary with LLM",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "read_sales_csv",
+      "type": "SPREADSHEET_FILE",
+      "config": {
+        "operation": "read",
+        "file_format": "csv",
+        "file_path": "demo_data/mock_sales.csv"
+      }
+    },
+    {
+      "id": "summarize_sales",
+      "type": "SUMMARIZE",
+      "config": {
+        "fieldsToSummarize": [
+          {
+            "aggregation": "sum",
+            "field": "revenue",
+            "outputName": "total_revenue"
+          },
+          {
+            "aggregation": "average",
+            "field": "revenue",
+            "outputName": "avg_revenue"
+          },
+          {
+            "aggregation": "count",
+            "field": "order_id",
+            "outputName": "order_count"
+          }
+        ],
+        "fieldsToSplitBy": "region",
+        "options": {
+          "outputFormat": "separateItems"
+        }
+      }
+    },
+    {
+      "id": "llm_wrapup",
+      "type": "LLM_BASIC",
+      "config": {
+        "prompt": "You are a sales analyst. Summarize these grouped results in 3 bullets and call out the strongest region. Data:\\n{{ JSON.stringify($items, null, 2) }}",
+        "system_prompt": "Return concise markdown bullets.",
+        "model": "gemini-2.5-flash",
+        "output_field": "analysis"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "read_sales_csv"
+    },
+    {
+      "from": "read_sales_csv",
+      "to": "summarize_sales"
+    },
+    {
+      "from": "summarize_sales",
+      "to": "llm_wrapup"
+    }
+  ]
+}

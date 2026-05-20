@@ -1,0 +1,65 @@
+/**
+ * Linear-app design system — nexu-io/open-design
+ * https://github.com/nexu-io/open-design/tree/main/design-systems/linear-app
+ *
+ * Light: white canvas with teal / blue tinge (dbSherpa Studio).
+ * Dark: Linear achromatic native (#08090a).
+ */
+:root,
+[data-theme='dark'] {
+  --linear-bg: #08090a;
+  --linear-surface: #191a1b;
+  --linear-surface-warm: #1e2022;
+  --linear-fg: #f7f8f8;
+  --linear-fg-2: #d0d6e0;
+  --linear-muted: #8a8f98;
+  --linear-meta: #62666d;
+  --linear-border: rgba(255, 255, 255, 0.08);
+  --linear-border-soft: rgba(255, 255, 255, 0.05);
+  --linear-accent: #3eb5db;
+  --linear-accent-on: #ffffff;
+  --linear-accent-hover: #5ec8e8;
+  --linear-accent-active: #2d9fc4;
+  --linear-success: #27a644;
+  --linear-warn: #eab308;
+  --linear-danger: #dc2626;
+  --linear-font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --linear-font-body: var(--linear-font-display);
+  --linear-font-mono: 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+  --linear-radius-sm: 6px;
+  --linear-radius-md: 8px;
+  --linear-radius-lg: 12px;
+  --linear-ease: cubic-bezier(0.2, 0, 0, 1);
+  --linear-elev-raised:
+    rgba(0, 0, 0, 0.4) 0px 2px 4px,
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  --linear-focus-ring:
+    0 0 0 2px color-mix(in oklab, var(--linear-accent), transparent 30%),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] {
+  --linear-bg: #ffffff;
+  --linear-surface: #ffffff;
+  --linear-surface-warm: #f3fafc;
+  --linear-fg: #0f1a22;
+  --linear-fg-2: #334a57;
+  --linear-muted: #5c7280;
+  --linear-meta: #8aa0ad;
+  --linear-border: rgba(15, 50, 70, 0.09);
+  --linear-border-soft: rgba(15, 50, 70, 0.05);
+  --linear-accent: #2d9fc4;
+  --linear-accent-on: #ffffff;
+  --linear-accent-hover: #3eb5db;
+  --linear-accent-active: #2489ab;
+  --linear-success: #1f9a5c;
+  --linear-warn: #ca8a04;
+  --linear-danger: #dc4f5f;
+  --linear-elev-raised:
+    0 1px 2px rgba(15, 45, 65, 0.06),
+    0 8px 24px rgba(15, 45, 65, 0.06),
+    0 0 0 1px var(--linear-border);
+  --linear-focus-ring:
+    0 0 0 2px color-mix(in oklab, var(--linear-accent), transparent 35%),
+    0 4px 14px rgba(45, 159, 196, 0.12);
+}

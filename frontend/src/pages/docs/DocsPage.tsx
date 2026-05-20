@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import BrandMark from '../../components/BrandMark'
 
 interface DocSection {
   id: string
@@ -92,7 +93,8 @@ export default function DocsPage() {
       >
         {/* Logo */}
         <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <BrandMark size={24} />
             <span style={{ fontSize: 18, fontWeight: 600, color: '#F5F3EF', letterSpacing: '-0.02em' }}>
               dbSherpa
             </span>

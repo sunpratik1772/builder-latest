@@ -1,0 +1,44 @@
+id: hs_alerts
+description: SQLite surveillance alerts used to seed dynamic workflow payloads.
+sources:
+  - sqlite:hs_alerts
+columns:
+  - name: alert_id
+    type: string
+    description: Alert identifier.
+  - name: participant_id
+    type: string
+    semantic: trader
+    description: Participant identifier (comms / context — not used as a Solr connector filter).
+    include_in_tab: false
+  - name: trader_id
+    type: string
+    semantic: trader
+    description: Trader identifier.
+  - name: trader_name
+    type: string
+    description: Human-readable trader name.
+  - name: keyword
+    type: string
+    description: Keyword used to scope communications.
+  - name: alert_date
+    type: datetime
+    semantic: time
+    description: Alert business date.
+  - name: start_time
+    type: datetime
+    semantic: time
+    description: Start of relevant surveillance window.
+  - name: end_time
+    type: datetime
+    semantic: time
+    description: End of relevant surveillance window.
+  - name: currency_pair
+    type: string
+    description: Instrument or currency pair under review.
+  - name: scenario
+    type: string
+    description: Scenario family.
+  - name: description
+    type: string
+    description: Alert description.

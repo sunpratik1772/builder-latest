@@ -1,0 +1,50 @@
+schema_version: '1.0'
+workflow_id: copilot-1779151436
+name: Trade Anomaly Scoring and Reporting
+version: '1.0'
+description: Pulls trade data, scores each transaction for anomalies using an AI agent,
+  and outputs the results to a CSV report.
+nodes:
+- id: n1
+  type: manual_trigger
+  label: Start Workflow
+  config: {}
+  position:
+    x: 60
+    y: 280
+- id: n2
+  type: csv_extract
+  label: Extract Trade Data
+  config:
+    source: transactions.csv
+  position:
+    x: 320
+    y: 280
+- id: n3
+  type: agent
+  label: Score Anomalies
+  config:
+    prompt: Score trade anomalies 0-100 based on the transaction details. A higher
+      score indicates a more anomalous transaction. Return only the number.
+    task: Return a single anomaly score.
+    perRow: true
+    outputColumn: anomaly_score
+    maxRows: 20
+  position:
+    x: 600
+    y: 280
+- id: n4
+  type: csv_output
+  label: Write Anomaly Report
+  config:
+    filename: scored_transactions_report.csv
+  position:
+    x: 900
+    y: 280
+edges:
+- from: n1
+  to: n2
+- from: n2
+  to: n3
+- from: n3
+  to: n4

@@ -1,6 +1,5 @@
 import { useRef } from 'react'
-import { X as XIcon } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { ArcIcon, X as XIcon, type LucideIcon } from '../../icons/arc'
 import ResizeHandle from '../ResizeHandle'
 import { useWorkflowStore } from '../../store/workflowStore'
 
@@ -16,7 +15,7 @@ interface ShellProps {
 
 /**
  * Outer chrome shared by Config + Run Log views in the unified right panel.
- * Matches the existing Copilot panel's resize behaviour and width source so
+ * Matches sherpa panel resize behaviour and width so Config / Run Logs / Output
  * the three modes feel like one component switching content.
  */
 export default function Shell({ icon: Icon, title, eyebrow, subtitle, accent, rightSlot, children }: ShellProps) {
@@ -50,12 +49,28 @@ export default function Shell({ icon: Icon, title, eyebrow, subtitle, accent, ri
         style={{ borderBottom: '1px solid var(--border)' }}
       >
         <div className="flex items-center gap-2">
-          <Icon size={16} strokeWidth={2} style={{ color: tone }} />
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-0)' }}>
+          <ArcIcon icon={Icon} size={16} style={{ color: tone }} />
+          <span
+            className="display"
+            style={{
+              fontSize: 13.5,
+              fontWeight: 530,
+              color: 'var(--text-0)',
+              letterSpacing: '-0.02em',
+            }}
+          >
             {title}
           </span>
           {eyebrow && (
-            <span className="font-mono" style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+            <span
+              className="font-mono"
+              style={{
+                fontSize: 9.5,
+                color: 'var(--text-3)',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
               {eyebrow}
             </span>
           )}
@@ -72,7 +87,7 @@ export default function Shell({ icon: Icon, title, eyebrow, subtitle, accent, ri
               cursor: 'pointer',
             }}
           >
-            <XIcon size={12} strokeWidth={2} />
+            <ArcIcon icon={XIcon} size={12} />
           </button>
         </div>
         {subtitle && (

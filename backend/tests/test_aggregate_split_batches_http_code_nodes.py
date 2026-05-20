@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from engine.context import RunContext
 from engine.nodes.aggregate import handle_aggregate
 from engine.nodes.code import handle_code
@@ -118,3 +120,42 @@ def test_code_python_all_items_and_each_item() -> None:
     c2.set("c2_input", [{"a": 1}, {"a": 2}])
     handle_code(n2, c2)
     assert c2.get("c2_output", []) == [{"value": 10}, {"value": 20}]
+
+    c3 = RunContext()
+    n3 = {
+        "id": "c3",
+        "config": {
+            "mode": "runOnceForAllItems",
+            "language": "pythonNative",
+            "pythonCode": "result = [{'json': {'rounded': round(math.pi, 2)}}]",
+        },
+    }
+    c3.set("c3_input", [{}])
+    handle_code(n3, c3)
+    assert c3.get("c3_output", []) == [{"rounded": 3.14}]
+
+
+def test_code_restricted_import_allows_random_blocks_os() -> None:
+    ctx_ok = RunContext()
+    ok = {
+        "id": "c4",
+        "config": {
+            "mode": "runOnceForAllItems",
+            "pythonCode": "import random\nresult = [{'json': {'x': random.randint(0, 1)}}]",
+        },
+    }
+    ctx_ok.set("c4_input", [{}])
+    handle_code(ok, ctx_ok)
+    assert ctx_ok.get("c4_output", [])[0]["x"] in (0, 1)
+
+    ctx_bad = RunContext()
+    bad = {
+        "id": "c5",
+        "config": {
+            "mode": "runOnceForAllItems",
+            "pythonCode": "import os\nresult = []",
+        },
+    }
+    ctx_bad.set("c5_input", [{}])
+    with pytest.raises(RuntimeError, match="CODE node failed|ImportError|importing|not allowed"):
+        handle_code(bad, ctx_bad)

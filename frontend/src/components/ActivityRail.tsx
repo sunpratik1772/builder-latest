@@ -1,10 +1,19 @@
 /**
- * Narrow icon rail that controls the right-side work area.
- * Linear-style: a thin vertical bar with hairline indicators on the
- * active item — no purple fills, no AI-slop gradients.
+ * Narrow icon rail — Config, Run Logs, sherpa, Output.
+ * Uniform Arc icons (17px); panel titles match via Shell.
  */
-import { Settings2, Bot, Activity, FileOutput } from 'lucide-react'
+import { ArcIcon, Activity, FileOutput, Settings2 } from '../icons/arc'
+import { SherpaMark } from './SherpaMark'
 import { useWorkflowStore } from '../store/workflowStore'
+
+const RAIL_ICON_SIZE = 17
+
+const ITEMS = [
+  { mode: 'config' as const, title: 'Config', icon: Settings2, useSherpa: false },
+  { mode: 'runlog' as const, title: 'Run Logs', icon: Activity, useSherpa: false },
+  { mode: 'copilot' as const, title: 'sherpa', icon: null, useSherpa: true },
+  { mode: 'output' as const, title: 'Output', icon: FileOutput, useSherpa: false },
+]
 
 export default function ActivityRail() {
   const mode = useWorkflowStore((s) => s.rightPanelMode)
@@ -18,30 +27,21 @@ export default function ActivityRail() {
         borderLeft: '1px solid var(--border)',
       }}
     >
-      <RailButton
-        icon={<Settings2 size={15} strokeWidth={1.7} />}
-        active={mode === 'config'}
-        onClick={() => toggle('config')}
-        title="Inspector"
-      />
-      <RailButton
-        icon={<Bot size={15} strokeWidth={1.7} />}
-        active={mode === 'copilot'}
-        onClick={() => toggle('copilot')}
-        title="Copilot"
-      />
-      <RailButton
-        icon={<Activity size={15} strokeWidth={1.7} />}
-        active={mode === 'runlog'}
-        onClick={() => toggle('runlog')}
-        title="Run log"
-      />
-      <RailButton
-        icon={<FileOutput size={15} strokeWidth={1.7} />}
-        active={mode === 'output'}
-        onClick={() => toggle('output')}
-        title="Output"
-      />
+      {ITEMS.map((item) => (
+        <RailButton
+          key={item.mode}
+          active={mode === item.mode}
+          onClick={() => toggle(item.mode)}
+          title={item.title}
+          icon={
+            item.useSherpa ? (
+              <SherpaMark size={RAIL_ICON_SIZE} />
+            ) : (
+              <ArcIcon icon={item.icon!} size={RAIL_ICON_SIZE} />
+            )
+          }
+        />
+      ))}
     </div>
   )
 }
@@ -61,11 +61,12 @@ function RailButton({
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       className="relative flex items-center justify-center"
       style={{
-        width: 32,
-        height: 32,
-        borderRadius: 7,
+        width: 34,
+        height: 34,
+        borderRadius: 8,
         background: active ? 'var(--bg-3)' : 'transparent',
         color: active ? 'var(--text-0)' : 'var(--text-3)',
         border: active ? '1px solid var(--border-strong)' : '1px solid transparent',

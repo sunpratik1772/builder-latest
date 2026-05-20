@@ -1,8 +1,8 @@
 import { useWorkflowStore } from '../../store/workflowStore'
 import Copilot from '../Copilot'
 import ConfigView from './ConfigView'
-import RunLogView from './RunLogView'
 import OutputView from './OutputView'
+import RunLogView from './RunLogView'
 
 /**
  * Single right-side panel that switches between Config / Run Log / Copilot
@@ -15,7 +15,7 @@ export default function RightPanel() {
   if (mode === null) return null
   if (mode === 'config') return <ConfigView />
   if (mode === 'runlog') return <RunLogView />
-  if (mode === 'output') return <OutputView />
   if (mode === 'copilot') return <Copilot />
+  if (mode === 'output') return null
   return null
 }

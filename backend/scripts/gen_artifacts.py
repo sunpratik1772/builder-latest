@@ -279,10 +279,12 @@ def write_frontend_module() -> None:
         "    | 'chips'\n"
         "    | 'json'\n"
         "    | 'input_ref'\n"
-        "    | 'code'"
+        "    | 'code'\n"
+        "    | 'password'"
     )
     lines.append("  default?: unknown")
     lines.append("  enum?: readonly string[]")
+    lines.append("  visible_if?: Record<string, string | readonly string[]>")
     lines.append("}")
     lines.append("")
     lines.append("export interface NodeTypedSpec {")

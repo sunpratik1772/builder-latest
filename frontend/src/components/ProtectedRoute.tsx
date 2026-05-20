@@ -11,7 +11,7 @@
  */
 import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { ArcIcon, Loader2 } from '../icons/arc'
 import { useAuthStore } from '../store/authStore'
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         className="flex items-center justify-center min-h-screen"
         style={{ background: 'var(--bg-base)' }}
       >
-        <Loader2 size={18} className="animate-spin" style={{ color: 'var(--text-2)' }} />
+        <ArcIcon icon={Loader2} size={18} className="animate-spin" style={{ color: 'var(--text-2)' }} />
       </div>
     )
   }

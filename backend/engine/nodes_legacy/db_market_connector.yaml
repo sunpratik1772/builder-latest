@@ -1,0 +1,72 @@
+type_id: DB_MARKET_CONNECTOR
+description: Query market ticks for the alert time window, currency pair, feed source, and tick query type (fxperiodtick / forwardperiodtick).
+ui:
+  display_name: db_market_connector
+  color: "#10B981"
+  icon: DatabaseZap
+  palette:
+    section:
+      id: integration
+      label: Integration
+      order: 30
+      color: "#10B981"
+    node_order: 2
+input_ports: []
+output_ports:
+  - name: output
+    type: object
+    description: Market tick rows
+params:
+  - name: output_name
+    type: string
+    description: Dataset name stored in run context
+    default: market_ticks
+    required: false
+  - name: output_columns
+    type: string_list
+    widget: chips
+    description: Columns to output from market_ticks. Leave empty for all schema columns.
+    required: false
+  - name: db_path
+    type: string
+    description: Optional SQLite database path
+    required: false
+  - name: alert_id
+    type: string
+    description: Optional alert id override (joins alert window and pair)
+    required: false
+  - name: date
+    type: string
+    description: Optional alert business date when resolving alert without alert_id
+    required: false
+  - name: currency_pair
+    type: string
+    description: Optional currency pair override (defaults from alert)
+    required: false
+  - name: start_time
+    type: string
+    description: Optional start of tick window (defaults from alert start_time)
+    required: false
+  - name: end_time
+    type: string
+    description: Optional end of tick window (defaults from alert end_time)
+    required: false
+  - name: source
+    type: string
+    description: Feed source filter — matches venue_name (e.g. EBS, Reuters)
+    required: false
+  - name: query_type
+    type: string
+    description: Tick query family
+    enum: [fxperiodtick, forwardperiodtick]
+    required: false
+  - name: limit
+    type: integer
+    description: Optional maximum number of rows to return
+    default: 0
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+  - Market scope is time window + currency_pair + optional feed source + query_type; alert context comes from alert_id or date. Participant filters belong on comms (MARKET_API_CONNECTOR), not here.

@@ -106,9 +106,9 @@ class CopilotGenerateRequest(BaseModel):
         ),
     )
     compiler_mode: Optional[str] = Field(
-        "classic",
+        "orchestrator",
         description=(
-            "Generation mode hint. Runtime currently uses the classic planner/validator/repair "
-            "harness for all modes; non-classic values are accepted for backward compatibility."
+            "Generation mode hint. Runtime uses the orchestrator-backend self-healing "
+            "pipeline (plan → schema validate → dry-run → repair)."
         ),
     )

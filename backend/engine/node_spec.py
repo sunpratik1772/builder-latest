@@ -154,6 +154,10 @@ def _spec(
 # YAML type alias table — maps common aliases to canonical ParamType values
 # so YAML authors can write "float", "int", "bool" naturally.
 # ---------------------------------------------------------------------------
+_PORT_TYPE_ALIASES: dict[str, str] = {
+    "any": "any",
+}
+
 _PARAM_TYPE_ALIASES: dict[str, str] = {
     "float":  "number",
     "int":    "integer",
@@ -161,6 +165,15 @@ _PARAM_TYPE_ALIASES: dict[str, str] = {
     "str":    "string",
     "list":   "array",
     "dict":   "object",
+    "json":   "json",
+}
+
+_WIDGET_ALIASES: dict[str, str] = {
+    "input": "text",
+    "code_editor": "code",
+    "starlark_editor": "starlark",
+    "json_editor": "json",
+    "password": "password",
 }
 
 
@@ -188,7 +201,7 @@ def _spec_from_yaml(yaml_path: Path | str, handler: Handler) -> NodeSpec:
         store_at = p.get("store_at")
         return PortSpec(
             name=p["name"],
-            type=PortType(p["type"].lower()),
+            type=PortType(_PORT_TYPE_ALIASES.get(p["type"].lower(), p["type"].lower())),
             description=p.get("description", ""),
             optional=bool(p.get("optional", False)),
             required_columns=tuple(str(c) for c in rc),
@@ -203,7 +216,13 @@ def _spec_from_yaml(yaml_path: Path | str, handler: Handler) -> NodeSpec:
         ptype = ParamType(raw)
         # Widget can sit directly under "widget" or nested as "ui.control"
         raw_widget = p.get("widget") or (p.get("ui") or {}).get("control")
-        widget = Widget(raw_widget.lower()) if raw_widget else None
+        if raw_widget:
+            wkey = _WIDGET_ALIASES.get(str(raw_widget).lower(), str(raw_widget).lower())
+            widget = Widget(wkey)
+        else:
+            widget = None
+        raw_visible = p.get("visible_if")
+        visible_if = dict(raw_visible) if isinstance(raw_visible, dict) else None
         return ParamSpec(
             name=p["name"],
             type=ptype,
@@ -212,6 +231,7 @@ def _spec_from_yaml(yaml_path: Path | str, handler: Handler) -> NodeSpec:
             required=bool(p.get("required", True)),
             enum=tuple(str(v) for v in (p.get("enum") or [])),
             widget=widget,
+            visible_if=visible_if,
         )
 
     ui = data.get("ui") or {}
@@ -266,9 +286,7 @@ def _palette_meta_from_ui(ui: dict, *, type_id: str) -> dict[str, str | int]:
         out["palette_section_label"] = str(sec.get("label", sid))
         out["palette_section_color"] = str(sec.get("color", "#6B7280"))
         out["palette_section_order"] = int(sec.get("order", 0))
-        if pal.get("node_order") is None:
-            raise ValueError(f"Node {type_id}: ui.palette.node_order is required")
-        out["palette_order"] = int(pal["node_order"])
+        out["palette_order"] = int(pal.get("node_order", 0))
     else:
         raise ValueError(
             f"Node {type_id}: ui.palette is required "

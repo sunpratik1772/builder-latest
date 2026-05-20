@@ -1,0 +1,215 @@
+{
+  "workflow_name": "SQLite Surveillance E2E Workflow",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "workflow_context",
+      "type": "WORKFLOW_CONTEXT",
+      "config": {
+        "scenario": "fxfro",
+        "alert_id": "ALERT-FR-001"
+      }
+    },
+    {
+      "id": "fan_out_sources",
+      "type": "FAN_OUT",
+      "config": {
+        "branch_count": 5,
+        "branches": "alert,orders,trades,market,comms",
+        "emit_context": true
+      }
+    },
+    {
+      "id": "select_alert",
+      "type": "DB_SOLR_CONNECTOR",
+      "config": {
+        "table": "hs_alerts",
+        "output_name": "hs_alerts"
+      }
+    },
+    {
+      "id": "select_orders",
+      "type": "DB_SOLR_CONNECTOR",
+      "config": {
+        "table": "hs_orders",
+        "output_name": "hs_orders"
+      }
+    },
+    {
+      "id": "select_trades",
+      "type": "DB_SOLR_CONNECTOR",
+      "config": {
+        "table": "hs_trades",
+        "output_name": "hs_trades"
+      }
+    },
+    {
+      "id": "select_market",
+      "type": "DB_MARKET_CONNECTOR",
+      "config": {
+        "output_name": "market_ticks"
+      }
+    },
+    {
+      "id": "select_comms",
+      "type": "MARKET_API_CONNECTOR",
+      "config": {
+        "datasets": [
+          "comms_messages"
+        ]
+      }
+    },
+    {
+      "id": "alert_metrics",
+      "type": "CODE",
+      "config": {
+        "mode": "runOnceForAllItems",
+        "return_type": "items",
+        "params": {},
+        "comment": "Build alert summary row(s) for the alert tab from connector items and ctx.alert_payload (scenario, trader, window, summary_prompt).",
+        "pythonCode": "rows = [item.to_payload() for item in items]\nalert = rows[0] if rows else dict(ctx.alert_payload)\nsource_rows = rows if rows else [alert]\nresult = [{'_sheet_name': 'alert summary', '_highlight': alert.get('scenario') == 'front_running_positive', 'record_type': 'alert_metrics', 'source_row_count': len(source_rows), 'source_highlight_count': 1 if alert.get('scenario') == 'front_running_positive' else 0, 'source_evidence_sample': json.dumps(source_rows[:5], default=str)[:2000], 'alert_id': alert.get('alert_id'), 'scenario': alert.get('scenario'), 'participant_id': alert.get('participant_id'), 'trader_id': alert.get('trader_id'), 'trader_name': alert.get('trader_name'), 'keyword': alert.get('keyword'), 'currency_pair': alert.get('currency_pair'), 'start_time': alert.get('start_time'), 'end_time': alert.get('end_time'), 'description': alert.get('description'), 'summary_prompt': f\"Alert {alert.get('alert_id')} is {alert.get('scenario')} for {alert.get('trader_name')} on {alert.get('currency_pair')} from {alert.get('start_time')} to {alert.get('end_time')} with keyword {alert.get('keyword')}.\"}]"
+      }
+    },
+    {
+      "id": "order_metrics",
+      "type": "CODE",
+      "config": {
+        "mode": "runOnceForAllItems",
+        "return_type": "items",
+        "params": {},
+        "comment": "Expand hs_orders into per-order and per-book metric rows; ctx stores distinct_books, order_ids, order_book_map for later market/comms joins.",
+        "pythonCode": "rows = [item.to_payload() for item in items]\ndef safe(value):\n    return re.sub(r'[\\\\/*?:\\[\\]]+', '-', str(value))[:18]\nbooks = sorted({r.get('book') for r in rows if r.get('book')})\norder_ids = [str(r.get('order_id')) for r in rows if r.get('order_id')]\nctx.set('distinct_books', books)\nctx.set('book_count', len(books))\nctx.set('order_ids', order_ids)\nctx.set('order_count', len(rows))\nctx.set('order_book_map', {str(r.get('order_id')): r.get('book') for r in rows if r.get('order_id')})\nresult = []\nfor order in rows:\n    order_id = str(order.get('order_id') or 'unknown')\n    quantity = float(order.get('quantity') or 0)\n    result.append({'_sheet_name': f'order summary_{safe(order_id)}', '_highlight': len(books) >= 3, 'record_type': 'order_metrics', 'source_row_count': 1, 'source_highlight_count': 1 if len(books) >= 3 else 0, 'source_evidence_sample': json.dumps([order], default=str)[:2000], 'alert_id': order.get('alert_id') or ctx.alert_payload.get('alert_id'), 'participant_id': order.get('participant_id'), 'trader_id': order.get('trader_id'), 'trader_name': order.get('trader_name') or ctx.alert_payload.get('trader_name'), 'currency_pair': order.get('currency_pair') or ctx.alert_payload.get('currency_pair'), 'book': order.get('book'), 'order_id': order_id, 'order_count': 1, 'side': order.get('side'), 'quantity': quantity, 'limit_price': order.get('limit_price'), 'order_time': order.get('order_time'), 'summary_prompt': f\"order summary_{order_id} - describe that {order.get('trader_name') or ctx.alert_payload.get('trader_name')} raised this {order.get('side')} order during the alert period, including order time {order.get('order_time')}, book {order.get('book')}, quantity {quantity:.0f}, and limit price {order.get('limit_price')}.\"})\nfor book in books:\n    book_rows = [r for r in rows if r.get('book') == book]\n    book_quantities = [float(r.get('quantity') or 0) for r in book_rows]\n    result.append({'_sheet_name': f'{safe(book)} summary', '_highlight': len(books) >= 3, 'record_type': 'order_book_metrics', 'source_row_count': len(book_rows), 'source_highlight_count': len(book_rows) if len(books) >= 3 else 0, 'source_evidence_sample': json.dumps(book_rows[:5], default=str)[:2000], 'alert_id': book_rows[0].get('alert_id') if book_rows else ctx.alert_payload.get('alert_id'), 'trader_name': book_rows[0].get('trader_name') if book_rows else ctx.alert_payload.get('trader_name'), 'currency_pair': book_rows[0].get('currency_pair') if book_rows else ctx.alert_payload.get('currency_pair'), 'book': book, 'order_count': len(book_rows), 'order_ids': ', '.join(str(r.get('order_id')) for r in book_rows if r.get('order_id')), 'total_quantity': sum(book_quantities), 'average_quantity': round(sum(book_quantities) / len(book_quantities), 2) if book_quantities else 0, 'summary_prompt': f\"{book} summary - explain how this book contributed to the alert for {ctx.alert_payload.get('trader_name')}, including {len(book_rows)} orders, total quantity {sum(book_quantities):.0f}, and the order ids tied to this book.\"})"
+      }
+    },
+    {
+      "id": "trade_metrics",
+      "type": "CODE",
+      "config": {
+        "mode": "runOnceForAllItems",
+        "return_type": "items",
+        "params": {},
+        "comment": "Per-book trade aggregates from hs_trades; sets max_trade_notional, average_trade_notional, flag_count on ctx.",
+        "pythonCode": "rows = [item.to_payload() for item in items]\ndef safe(value):\n    return re.sub(r'[\\\\/*?:\\[\\]]+', '-', str(value))[:18]\nnotionals = [float(r.get('notional_usd') or 0) for r in rows]\nprices = [float(r.get('trade_price') or 0) for r in rows]\nmax_notional = max(notionals or [0])\navg_notional = round(sum(notionals) / len(notionals), 2) if notionals else 0\nhighlight_count = sum(1 for r in rows if r.get('risk_flag') == 'PRE_CLIENT_ACTIVITY' or float(r.get('notional_usd') or 0) == max_notional)\nctx.set('max_trade_notional', max_notional)\nctx.set('average_trade_notional', avg_notional)\nctx.set('flag_count', highlight_count)\nresult = []\nbooks = sorted({r.get('book') for r in rows if r.get('book')})\nfor book in books:\n    book_rows = [r for r in rows if r.get('book') == book]\n    book_notionals = [float(r.get('notional_usd') or 0) for r in book_rows]\n    book_prices = [float(r.get('trade_price') or 0) for r in book_rows]\n    book_highlights = sum(1 for r in book_rows if r.get('risk_flag') == 'PRE_CLIENT_ACTIVITY' or float(r.get('notional_usd') or 0) == max(book_notionals or [0]))\n    result.append({'_sheet_name': f'{safe(book)} summary', '_highlight': book_highlights > 0, 'record_type': 'trade_book_metrics', 'source_row_count': len(book_rows), 'source_highlight_count': book_highlights, 'source_evidence_sample': json.dumps(book_rows[:5], default=str)[:2000], 'alert_id': book_rows[0].get('alert_id') if book_rows else ctx.alert_payload.get('alert_id'), 'trader_name': book_rows[0].get('trader_name') if book_rows else ctx.alert_payload.get('trader_name'), 'currency_pair': book_rows[0].get('currency_pair') if book_rows else ctx.alert_payload.get('currency_pair'), 'book': book, 'trade_count': len(book_rows), 'average_notional_usd': round(sum(book_notionals) / len(book_notionals), 2) if book_notionals else 0, 'max_notional_usd': max(book_notionals or [0]), 'high_trade_price': max(book_prices or [0]), 'highlight_count': book_highlights, 'risk_flags': ', '.join(sorted({str(r.get('risk_flag')) for r in book_rows if r.get('risk_flag')})), 'summary_prompt': f\"{book} summary - include trade evidence for this book: {len(book_rows)} trades, max notional {max(book_notionals or [0])}, high price {max(book_prices or [0])}, and suspicious risk flags.\"})"
+      }
+    },
+    {
+      "id": "market_metrics",
+      "type": "CODE",
+      "config": {
+        "mode": "runOnceForAllItems",
+        "return_type": "items",
+        "params": {},
+        "comment": "For each order, attach market_ticks context (mid move, spreads) keyed as market_datafor<order_id> tabs.",
+        "pythonCode": "rows = [item.to_payload() for item in items]\norders_df = ctx.datasets.get('hs_orders')\ntry:\n    order_rows = orders_df.to_dict('records') if orders_df is not None else []\nexcept Exception:\n    order_rows = []\nmid = [float(r.get('mid') or 0) for r in rows]\nspreads = [float(r.get('spread_pips') or 0) for r in rows]\nmove = round((max(mid) - min(mid)), 6) if mid else 0\nresult = []\nfor order in order_rows:\n    order_id = str(order.get('order_id') or 'unknown')\n    result.append({'_sheet_name': f'market_datafor{order_id}'[:31], '_highlight': move > 0.001, 'record_type': 'market_order_metrics', 'source_row_count': len(rows), 'source_highlight_count': 1 if move > 0.001 else 0, 'source_evidence_sample': json.dumps(rows[:5], default=str)[:2000], 'alert_id': order.get('alert_id') or ctx.alert_payload.get('alert_id'), 'currency_pair': order.get('currency_pair') or ctx.alert_payload.get('currency_pair'), 'book': order.get('book'), 'order_id': order_id, 'order_time': order.get('order_time'), 'tick_count': len(rows), 'min_mid': min(mid or [0]), 'max_mid': max(mid or [0]), 'mid_move': move, 'average_spread_pips': round(sum(spreads) / len(spreads), 2) if spreads else 0, 'summary_prompt': f\"market_datafor{order_id} - explain the market price context around order {order_id}: {len(rows)} ticks, mid moved {move}, min mid {min(mid or [0])}, max mid {max(mid or [0])}, average spread {round(sum(spreads) / len(spreads), 2) if spreads else 0} pips.\"})"
+      }
+    },
+    {
+      "id": "comms_metrics",
+      "type": "CODE",
+      "config": {
+        "mode": "runOnceForAllItems",
+        "return_type": "items",
+        "params": {},
+        "comment": "Per-order comms slice from comms_messages with keyword hits and relevance vs alert keyword.",
+        "pythonCode": "rows = [item.to_payload() for item in items]\norders_df = ctx.datasets.get('hs_orders')\ntry:\n    order_rows = orders_df.to_dict('records') if orders_df is not None else []\nexcept Exception:\n    order_rows = []\nkeyword = str(ctx.alert_payload.get('keyword') or '').lower()\nresult = []\nfor order in order_rows:\n    order_id = str(order.get('order_id') or 'unknown')\n    book = order.get('book')\n    book_rows = [r for r in rows if r.get('book') == book]\n    keyword_hits = [r for r in book_rows if keyword and keyword in str(r.get('display_post', '')).lower()]\n    max_relevance = max([float(r.get('relevance_score') or 0) for r in book_rows] or [0])\n    sample = '; '.join(str(r.get('display_post', ''))[:120] for r in book_rows[:3])\n    result.append({'_sheet_name': f'commsfor {order_id}'[:31], '_highlight': len(keyword_hits) > 0 or max_relevance >= 0.8, 'record_type': 'comms_order_metrics', 'source_row_count': len(book_rows), 'source_highlight_count': len(keyword_hits), 'source_evidence_sample': json.dumps(book_rows[:5], default=str)[:2000], 'alert_id': order.get('alert_id') or ctx.alert_payload.get('alert_id'), 'trader_name': order.get('trader_name') or ctx.alert_payload.get('trader_name'), 'book': book, 'order_id': order_id, 'message_count': len(book_rows), 'keyword': ctx.alert_payload.get('keyword'), 'keyword_hit_count': len(keyword_hits), 'max_relevance_score': max_relevance, 'sample_messages': sample, 'summary_prompt': f\"commsfor {order_id} - summarize trader and counterparty communications tied to book {book}: {len(book_rows)} messages, {len(keyword_hits)} keyword hits for {ctx.alert_payload.get('keyword')}, max relevance {max_relevance}. Mention any timing or intent in the sample messages: {sample}\"})"
+      }
+    },
+    {
+      "id": "merge_sections",
+      "type": "MERGE",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "tab_summary",
+      "type": "TAB_SUMMARY",
+      "config": {
+        "sheet_name_field": "_sheet_name",
+        "summary_prompt_field": "summary_prompt",
+        "sample_size": 2,
+        "include_overall": true,
+        "overall_sheet_name": "overall summary"
+      }
+    },
+    {
+      "id": "llm_summary",
+      "type": "LLM_BASIC",
+      "config": {
+        "prompt": "{{ tab_name }}\n{{ summary_prompt }}",
+        "system_prompt": "You are a concise bank front-running surveillance analyst. Return exactly: <tab name> - \"<one evidence-based paragraph>\". For order tabs explain the order raised by the trader. For book tabs explain book-level order and trade evidence. For market_datafor tabs explain price movement. For commsfor tabs explain communications evidence. For overall summary state whether the evidence supports likely front-running or is explainable/insufficient.",
+        "model": "gemini-2.5-flash",
+        "output_field": "summary",
+        "set_executive_summary": true,
+        "section_name": "overall_summary"
+      }
+    },
+    {
+      "id": "merge_excel_rows",
+      "type": "MERGE",
+      "config": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "write_excel_summary",
+      "type": "SPREADSHEET_FILE",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "output/sqlite_surveillance_e2e.xlsx",
+        "options": {
+          "sheet_name_field": "_sheet_name",
+          "highlight_field": "_highlight"
+        }
+      }
+    },
+    {
+      "id": "response",
+      "type": "RESPONSE",
+      "config": {
+        "envelope_key": "response",
+        "summary_input_key": "llm_summary_output",
+        "summary_tab_field": "tab_name",
+        "summary_text_field": "summary",
+        "order_tab_prefix": "order summary_",
+        "overall_tab_name": "overall summary",
+        "artifact_key": "artifact",
+        "alert_id_key": "alert_id",
+        "order_summary_key": "order_summary",
+        "overall_summary_key": "overall_summary",
+        "llm_summary_key": "llm_summary",
+        "static_fields": {}
+      }
+    }
+  ],
+  "edges": [
+    {"from": "trigger", "to": "workflow_context"},
+    {"from": "workflow_context", "to": "fan_out_sources"},
+    {"from": "fan_out_sources", "to": "select_alert", "sourceHandle": "output1"},
+    {"from": "fan_out_sources", "to": "select_orders", "sourceHandle": "output2"},
+    {"from": "fan_out_sources", "to": "select_trades", "sourceHandle": "output3"},
+    {"from": "fan_out_sources", "to": "select_market", "sourceHandle": "output4"},
+    {"from": "fan_out_sources", "to": "select_comms", "sourceHandle": "output5"},
+    {"from": "select_alert", "to": "alert_metrics"},
+    {"from": "select_orders", "to": "order_metrics"},
+    {"from": "select_trades", "to": "trade_metrics"},
+    {"from": "select_market", "to": "market_metrics"},
+    {"from": "select_comms", "to": "comms_metrics"},
+    {"from": "alert_metrics", "to": "merge_sections"},
+    {"from": "order_metrics", "to": "merge_sections"},
+    {"from": "trade_metrics", "to": "merge_sections"},
+    {"from": "market_metrics", "to": "merge_sections"},
+    {"from": "comms_metrics", "to": "merge_sections"},
+    {"from": "merge_sections", "to": "tab_summary"},
+    {"from": "tab_summary", "to": "llm_summary"},
+    {"from": "merge_sections", "to": "merge_excel_rows", "targetHandle": "input1"},
+    {"from": "llm_summary", "to": "merge_excel_rows", "targetHandle": "input2"},
+    {"from": "merge_excel_rows", "to": "write_excel_summary"},
+    {"from": "write_excel_summary", "to": "response"}
+  ]
+}

@@ -20,15 +20,16 @@ Each rule includes positive and negative examples.
   - Works: `{"conditions":{"combinator":"and","conditions":[...]}}`
   - Won't work: missing combinator with ambiguous defaults.
 
-3) CODE node safety rules
-- Rule: Emit Python-native CODE config.
+3) CODE node safety rules (orchestrator `code` type = Starlark)
+- Rule: Emit Starlark for orchestrator `code` nodes (not JavaScript, not Python `exec`).
   - Works:
-    - `{"language":"python","pythonCode":"for item in items: ..."}`
+    - `{"code":"output = [r for r in input_data['rows'] if r.get('score', 0) >= 75]", "code_summary": "Plain-language explanation for business users: keeps rows whose score is at least 75."}`
+    - Assign to `output` (preferred) or `result`; read rows via `input_data['rows']` or legacy `rows`.
   - Won't work:
-    - `{"language":"javascript","jsCode":"return items;"}` without supported python bridge.
-- Rule: Avoid heavyweight spreadsheet/dataframe imports in CODE.
-  - Works: pure arithmetic/field transforms.
-  - Won't work: `import pandas`, `import xlsxwriter` inside CODE.
+    - `import os`, `while True`, recursion, or Node-style `return rows.filter(...)`.
+- Rule: Always include `code_summary` — 2–4 sentences for non-technical readers describing what the script does, what fields it uses, and what the next node receives.
+- Rule: Starlark uses bounded `for` loops / comprehensions only; no filesystem, network, or datetime/stdlib imports.
+- Rule: Legacy n8n `CODE` with `pythonCode` remains Python; do not mix Starlark into `pythonCode` nodes.
 
 4) Artifact fidelity rules
 - Rule: Artifact asks must end in deterministic writer tail.
@@ -56,6 +57,12 @@ Each rule includes positive and negative examples.
 - Rule: Every non-trigger node must be reachable and useful.
   - Works: all nodes on at least one trigger-to-output path.
   - Won't work: orphan branches that never feed requested artifacts.
+- Rule: For any node exposing `input_name`, `input_name` must be non-empty and linked to upstream `output_name` (or explicit context binding like `ctx.*`).
+  - Works: `node_b.config.input_name = node_a.config.output_name`.
+  - Won't work: blank `input_name` on a wired node.
+- Rule: For any node exposing `output_name` and feeding downstream nodes, `output_name` must be non-empty.
+  - Works: node writes `output_name: "orders_enriched"` and downstream reads it.
+  - Won't work: downstream edge exists but upstream `output_name` is blank.
 
 6) Data/schema grounding
 - Rule: Use only contract-backed node types and config keys.

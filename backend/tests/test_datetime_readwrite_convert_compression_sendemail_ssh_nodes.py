@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import base64
+from unittest.mock import patch
 
 from engine.context import RunContext
 from engine.nodes.compression import handle_compression
@@ -108,6 +109,34 @@ def test_sendemail_dry_run_and_ssh_operations(tmp_path: Path) -> None:
     c1.set("em1_input", [{}])
     handle_sendemail(n1, c1)
     assert c1.get("em1_output", [])[0]["status"] == "queued"
+    assert c1.get("em1_output", [])[0]["provider"] == "smtp"
+
+    class _Resp:
+        def __init__(self):
+            self.status_code = 202
+            self.headers = {"request-id": "abc-123"}
+
+        def raise_for_status(self):
+            return None
+
+    c1b = RunContext()
+    n1b = {
+        "id": "em2",
+        "config": {
+            "provider": "outlook",
+            "access_token": "token",
+            "to_email": "to@example.com",
+            "subject": "graph hello",
+            "text": "graph world",
+            "dry_run": False,
+        },
+    }
+    c1b.set("em2_input", [{}])
+    with patch("engine.nodes.sendemail.requests.post", return_value=_Resp()):
+        handle_sendemail(n1b, c1b)
+    out1b = c1b.get("em2_output", [])[0]
+    assert out1b["provider"] == "outlook"
+    assert out1b["statusCode"] == 202
 
     c2 = RunContext()
     n2 = {"id": "s1", "config": {"resource": "command", "operation": "execute", "command": "echo ok", "cwd": "/tmp"}}

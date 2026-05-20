@@ -1,0 +1,65 @@
+type_id: CODE
+description: Write custom Python executed against workflow items. Use `return_type` for the shape assigned to `result`, `params` for JSON passed into the sandbox, and `comment` for a short natural-language note.
+ui:
+  display_name: Code
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 4
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: mode
+    type: string
+    description: Execution mode
+    required: false
+    default: runOnceForAllItems
+    enum: [runOnceForAllItems, runOnceForEachItem]
+  - name: comment
+    type: string
+    widget: textarea
+    description: 'Comments. Natural-language definition of the logic (what it does, edge cases, pass branches).'
+    required: false
+  - name: pythonCode
+    type: code
+    widget: code
+    description: Python code to execute. Assign output to `result` (or mutate `items` in runOnceForAllItems).
+    required: false
+  - name: return_type
+    type: string
+    description: The shape this code block assigns to `result`.
+    default: items
+    enum: [items, object, text, number, boolean]
+    required: false
+  - name: params
+    type: object
+    description: Named values passed into the sandbox as `params` (JSON object).
+    default: {}
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/'
+extras:
+  docs_slug: n8n-nodes-base.code
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/
+  scrape_mode: deep_all_sections

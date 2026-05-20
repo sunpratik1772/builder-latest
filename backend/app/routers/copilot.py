@@ -204,7 +204,7 @@ def copilot_generate(req: CopilotGenerateRequest) -> dict:
 def copilot_generate_stream(req: CopilotGenerateRequest) -> StreamingResponse:
     """
     Stream workflow generation as Server-Sent Events.
-    Phases: understanding → planning → generating → critiquing → finalizing → complete.
+    Events: thinking → text_chunk → workflow_created → done (orchestrator UI).
 
     Accepts the same optional edit-mode fields as `/copilot/generate`.
     """
@@ -221,14 +221,15 @@ def copilot_generate_stream(req: CopilotGenerateRequest) -> StreamingResponse:
                 # Hitch a draft auto-save to the terminal "complete" event
                 # so the drawer's Drafts section reflects the new workflow
                 # the instant streaming finishes.
-                if event.get("phase") == "complete" and event.get("workflow"):
-                    draft_filename = _autosave_draft(event["workflow"])
+                wf = event.get("workflow")
+                if event.get("type") == "workflow_created" and wf:
+                    draft_filename = _autosave_draft(wf)
                     if draft_filename:
                         event = {**event, "draft_filename": draft_filename}
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as exc:
             logger.exception("Copilot stream failed")
-            yield f"data: {json.dumps({'phase': 'error', 'status': 'error', 'label': 'Server error', 'detail': str(exc)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
 
     return StreamingResponse(
         event_source(),

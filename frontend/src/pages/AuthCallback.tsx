@@ -15,7 +15,7 @@
  *     `useRef` flag to guarantee idempotency under React StrictMode.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ArcIcon, Loader2 } from '../icons/arc'
 import { useAuthStore, type AuthUser } from '../store/authStore'
 
 export default function AuthCallback() {
@@ -65,7 +65,7 @@ export default function AuthCallback() {
       className="flex flex-col items-center justify-center min-h-screen"
       style={{ background: 'var(--bg-base)', color: 'var(--text-0)' }}
     >
-      <Loader2 size={20} className="animate-spin" style={{ color: 'var(--text-2)' }} />
+      <ArcIcon icon={Loader2} size={20} className="animate-spin" style={{ color: 'var(--text-2)' }} />
       <div
         className="font-mono mt-4"
         style={{ fontSize: 11, color: 'var(--text-2)', letterSpacing: '0.10em', textTransform: 'uppercase' }}

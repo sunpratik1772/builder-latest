@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Any
 
 DEFAULT_MODEL = "gemini-2.5-flash"
+GEMINI_API_KEY_ENV = "GEMINI_API_KEY"
 
 
 def _sdk():
@@ -20,7 +21,7 @@ def _sdk():
 @dataclass(frozen=True)
 class GeminiAdapter:
     default_model: str = DEFAULT_MODEL
-    api_key_env: str = "GEMINI_API_KEY"
+    api_key_env: str = GEMINI_API_KEY_ENV
     fallback_env_keys: tuple[str, ...] = field(default=())
 
     def chat_turn(
@@ -96,4 +97,17 @@ class GeminiAdapter:
 @lru_cache(maxsize=1)
 def get_default_adapter() -> GeminiAdapter:
     """Process-wide default adapter."""
-    return GeminiAdapter()
+    return GeminiAdapter(fallback_env_keys=("GOOGLE_API_KEY",))
+
+
+def gemini_api_key() -> str:
+    """Resolve API key from GEMINI_API_KEY or legacy GOOGLE_API_KEY."""
+    return (
+        os.environ.get(GEMINI_API_KEY_ENV, "").strip()
+        or os.environ.get("GOOGLE_API_KEY", "").strip()
+    )
+
+
+def gemini_configured() -> bool:
+    """True when a Gemini/Google API key is available."""
+    return bool(gemini_api_key())

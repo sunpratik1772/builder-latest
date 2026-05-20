@@ -46,6 +46,12 @@ dump.rdb
 .DS_Store
 *.pem
 
+# Local run / generated artifacts
+.run/
+backend/output/
+backend/tmp/
+output/
+
 # Python
 __pycache__/
 *pyc*

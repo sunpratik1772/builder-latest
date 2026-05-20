@@ -1,0 +1,138 @@
+type_id: CHAT
+description: Use the Chat node with the Chat Trigger node to send messages into the
+  chat and optionally wait for responses from users. This enables human-in-the-loop
+  (HITL) use cases in chat workflows, allowing you to have multiple chat interactions
+  within a single execution. The Chat node al
+ui:
+  display_name: Chat
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: ai
+      label: AI
+      order: 30
+      color: '#8B5CF6'
+    node_order: 50
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Chat operation mode.
+  required: false
+  default: send
+  constraints:
+    enum: [send, sendAndWait]
+- name: message
+  type: string
+  description: Message to send to chat session.
+  required: false
+- name: provider
+  type: string
+  description: Chat delivery provider (generic or teams).
+  required: false
+  default: generic
+- name: channel
+  type: string
+  description: Alias for provider.
+  required: false
+- name: responseType
+  type: string
+  description: Response style for sendAndWait operation.
+  required: false
+  default: freeText
+  constraints:
+    enum: [freeText, approval]
+- name: approvalType
+  type: string
+  description: Approval mode for approval response type.
+  required: false
+  default: approveAndDisapprove
+  constraints:
+    enum: [approveOnly, approveAndDisapprove]
+- name: blockUserInput
+  type: boolean
+  description: Disallow custom text input in approval mode.
+  required: false
+  default: false
+- name: user_reply
+  type: string
+  description: Mock user reply value used to resume wait.
+  required: false
+- name: chat_reply
+  type: string
+  description: Alias for user_reply.
+  required: false
+- name: options
+  type: object
+  description: Additional chat options.
+  required: false
+  default: {}
+- name: memory_connection
+  type: boolean
+  description: Persist chat message history in context memory.
+  required: false
+  default: false
+- name: session_id
+  type: string
+  description: Chat session key.
+  required: false
+  default: chat-session
+- name: limit_wait_time
+  type: boolean
+  description: Whether waiting can timeout.
+  required: false
+  default: false
+- name: timed_out
+  type: boolean
+  description: Indicates the wait cycle timed out.
+  required: false
+  default: false
+- name: teams_webhook_url
+  type: string
+  description: Teams incoming webhook URL for send operation.
+  required: false
+- name: webhook_url
+  type: string
+  description: Alias for teams_webhook_url.
+  required: false
+- name: graph_endpoint
+  type: string
+  description: Microsoft Graph endpoint to post Teams message.
+  required: false
+- name: access_token
+  type: string
+  description: OAuth bearer token for Teams Graph mode.
+  required: false
+- name: graph_access_token
+  type: string
+  description: Alias for access_token.
+  required: false
+- name: incoming_events
+  type: array
+  description: Optional inbound chat events used to resolve sendAndWait responses.
+  required: false
+  default: []
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chat/'
+extras:
+  docs_slug: n8n-nodes-langchain.chat
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chat/
+  scrape_mode: deep_all_sections

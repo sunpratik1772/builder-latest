@@ -200,16 +200,17 @@ when those are requested.
 3. Every node must include: `id`, `type`, `label`, `config`.
 4. Every edge must use: `{{"from":"<id>","to":"<id>"}}`.
 5. Build an acyclic graph. Keep wiring explicit and execution-safe.
-6. Ensure every `input_name` is produced by an upstream `output_name`.
-7. If user asks for file outputs/artifacts, include a deterministic file-output tail:
+6. For nodes that expose `input_name`, never leave it blank: set it from an upstream node `output_name` (prefer the immediate predecessor, e.g. `last_node.output_name`) or an explicit context binding (`ctx.*`/`context.*`).
+7. For nodes that expose `output_name` and feed downstream nodes, never leave `output_name` blank.
+8. If user asks for file outputs/artifacts, include a deterministic file-output tail:
    `CONVERT_TO_FILE` -> `READ_WRITE_FILES_FROM_DISK` with concrete path.
-8. Use stable ids (`n01`, `n02`, ...) and preserve ids in edit mode unless required.
-9. Prefer minimum viable topology that satisfies objective; avoid decorative nodes.
-10. If objective is partially unsupported, implement the supported subset only.
+9. Use stable ids (`n01`, `n02`, ...) and preserve ids in edit mode unless required.
+10. Prefer minimum viable topology that satisfies objective; avoid decorative nodes.
+11. If objective is partially unsupported, implement the supported subset only.
 
 ## Runtime-first preferences
 - Start with a trigger node appropriate for generic automation (usually `MANUAL_TRIGGER`).
-- Use `CODE` for lightweight deterministic shaping when needed, but emit Python code (`language: "python"` + `pythonCode`) only.
+- Use `CODE` for lightweight deterministic shaping when needed: emit `pythonCode` only (no JS). Prefer explicit `return_type`, `params` (when useful), and optional `comment` for intent. In `pythonCode`, include brief `#` comments above non-obvious steps so non-technical reviewers can follow the flow.
 - Use `MERGE`, `IF`, `SWITCH`, `SPLIT_OUT`, `SPLIT_IN_BATCHES` only when objective requires branch/loop behavior.
 - Use `LLM_BASIC` when summarization/rewrite/drafting is explicitly requested.
 - Prefer artifact-producing endings over no-op endings.
@@ -282,7 +283,7 @@ workflow JSON. Keep unaffected sections stable.
                 "- For artifact asks, ensure final writer path is concrete and deterministic.\n"
                 "- If the request says merge/combine, include at least one `MERGE` node in the execution path.\n"
                 "- If the request says split/branch/route, include explicit branching nodes (`SWITCH`/`IF`/`SPLIT_OUT`).\n"
-                "- Keep refs/schema-valid (`input_name` from upstream `output_name`, valid prompt refs).\n"
+                "- Keep refs/schema-valid (`input_name` non-blank and sourced from upstream `output_name` or context, `output_name` non-blank when consumed downstream, valid prompt refs).\n"
                 "- Return COMPLETE workflow JSON only.\n"
             )
 

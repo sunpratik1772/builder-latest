@@ -6,7 +6,7 @@
  * supply its own title / subtitle and content.
  */
 import type { ReactNode } from 'react'
-import { X as XIcon } from 'lucide-react'
+import { ArcIcon, X as XIcon } from '../icons/arc'
 
 interface Props {
   open: boolean
@@ -99,7 +99,7 @@ export default function SectionDrawer({
                 ;(e.currentTarget as HTMLElement).style.color = 'var(--text-2)'
               }}
             >
-              <XIcon size={14} strokeWidth={2} />
+              <ArcIcon icon={XIcon} size={14} />
             </button>
           </div>
         </div>

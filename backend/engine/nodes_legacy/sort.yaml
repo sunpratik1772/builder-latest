@@ -1,0 +1,77 @@
+type_id: SORT
+description: Use the Sort node to organize lists of items in a desired ordering, or
+  generate a random selection.
+ui:
+  display_name: Sort
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: '#6366F1'
+    node_order: 56
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: type
+    type: string
+    description: Sort mode
+    required: false
+    default: simple
+    enum: [simple, random, code]
+  - name: sortFieldsUi
+    type: object
+    description: UI sort fields collection (sortField[])
+    required: false
+  - name: sort_fields
+    type: array
+    description: Legacy sort fields list
+    required: false
+  - name: disable_dot_notation
+    type: boolean
+    description: Disable nested path lookup using dot notation
+    required: false
+    default: false
+  - name: case_sensitive
+    type: boolean
+    description: Preserve original case when comparing string values
+    required: false
+    default: false
+  - name: empty_fields_last
+    type: boolean
+    description: Place empty or null values after populated values
+    required: false
+    default: true
+  - name: options
+    type: object
+    description: Advanced sorting options (disableDotNotation, caseSensitive, emptyFieldsLast)
+    required: false
+    default: {}
+  - name: code
+    type: string
+    description: "Custom comparator code; supports py: expression for Python runtime"
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sort/'
+extras:
+  docs_slug: n8n-nodes-base.sort
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sort/
+  scrape_mode: deep_all_sections

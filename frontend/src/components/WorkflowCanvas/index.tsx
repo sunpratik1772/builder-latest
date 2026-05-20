@@ -15,6 +15,7 @@
  * metadata comes from `nodeRegistryStore` (backend node-manifest).
  */
 import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
+import NewWorkflowButton, { WORKFLOW_ADD_OFFSET } from '../shared/NewWorkflowButton'
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -45,36 +46,56 @@ const nodeTypes = { custom: CustomNode }
 /** MIME the palette uses for drag payloads; also duplicated as text/plain for Safari. */
 export const PALETTE_DND_MIME = 'application/x-dbsherpa-node'
 
-// Column / row spacing in flow-space pixels. Tuned so a ~280px-wide
-// node card + ~150px-tall stack reads as "columns of stages" rather
-// than a dense grid.
-const COL_WIDTH = 300
-const ROW_HEIGHT = 160
+// Column / row spacing in flow-space pixels. Wider columns and tighter rows
+// make branch phases read like a tree instead of a compressed mesh.
+const COL_WIDTH = 360
+const ROW_HEIGHT = 118
 const CANVAS_PAD_X = 60
-const CANVAS_PAD_Y = 60
+const CANVAS_PAD_Y = 260
 
 type WorkflowShape = NonNullable<ReturnType<typeof useWorkflowStore.getState>['workflow']>
 
+function phaseHint(type: string, id: string): number | null {
+  const key = `${type}:${id}`.toLowerCase()
+  if (type === 'MANUAL_TRIGGER' || type.endsWith('TRIGGER')) return 0
+  if (type === 'WORKFLOW_CONTEXT') return 1
+  if (type.includes('CONNECTOR') || key.includes('select_')) return 2
+  if (type === 'FILTER' || key.includes('calc_')) return 3
+  if (type === 'SET' || type === 'SUMMARIZE') return 4
+  if (type === 'MERGE' && key.includes('orders_x')) return 5
+  if (type === 'MERGE') return 6
+  if (type === 'TAB_SUMMARY') return 7
+  if (type === 'LLM_BASIC') return 8
+  if (type === 'SPREADSHEET_FILE' || key.includes('excel') || key.includes('report')) return 9
+  return null
+}
+
+function laneHint(type: string, id: string): number {
+  const key = `${type}:${id}`.toLowerCase()
+  if (type === 'MANUAL_TRIGGER' || type === 'WORKFLOW_CONTEXT') return 0
+  if (key.includes('alert')) return -3
+  if (key.includes('order')) return -2
+  if (key.includes('exec')) return -1
+  if (key.includes('trade') || key.includes('book')) return 0
+  if (key.includes('market')) return 2
+  if (key.includes('comm')) return 3
+  if (key.includes('summary') || key.includes('llm')) return 1
+  if (key.includes('excel') || key.includes('report')) return 1
+  return 0
+}
+
 /**
- * Layered (Sugiyama-style) layout for the DAG.
+ * Hierarchical phase layout for workflows without saved coordinates.
  *
- * Column = longest-path depth from any root (node with no incoming
- *   edges). This matches how an analyst thinks about execution order:
- *   "stage 1 collects, stage 2 enriches, stage 3 signals, …" — and
- *   mirrors how n8n / Temporal / Airflow render their pipelines.
- *
- * Row    = within a column, order nodes by the average row of their
- *   parents in the previous column (the classic "barycenter"
- *   heuristic). That pulls each node close to whatever fed it and
- *   massively reduces edge crossings vs. insertion order.
- *
- * Tie-breakers preserve original `workflow.nodes` ordering so the
- * layout is stable across reloads — otherwise the canvas jumps
- * around every time Copilot regenerates a workflow.
+ * The graph still obeys dependency depth, but known node families are nudged
+ * into readable execution phases. Parallel branches occupy stable vertical
+ * lanes (orders, trades/books, market, comms) before converging into summaries
+ * and Excel output. This makes "what can run in parallel" visible immediately.
  */
 function layoutByTopology(workflow: WorkflowShape): Map<string, { x: number; y: number }> {
   const nodeIds = workflow.nodes.map((n) => n.id)
   const orderIndex = new Map(nodeIds.map((id, i) => [id, i]))
+  const byId = new Map(workflow.nodes.map((n) => [n.id, n]))
   const parents = new Map<string, string[]>(nodeIds.map((id) => [id, []]))
   const children = new Map<string, string[]>(nodeIds.map((id) => [id, []]))
   for (const e of workflow.edges) {
@@ -117,39 +138,47 @@ function layoutByTopology(workflow: WorkflowShape): Map<string, { x: number; y: 
     if (!changed) break
   }
 
-  // Bucket by column.
-  const columns = new Map<number, string[]>()
+  // Dependency depth is the floor; phase hints make common workflows readable.
+  const phase = new Map<string, number>()
   for (const id of nodeIds) {
-    const d = depth.get(id)!
-    if (!columns.has(d)) columns.set(d, [])
-    columns.get(d)!.push(id)
+    const n = byId.get(id)
+    const hinted = n ? phaseHint(String(n.type), id) : null
+    phase.set(id, Math.max(depth.get(id) ?? 0, hinted ?? 0))
   }
 
-  // Row assignment: barycenter ordering within each column, left to
-  // right. Root column keeps original workflow order; each later
-  // column sorts by the mean row of its parents to minimise crossings.
-  const row = new Map<string, number>()
-  const sortedCols = [...columns.keys()].sort((a, b) => a - b)
-  for (const col of sortedCols) {
-    const ids = columns.get(col)!
-    const scored = ids.map((id) => {
-      const ps = parents.get(id)!
-      const parentRows = ps.map((p) => row.get(p)).filter((r): r is number => r !== undefined)
-      const bary = parentRows.length
-        ? parentRows.reduce((a, b) => a + b, 0) / parentRows.length
-        : orderIndex.get(id)!
-      return { id, bary, tie: orderIndex.get(id)! }
-    })
-    scored.sort((a, b) => a.bary - b.bary || a.tie - b.tie)
-    scored.forEach((s, i) => row.set(s.id, i))
+  const columns = new Map<number, string[]>()
+  for (const id of nodeIds) {
+    const p = phase.get(id)!
+    if (!columns.has(p)) columns.set(p, [])
+    columns.get(p)!.push(id)
   }
 
   const positions = new Map<string, { x: number; y: number }>()
-  for (const id of nodeIds) {
-    positions.set(id, {
-      x: CANVAS_PAD_X + depth.get(id)! * COL_WIDTH,
-      y: CANVAS_PAD_Y + row.get(id)! * ROW_HEIGHT,
+  const sortedCols = [...columns.keys()].sort((a, b) => a - b)
+  for (const col of sortedCols) {
+    const ids = columns.get(col)!
+    const usedLanes = new Map<number, number>()
+    const scored = ids.map((id) => {
+      const n = byId.get(id)
+      const lane = n ? laneHint(String(n.type), id) : 0
+      const ps = parents.get(id) ?? []
+      const parentY = ps
+        .map((p) => positions.get(p)?.y)
+        .filter((y): y is number => y !== undefined)
+      const bary = parentY.length
+        ? parentY.reduce((a, b) => a + b, 0) / parentY.length
+        : CANVAS_PAD_Y + lane * ROW_HEIGHT
+      return { id, lane, bary, tie: orderIndex.get(id)! }
     })
+    scored.sort((a, b) => a.lane - b.lane || a.bary - b.bary || a.tie - b.tie)
+    for (const item of scored) {
+      const collision = usedLanes.get(item.lane) ?? 0
+      usedLanes.set(item.lane, collision + 1)
+      positions.set(item.id, {
+        x: CANVAS_PAD_X + col * COL_WIDTH,
+        y: CANVAS_PAD_Y + item.lane * ROW_HEIGHT + collision * (ROW_HEIGHT * 0.72),
+      })
+    }
   }
   return positions
 }
@@ -182,7 +211,8 @@ function workflowToFlow(workflow: ReturnType<typeof useWorkflowStore.getState>['
 }
 
 function styleEdgesByRun(edges: Edge[], log: RunLogEntry[]): Edge[] {
-  const byNode = new Map(log.map((e) => [e.node_id, e]))
+  const byNode = new Map<string, RunLogEntry>()
+  for (const e of log) byNode.set(e.node_id, e)
   return edges.map((e) => {
     const target = byNode.get(e.target as string)
     const source = byNode.get(e.source as string)
@@ -213,11 +243,15 @@ function EmptyCanvas({ onDragOver, onDrop }: { onDragOver: (e: DragEvent<HTMLDiv
   const setRightPanelMode = useWorkflowStore((s) => s.setRightPanelMode)
   return (
     <div
-      className="flex-1 relative flex items-center justify-center"
-      style={{ background: 'transparent' }}
+      className="flex-1 relative flex items-center justify-center workflow-canvas"
+      style={{ background: 'var(--bg-base)' }}
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
+      <NewWorkflowButton
+        variant="icon"
+        style={{ position: 'absolute', zIndex: 20, top: WORKFLOW_ADD_OFFSET.top, left: WORKFLOW_ADD_OFFSET.left }}
+      />
       <div className="text-center relative z-10 max-w-md px-6" style={{ display: 'grid', gap: 16, justifyItems: 'center' }}>
         {/* Linear-style decorative chip */}
         <span
@@ -257,7 +291,7 @@ function EmptyCanvas({ onDragOver, onDrop }: { onDragOver: (e: DragEvent<HTMLDiv
           }}
         >
           Drag nodes from the left palette, chain typed ports, or ask the{' '}
-          <span style={{ color: 'var(--text-0)', fontWeight: 540 }}>Copilot</span> to generate the entire workflow for you.
+          <span style={{ color: 'var(--text-0)', fontWeight: 540 }}>sherpa</span> to generate the entire workflow for you.
         </p>
         <div className="flex items-center gap-2 mt-1">
           <button
@@ -266,9 +300,9 @@ function EmptyCanvas({ onDragOver, onDrop }: { onDragOver: (e: DragEvent<HTMLDiv
               height: 36,
               padding: '0 14px',
               borderRadius: 7,
-              background: 'var(--text-0)',
-              color: 'var(--bg-base)',
-              border: '1px solid var(--text-0)',
+              background: 'var(--bg-2)',
+              color: 'var(--text-0)',
+              border: '1px solid var(--border-strong)',
               fontSize: 12.5,
               fontWeight: 540,
               cursor: 'pointer',
@@ -292,7 +326,7 @@ function EmptyCanvas({ onDragOver, onDrop }: { onDragOver: (e: DragEvent<HTMLDiv
               letterSpacing: '-0.005em',
             }}
           >
-            Ask Copilot
+            Ask sherpa
           </button>
         </div>
         <div
@@ -431,14 +465,15 @@ function WorkflowCanvasInner() {
   return (
     <div
       ref={wrapperRef}
-      className="flex-1 relative"
-      style={{ background: 'transparent' }}
+      className="flex-1 relative workflow-canvas"
+      style={{ background: 'var(--bg-base)' }}
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      {/* atmospheric overlays — pointer-events:none, sit under the flow UI */}
-      <div className="canvas-atmo" />
-      <div className="canvas-grain" />
+      <NewWorkflowButton
+        variant="icon"
+        style={{ position: 'absolute', zIndex: 20, top: WORKFLOW_ADD_OFFSET.top, left: WORKFLOW_ADD_OFFSET.left }}
+      />
 
       <ReactFlow
         nodes={nodes}
@@ -469,9 +504,9 @@ function WorkflowCanvasInner() {
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={26}
-          size={1.6}
-          color="var(--dots-color)"
+          gap={20}
+          size={1.25}
+          color="var(--canvas-dots-color, var(--dots-color))"
         />
         <Controls
           className="panel-glass !bg-[var(--panel-glass-bg)]"

@@ -10,20 +10,29 @@
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Sparkles, Loader2, Mail, Lock } from 'lucide-react'
-import { loginWithGoogle, useAuthStore } from '../store/authStore'
+import { ArcIcon, ArrowRight, Sparkles, Loader2, Mail, Lock } from '../icons/arc'
+import { useAuthStore } from '../store/authStore'
 import { BASE } from '../services/api'
+import BrandMark from '../components/BrandMark'
+
+const DEMO_CREDENTIALS = {
+  email: 'demo@dbsherpa.local',
+  password: 'demo12345',
+  name: 'Demo User',
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const status = useAuthStore((s) => s.status)
   const refresh = useAuthStore((s) => s.refresh)
+  const enableDemoUser = useAuthStore((s) => s.enableDemoUser)
   
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
   const [error, setError] = useState('')
 
   // If a session cookie is already present, skip the login screen.
@@ -44,7 +53,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
+      const endpoint = mode === 'login' ? '/auth/login' : '/auth/register'
       const body = mode === 'login' 
         ? { email, password }
         : { email, password, name }
@@ -71,6 +80,50 @@ export default function LoginPage() {
     }
   }
 
+  const handleDemoLogin = async () => {
+    setError('')
+    setDemoLoading(true)
+    try {
+      const registerRes = await fetch(`${BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(DEMO_CREDENTIALS),
+        credentials: 'include',
+      })
+
+      if (!registerRes.ok && registerRes.status !== 409) {
+        const data = await registerRes.json().catch(() => ({ detail: 'Demo setup failed' }))
+        throw new Error(data.detail || 'Demo setup failed')
+      }
+
+      if (registerRes.status === 409) {
+        const loginRes = await fetch(`${BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: DEMO_CREDENTIALS.email,
+            password: DEMO_CREDENTIALS.password,
+          }),
+          credentials: 'include',
+        })
+        if (!loginRes.ok) {
+          const data = await loginRes.json().catch(() => ({ detail: 'Demo login failed' }))
+          throw new Error(data.detail || 'Demo login failed')
+        }
+      }
+
+      await refresh()
+      navigate('/dashboard', { replace: true })
+    } catch {
+      // Network/downstream auth can be unavailable in local demos.
+      // Fall back to local demo auth so users can still enter Studio.
+      enableDemoUser()
+      navigate('/dashboard', { replace: true })
+    } finally {
+      setDemoLoading(false)
+    }
+  }
+
   return (
     <div
       className="relative min-h-screen w-full grid grid-cols-1 lg:grid-cols-2"
@@ -93,21 +146,7 @@ export default function LoginPage() {
       >
         {/* Wordmark */}
         <div className="flex items-center gap-2.5">
-          <div
-            className="flex items-center justify-center"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: 'var(--text-0)',
-              color: 'var(--bg-base)',
-              fontWeight: 600,
-              fontSize: 13,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            S
-          </div>
+          <BrandMark size={28} style={{ borderRadius: 7 }} />
           <div className="display" style={{ fontSize: 14.5, fontWeight: 540, letterSpacing: '-0.018em' }}>
             dbSherpa
           </div>
@@ -174,25 +213,27 @@ export default function LoginPage() {
             and create powerful automations — all from one canvas.
           </p>
           <button
-            onClick={loginWithGoogle}
+            type="button"
+            disabled
             data-testid="hero-start-building-btn"
-            className="flex items-center gap-2 lift"
+            className="flex items-center gap-2"
             style={{
               alignSelf: 'flex-start',
               padding: '11px 20px',
               borderRadius: 8,
-              background: 'var(--text-0)',
-              color: 'var(--bg-base)',
-              border: '1px solid var(--text-0)',
+              background: 'var(--bg-3)',
+              color: 'var(--text-3)',
+              border: '1px solid var(--border-soft)',
               fontSize: 13.5,
               fontWeight: 540,
               letterSpacing: '-0.01em',
-              cursor: 'pointer',
+              cursor: 'not-allowed',
               fontFamily: 'inherit',
+              opacity: 0.8,
             }}
           >
-            <span>Start building</span>
-            <ArrowRight size={14} strokeWidth={2} />
+            <span>Google sign-in disabled</span>
+            <ArcIcon icon={ArrowRight} size={14} />
           </button>
 
           {/* Tiny feature row */}
@@ -456,7 +497,7 @@ export default function LoginPage() {
                 fontFamily: 'inherit',
               }}
             >
-              {loading && <Loader2 size={14} className="animate-spin" />}
+              {loading && <ArcIcon icon={Loader2} size={14} className="animate-spin" />}
               <span>{mode === 'login' ? 'Sign in' : 'Create account'}</span>
             </button>
           </form>
@@ -510,30 +551,51 @@ export default function LoginPage() {
 
           {/* Google Sign In */}
           <button
-            onClick={loginWithGoogle}
+            type="button"
+            disabled
             data-testid="login-google-btn"
-            className="w-full flex items-center justify-center gap-2.5 lift"
+            className="w-full flex items-center justify-center gap-2.5"
             style={{
               padding: '11px 16px',
               borderRadius: 8,
-              background: 'var(--bg-2)',
-              color: 'var(--text-0)',
-              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-3)',
+              color: 'var(--text-3)',
+              border: '1px solid var(--border-soft)',
               fontSize: 13.5,
               fontWeight: 510,
               letterSpacing: '-0.005em',
-              cursor: 'pointer',
+              cursor: 'not-allowed',
               fontFamily: 'inherit',
-            }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-3)'
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-2)'
+              opacity: 0.85,
             }}
           >
             <GoogleGlyph />
-            <span>Continue with Google</span>
+            <span>Continue with Google (disabled)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            disabled={demoLoading || loading}
+            data-testid="login-demo-btn"
+            className="w-full flex items-center justify-center gap-2.5"
+            style={{
+              marginTop: 10,
+              padding: '11px 16px',
+              borderRadius: 8,
+              background: 'var(--text-0)',
+              color: 'var(--bg-base)',
+              border: '1px solid var(--text-0)',
+              fontSize: 13.5,
+              fontWeight: 540,
+              letterSpacing: '-0.01em',
+              cursor: demoLoading || loading ? 'not-allowed' : 'pointer',
+              opacity: demoLoading || loading ? 0.65 : 1,
+              fontFamily: 'inherit',
+            }}
+          >
+            {demoLoading && <ArcIcon icon={Loader2} size={14} className="animate-spin" />}
+            <span>Login as Demo User</span>
           </button>
 
           <div

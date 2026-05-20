@@ -18,6 +18,8 @@ def test_schedule_and_manual_trigger_outputs() -> None:
     out1 = c1.get("s1_output", [])
     assert out1 and out1[0]["trigger"] == "schedule"
     assert "cronExpression" in out1[0]
+    assert out1[0]["timezone"] == "UTC"
+    assert "ruleId" in out1[0]
 
     c2 = RunContext()
     n2 = {"id": "m1", "config": {}}
@@ -35,6 +37,11 @@ def test_schedule_and_manual_trigger_outputs() -> None:
     n4 = {"id": "s2", "config": {"rule": {"interval": [{"field": "seconds", "secondsInterval": 0}]}}}
     with pytest.raises(ValueError, match="secondsInterval"):
         handle_schedule_trigger(n4, c4)
+
+    c5 = RunContext()
+    bad_tz = {"id": "s3", "config": {"timezone": "Mars/Phobos"}}
+    with pytest.raises(ValueError, match="timezone"):
+        handle_schedule_trigger(bad_tz, c5)
 
 
 def test_noop_and_respond_to_webhook() -> None:

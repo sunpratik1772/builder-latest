@@ -1,0 +1,88 @@
+type_id: SPLIT_OUT
+description: Use the Split Out node to separate a single data item containing a list
+  into multiple items. For example, a list of customers, and you want to split them
+  so that you have an item for each customer.
+ui:
+  display_name: Split Out
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: flow
+      label: Flow Control
+      order: 10
+      color: '#F59E0B'
+    node_order: 57
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+  - name: field_to_split_out
+    type: string
+    description: Field containing list to split into items
+    required: true
+  - name: fieldToSplitOut
+    type: string
+    description: CamelCase alias for field_to_split_out
+    required: false
+  - name: include
+    type: string
+    description: Which non-split fields to include in each output item
+    required: false
+    default: noOtherFields
+    enum: [noOtherFields, allOtherFields, selectedOtherFields]
+  - name: fields_to_include
+    type: string
+    description: Comma-separated fields to include when include=selectedOtherFields
+    required: false
+  - name: fieldsToInclude
+    type: string
+    description: CamelCase alias for fields_to_include
+    required: false
+  - name: disable_dot_notation
+    type: boolean
+    description: Disable nested path lookups using dot notation
+    required: false
+    default: false
+  - name: disableDotNotation
+    type: boolean
+    description: CamelCase alias for disable_dot_notation
+    required: false
+  - name: destination_field_name
+    type: string
+    description: Destination field for split values
+    required: false
+  - name: destinationFieldName
+    type: string
+    description: CamelCase alias for destination_field_name
+    required: false
+  - name: include_binary
+    type: boolean
+    description: Include binary payload from source item
+    required: false
+    default: false
+  - name: includeBinary
+    type: boolean
+    description: CamelCase alias for include_binary
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/'
+extras:
+  docs_slug: n8n-nodes-base.splitout
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/
+  scrape_mode: deep_all_sections

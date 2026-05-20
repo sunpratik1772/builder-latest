@@ -1,0 +1,15 @@
+id: leads.csv
+description: Demo sales leads for Studio showcase workflows
+columns:
+  - { name: lead_id, type: string }
+  - { name: company, type: string }
+  - { name: region, type: string }
+  - { name: score, type: number }
+  - { name: stage, type: string }
+rows:
+  - { lead_id: L001, company: Acme Corp, region: EU, score: 92, stage: negotiation }
+  - { lead_id: L002, company: Beta Labs, region: US, score: 68, stage: discovery }
+  - { lead_id: L003, company: Coral AI, region: APAC, score: 88, stage: proposal }
+  - { lead_id: L004, company: Delta Fin, region: US, score: 54, stage: nurture }
+  - { lead_id: L005, company: Echo Health, region: EU, score: 79, stage: discovery }
+  - { lead_id: L006, company: Flux Media, region: MEA, score: 95, stage: negotiation }

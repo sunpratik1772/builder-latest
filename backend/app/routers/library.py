@@ -21,6 +21,8 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from data_sources.sqlite_demo import search_demo_data
+
 router = APIRouter(tags=["library"])
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -199,6 +201,7 @@ def list_data_sources() -> dict:
                         "type": c.get("type"),
                         "description": (c.get("description") or "")[:200],
                         "semantic": c.get("semantic"),
+                        "include_in_tab": c.get("include_in_tab", True),
                     }
                     for c in columns[:60]
                 ],
@@ -207,6 +210,33 @@ def list_data_sources() -> dict:
             }
         )
     return {"data_sources": items}
+
+
+# ---------------------------------------------------------------------------
+# SQLite demo-data search
+# ---------------------------------------------------------------------------
+@router.get("/demo-data/search")
+@router.get("/api/demo-data/search")
+def demo_data_search(
+    alert_id: str | None = None,
+    participant_id: str | None = None,
+    keyword: str | None = None,
+    date: str | None = None,
+) -> dict:
+    return {
+        "filters": {
+            "alert_id": alert_id,
+            "participant_id": participant_id,
+            "keyword": keyword,
+            "date": date,
+        },
+        "datasets": search_demo_data(
+            alert_id=alert_id,
+            participant_id=participant_id,
+            keyword=keyword,
+            date=date,
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------

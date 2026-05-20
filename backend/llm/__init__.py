@@ -19,6 +19,16 @@ every shape we actually use:
 Callers depend on the adapter module — they don't know google-genai
 exists. Swapping vendors is a one-file change.
 """
-from .gemini_adapter import GeminiAdapter, get_default_adapter
+from .gemini_adapter import (
+    GEMINI_API_KEY_ENV,
+    GeminiAdapter,
+    gemini_configured,
+    get_default_adapter,
+)
 
-__all__ = ["GeminiAdapter", "get_default_adapter"]
+__all__ = [
+    "GEMINI_API_KEY_ENV",
+    "GeminiAdapter",
+    "gemini_configured",
+    "get_default_adapter",
+]

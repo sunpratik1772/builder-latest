@@ -38,6 +38,7 @@ import re
 import time
 import traceback
 from collections import defaultdict, deque
+from pathlib import Path
 from typing import Iterator
 
 from .node_spec import NodeSpec
@@ -75,6 +76,18 @@ def _resolve_output_value(port: PortSpec, node: dict, ctx: RunContext) -> tuple[
     output_name = cfg.get("output_name")
 
     if port.type is PortType.DATAFRAME:
+        if port.store_at:
+            sa = port.store_at
+            m = re.fullmatch(r"datasets\.<(\w+)>", sa)
+            if m:
+                key = cfg.get(m.group(1))
+                if key is not None and str(key) in ctx.datasets:
+                    loc = f"ctx.datasets[{key!r}]"
+                    return ctx.datasets[str(key)], loc
+            m = re.fullmatch(r"datasets\.(\w+)", sa)
+            if m and m.group(1) in ctx.datasets:
+                loc = f"ctx.datasets[{m.group(1)!r}]"
+                return ctx.datasets[m.group(1)], loc
         if output_name and output_name in ctx.datasets:
             return ctx.datasets[output_name], f"ctx.datasets[{output_name!r}]"
         if port.name in ctx.datasets:
@@ -411,6 +424,8 @@ def execute_nodes(nodes: list[dict], edges: list[dict], ctx: RunContext) -> None
     """
     nodes_by_id = {n["id"]: n for n in nodes}
     order = topological_sort(nodes, edges)
+    ctx._active_edges = list(edges)
+    ctx.output_map.clear()
     for node_id in order:
         node = nodes_by_id[node_id]
         node_type = node["type"]
@@ -544,6 +559,16 @@ def _snapshot_output(node: dict, ctx: RunContext, before: dict) -> dict:
             }
     if node_type == "REPORT_OUTPUT":
         summary["report_path"] = ctx.report_path
+
+    node_id = node.get("id")
+    raw = ctx.output_map.get(node_id) if node_id else None
+    if isinstance(raw, dict):
+        jsonable = _jsonable(raw)
+        if isinstance(jsonable, dict):
+            rows = jsonable.get("rows")
+            if isinstance(rows, list) and len(rows) > 25:
+                jsonable = {**jsonable, "rows": rows[:25], "_rows_truncated": len(rows)}
+            summary["node_output"] = jsonable
 
     return summary
 
@@ -772,6 +797,10 @@ def run_workflow_stream(
         "order": order,
     })
 
+    # Incoming-handler nodes (MCP, excel/csv export, etc.) resolve upstream
+    # outputs via build_incoming_outputs() — same as execute_nodes().
+    ctx._active_edges = list(edges)
+
     for idx, node_id in enumerate(order, 1):
         node = nodes_by_id[node_id]
         node_type = node["type"]
@@ -854,12 +883,16 @@ def run_workflow_stream(
         })
 
     total_ms = int((time.perf_counter() - t0) * 1000)
+    download_url = None
+    if ctx.report_path:
+        download_url = f"/report/{Path(ctx.report_path).name}"
     result = {
         "run_id": ctx.run_id,
         "disposition": ctx.disposition,
         "flag_count": ctx.get("flag_count", 0),
         "output_branch": ctx.output_branch,
         "report_path": ctx.report_path,
+        "download_url": download_url,
         "datasets": list(ctx.datasets.keys()),
         "sections": {
             name: {"stats": _jsonable(s["stats"]), "narrative": s["narrative"]}
@@ -872,3 +905,37 @@ def run_workflow_stream(
         "total_duration_ms": total_ms,
         "result": result,
     })
+
+
+def dry_run_workflow(nodes: list[dict], edges: list[dict]) -> dict:
+    """
+    In-memory execution for the Copilot self-healing loop (orchestrator-backend parity).
+
+    Runs handlers in topo order and returns per-node outputs in ``outputMap``.
+    """
+    ctx = RunContext(alert_payload={})
+    logs: list[dict] = []
+    status = "completed"
+    try:
+        execute_nodes(nodes, edges, ctx)
+    except Exception as exc:
+        status = "failed"
+        logs.append({
+            "nodeId": "",
+            "nodeType": "",
+            "status": "failed",
+            "output": {},
+            "error": str(exc),
+        })
+        return {"status": status, "outputMap": dict(ctx.output_map), "logs": logs}
+
+    for nid, out in ctx.output_map.items():
+        node = next((n for n in nodes if n.get("id") == nid), {})
+        logs.append({
+            "nodeId": nid,
+            "nodeType": node.get("type", ""),
+            "status": "completed",
+            "output": out,
+            "error": None,
+        })
+    return {"status": status, "outputMap": dict(ctx.output_map), "logs": logs}

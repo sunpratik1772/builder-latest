@@ -1,0 +1,60 @@
+type_id: SPREADSHEET_FILE
+description: "Read/write Excel and CSV files"
+
+ui:
+  color: "#10B981"
+  icon: FileSpreadsheet
+  palette:
+    section:
+      id: integration
+      label: Integration
+      order: 30
+      color: "#10B981"
+    node_order: 21
+
+input_ports:
+  - name: input
+    type: object
+    description: "Data to write (for write operation)"
+    optional: true
+
+output_ports:
+  - name: output
+    type: object
+    description: "File data"
+
+params:
+  - name: operation
+    type: string
+    description: "File operation"
+    enum: [read, write]
+    default: read
+    required: true
+    
+  - name: file_format
+    type: string
+    description: "File format"
+    enum: [csv, xlsx, json]
+    default: csv
+    required: true
+    
+  - name: file_path
+    type: string
+    description: "Path to file"
+    required: false
+    
+  - name: options
+    type: object
+    default: {}
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "read operation returns rows as items"
+  - "write operation creates file from items"
+  - "Supports CSV, Excel, and JSON formats"
+  - "XLSX write can group rows into sheets with options.sheet_name_field"
+  - "XLSX write can highlight rows with options.highlight_field or options.highlight_condition"

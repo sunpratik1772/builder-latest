@@ -1,0 +1,53 @@
+type_id: TAB_SUMMARY
+description: Create compact per-tab summary prompt rows from sheet-grouped items.
+ui:
+  display_name: Tab Summary
+  color: "#6366F1"
+  icon: Rows3
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: "#6366F1"
+    node_order: 5
+input_ports:
+  - name: input
+    type: object
+    description: Rows containing a sheet-name field
+    optional: false
+output_ports:
+  - name: output
+    type: object
+    description: One summary prompt row per sheet plus optional overall row
+params:
+  - name: sheet_name_field
+    type: string
+    description: Field containing target sheet names
+    default: _sheet_name
+    required: false
+  - name: summary_prompt_field
+    type: string
+    description: Field to store generated prompt text
+    default: summary_prompt
+    required: false
+  - name: sample_size
+    type: integer
+    description: Number of sample rows included per tab prompt
+    default: 3
+    required: false
+  - name: include_overall
+    type: boolean
+    description: Append one overall summary prompt row
+    default: true
+    required: false
+  - name: overall_sheet_name
+    type: string
+    description: Sheet name for the overall summary row
+    default: overall summary
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+  - Produces compact summary inputs so LLM nodes do not process raw workbook rows.

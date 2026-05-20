@@ -20,12 +20,38 @@ export interface AuthUser {
   picture?: string | null
 }
 
+const DEMO_AUTH_STORAGE_KEY = 'dbsherpa_demo_auth'
+const DEMO_USER: AuthUser = {
+  user_id: 'demo_user',
+  email: 'demo@dbsherpa.local',
+  name: 'Demo User',
+  picture: null,
+}
+
+function readDemoAuthFlag(): boolean {
+  try {
+    return window.localStorage.getItem(DEMO_AUTH_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function persistDemoAuth(enabled: boolean): void {
+  try {
+    if (enabled) window.localStorage.setItem(DEMO_AUTH_STORAGE_KEY, '1')
+    else window.localStorage.removeItem(DEMO_AUTH_STORAGE_KEY)
+  } catch {
+    /* noop: auth state still lives in-memory */
+  }
+}
+
 interface AuthState {
   user: AuthUser | null
   /** `null` = not yet checked, `true` = checked + signed in, `false` = checked + signed out. */
   status: 'idle' | 'checking' | 'authenticated' | 'unauthenticated'
   setUser: (u: AuthUser | null) => void
   setStatus: (s: AuthState['status']) => void
+  enableDemoUser: () => void
   /** Fetch /auth/me and update state. Returns `true` if signed in. */
   refresh: () => Promise<boolean>
   logout: () => Promise<void>
@@ -36,11 +62,22 @@ const API = '/api'
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   status: 'idle',
-  setUser: (u) =>
-    set({ user: u, status: u ? 'authenticated' : 'unauthenticated' }),
+  setUser: (u) => {
+    if (u?.user_id === DEMO_USER.user_id) persistDemoAuth(true)
+    if (!u) persistDemoAuth(false)
+    set({ user: u, status: u ? 'authenticated' : 'unauthenticated' })
+  },
   setStatus: (s) => set({ status: s }),
+  enableDemoUser: () => {
+    persistDemoAuth(true)
+    set({ user: DEMO_USER, status: 'authenticated' })
+  },
   refresh: async () => {
     set({ status: 'checking' })
+    if (readDemoAuthFlag()) {
+      set({ user: DEMO_USER, status: 'authenticated' })
+      return true
+    }
     try {
       const r = await fetch(`${API}/auth/me`, { credentials: 'include' })
       if (!r.ok) throw new Error('not authed')
@@ -53,6 +90,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   logout: async () => {
+    persistDemoAuth(false)
     try {
       await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
     } catch {

@@ -105,6 +105,7 @@ function _writePaneSizes(sizes: PaneSizes): void {
 }
 
 export type RightPanelMode = 'config' | 'runlog' | 'output' | 'copilot' | null
+export type WorkspaceView = 'canvas' | 'code'
 
 /**
  * Minimum time a node must visibly be in 'running' state before the UI is
@@ -165,6 +166,9 @@ interface WorkflowStore {
   duplicateNodes: (nodeIds: string[], offset?: { x: number; y: number }) => string[]
   /** Toggle the `disabled` flag on a node — used to grey it out and skip at runtime. */
   toggleNodeDisabled: (nodeId: string) => void
+
+  workspaceView: WorkspaceView
+  setWorkspaceView: (view: WorkspaceView) => void
 
   workflowDrawerOpen: boolean
   setWorkflowDrawerOpen: (v: boolean) => void
@@ -234,12 +238,71 @@ interface WorkflowStore {
 /* Events are applied to the store serially so a deferred             */
 /* node_complete can't be visually overtaken by the next node_start.  */
 /* ------------------------------------------------------------------ */
-const _queue: RunWorkflowStreamEvent[] = []
+type _QueuedEvent = { gen: number; ev: RunWorkflowStreamEvent }
+const _queue: _QueuedEvent[] = []
 let _draining = false
+/** Bumped on each `workflow_start` so stale events from a prior run are skipped. */
+let _runGen = 0
 // Tracks the wall-clock time (frontend) at which node_start was APPLIED to
 // the UI, keyed by node_id. Backend's `started_at` can be 100s of ms old by
 // the time events traverse the SSE pipe, so we can't use it for dwell math.
 const _uiStartedAt = new Map<string, number>()
+
+function _durationFromStarted(started_at?: string): number | undefined {
+  if (!started_at) return undefined
+  const startedMs = Date.parse(started_at)
+  if (Number.isNaN(startedMs)) return undefined
+  return Math.max(0, Date.now() - startedMs)
+}
+
+/** Mark any log rows still in `running` as finished (SSE/proxy burst or dropped completes). */
+function _finalizeRunningLog(log: RunLogEntry[]): RunLogEntry[] {
+  let changed = false
+  const next = log.map((e) => {
+    if (e.status !== 'running') return e
+    changed = true
+    return {
+      ...e,
+      status: 'ok' as const,
+      duration_ms: e.duration_ms ?? _durationFromStarted(e.started_at),
+    }
+  })
+  return changed ? next : log
+}
+
+function _upsertRunLogEntry(log: RunLogEntry[], entry: RunLogEntry): RunLogEntry[] {
+  const idx = log.findIndex((e) => e.node_id === entry.node_id)
+  if (idx < 0) return [...log, entry]
+  const copy = [...log]
+  copy[idx] = entry
+  return copy
+}
+
+function _completeRunLogEntry(
+  log: RunLogEntry[],
+  nodeId: string,
+  patch: Partial<RunLogEntry> & { status: 'ok' | 'error' },
+): RunLogEntry[] | null {
+  let idx = -1
+  for (let i = log.length - 1; i >= 0; i--) {
+    if (log[i].node_id === nodeId && log[i].status === 'running') {
+      idx = i
+      break
+    }
+  }
+  if (idx < 0) {
+    for (let i = log.length - 1; i >= 0; i--) {
+      if (log[i].node_id === nodeId) {
+        idx = i
+        break
+      }
+    }
+  }
+  if (idx < 0) return null
+  const copy = [...log]
+  copy[idx] = { ...copy[idx], ...patch }
+  return copy
+}
 
 function _sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
@@ -250,7 +313,12 @@ async function _drain(): Promise<void> {
   _draining = true
   try {
     while (_queue.length > 0) {
-      const ev = _queue[0]
+      const item = _queue[0]
+      if (item.gen !== _runGen) {
+        _queue.shift()
+        continue
+      }
+      const ev = item.ev
 
       // Hold node_complete / node_error until the running state has been
       // visible (applied to the UI) for at least MIN_NODE_DWELL_MS.
@@ -268,6 +336,7 @@ async function _drain(): Promise<void> {
     }
   } finally {
     _draining = false
+    if (_queue.length > 0) void _drain()
   }
 }
 
@@ -299,34 +368,32 @@ function _applyNow(ev: RunWorkflowStreamEvent): void {
           status: 'running',
           started_at: nowIso,
         }
-        return { runLog: [...s.runLog, entry] }
+        return { runLog: _upsertRunLogEntry(s.runLog, entry) }
       }
       case 'node_complete':
       case 'node_error': {
         if (!ev.node_id) return {}
         _uiStartedAt.delete(ev.node_id)
-        const idx = s.runLog.findIndex(
-          (e) => e.node_id === ev.node_id && e.status === 'running',
-        )
-        if (idx < 0) return {}
-        const log = [...s.runLog]
-        log[idx] = {
-          ...log[idx],
+        const log = _completeRunLogEntry(s.runLog, ev.node_id, {
           status: ev.type === 'node_complete' ? 'ok' : 'error',
           duration_ms: ev.duration_ms,
           output: ev.output,
           error: ev.error,
           trace: ev.trace,
-        }
+        })
+        if (!log) return {}
         return { runLog: log }
       }
       case 'workflow_complete':
+        _uiStartedAt.clear()
         return {
+          runLog: _finalizeRunningLog(s.runLog),
           runResult: ev.result ?? null,
           runTotalMs: ev.total_duration_ms ?? null,
           runWarnings: ev.warnings ?? ev.result?.warnings ?? null,
         }
       case 'workflow_error': {
+        _uiStartedAt.clear()
         // Surface structured validation failures alongside the flat
         // error string so the UI can render per-node issues.
         const validation = ev.validation
@@ -334,6 +401,7 @@ function _applyNow(ev: RunWorkflowStreamEvent): void {
           ? `${validation.errors.length} validation error(s): ${validation.errors.map((e) => e.code).join(', ')}`
           : ev.error ?? 'Workflow error'
         return {
+          runLog: _finalizeRunningLog(s.runLog),
           runError: message,
           validationIssues: validation?.errors ?? null,
           runWarnings: validation?.warnings ?? null,
@@ -348,9 +416,22 @@ function _applyNow(ev: RunWorkflowStreamEvent): void {
 function _enqueue(ev: RunWorkflowStreamEvent): void {
   // On a fresh run, flush any leftover events from a prior run that were
   // still waiting in the dwell queue.
-  if (ev.type === 'workflow_start') _queue.length = 0
-  _queue.push(ev)
+  if (ev.type === 'workflow_start') {
+    _runGen += 1
+    _queue.length = 0
+    _uiStartedAt.clear()
+  }
+  _queue.push({ gen: _runGen, ev })
   void _drain()
+}
+
+/** Call when the SSE connection closes so nodes never stay stuck on Running. */
+export function finalizeStuckRunLog(): void {
+  _uiStartedAt.clear()
+  useWorkflowStore.setState((s) => {
+    const runLog = _finalizeRunningLog(s.runLog)
+    return runLog === s.runLog ? {} : { runLog }
+  })
 }
 
 /* ------------------------------------------------------------------ */
@@ -553,6 +634,9 @@ export const useWorkflowStore = create<WorkflowStore>((set) => ({
       return { workflow: { ...s.workflow, nodes } }
     }),
 
+  workspaceView: 'canvas',
+  setWorkspaceView: (workspaceView) => set({ workspaceView }),
+
   isRunning: false,
   runResult: null,
   runError: null,
@@ -565,6 +649,7 @@ export const useWorkflowStore = create<WorkflowStore>((set) => ({
   setRunError: (e) => set({ runError: e }),
   setValidationIssues: (issues) => set({ validationIssues: issues }),
   resetRun: () => {
+    _runGen += 1
     _queue.length = 0
     _uiStartedAt.clear()
     set({

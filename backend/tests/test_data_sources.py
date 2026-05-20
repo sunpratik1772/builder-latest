@@ -7,17 +7,19 @@ from data_sources import get_registry
 def test_registry_loads_all_sources():
     reg = get_registry()
     ids = {s.id for s in reg.all()}
-    assert {"trades", "oracle", "comms", "market", "signals"} <= ids
+    assert ids == {"hs_alerts", "hs_orders", "hs_exec", "hs_trades", "market_ticks", "comms_messages"}
 
 
-def test_trades_has_expected_columns():
-    trades = get_registry().get("trades")
-    assert trades is not None
-    names = set(trades.column_names("hs_client_order"))
-    for expected in ("trader_id", "order_id", "order_time", "quantity", "limit_price", "side"):
+def test_orders_and_exec_have_expected_columns():
+    orders = get_registry().get("hs_orders")
+    assert orders is not None
+    names = set(orders.column_names())
+    for expected in ("trader_id", "order_id", "order_time", "quantity", "limit_price", "side", "book"):
         assert expected in names, f"missing column {expected}"
 
-    exec_names = set(trades.column_names("hs_execution"))
+    execs = get_registry().get("hs_exec")
+    assert execs is not None
+    exec_names = set(execs.column_names())
     for expected in ("exec_id", "order_id", "exec_time", "exec_quantity", "exec_price", "trade_version"):
         assert expected in exec_names, f"missing column {expected}"
 
@@ -25,10 +27,10 @@ def test_trades_has_expected_columns():
 def test_semantic_tag_lookup():
     """The 'size' semantic maps per selected source."""
     reg = get_registry()
-    trades_size = reg.get("trades").semantic_map("hs_client_order")["size"]
-    executions_size = reg.get("trades").semantic_map("hs_execution")["size"]
-    market_size = [c.name for c in reg.get("market").columns if c.semantic == "size"]
-    assert trades_size == ["quantity"]
+    orders_size = reg.get("hs_orders").semantic_map()["size"]
+    executions_size = reg.get("hs_exec").semantic_map()["size"]
+    market_size = [c.name for c in reg.get("market_ticks").columns if c.semantic == "size"]
+    assert orders_size == ["quantity"]
     assert executions_size == ["exec_quantity"]
     assert set(market_size) == {"bid_size", "ask_size"}
 
@@ -52,25 +54,26 @@ def test_registry_endpoint_shape():
 # ---------------------------------------------------------------------------
 
 def test_semantic_map_returns_correct_columns():
-    trades = get_registry().get("trades")
-    sm = trades.semantic_map("hs_client_order")
-    assert sm["trader"] == ["trader_id"]
+    orders = get_registry().get("hs_orders")
+    sm = orders.semantic_map()
+    assert sm["trader"] == ["participant_id", "trader_id"]
     assert sm["size"] == ["quantity"]
     assert sm["price"] == ["limit_price"]
     assert sm["time"] == ["order_time"]
 
 
 def test_semantic_map_multi_column():
-    """market.price maps to bid, ask, mid — all three in order."""
-    market = get_registry().get("market")
+    """market_ticks.price maps to bid, ask, mid — all three in order."""
+    market = get_registry().get("market_ticks")
     sm = market.semantic_map()
     assert set(sm["price"]) == {"bid", "ask", "mid"}
 
 
 def test_semantic_map_empty_when_no_tags():
-    """signals dataset has no semantic tags — map should be empty."""
-    signals = get_registry().get("signals")
-    assert signals.semantic_map() == {}
+    """comms text-only fields without semantic tags do not appear in the map."""
+    comms = get_registry().get("comms_messages")
+    sm = comms.semantic_map()
+    assert "display_post" not in sm
 
 
 # ---------------------------------------------------------------------------
@@ -79,32 +82,31 @@ def test_semantic_map_empty_when_no_tags():
 
 
 def test_resolve_field_direct_column():
-    trades = get_registry().get("trades")
-    assert trades.resolve_field("trader_id", "hs_client_order") == "trader_id"
-    assert trades.resolve_field("quantity", "hs_client_order") == "quantity"
+    orders = get_registry().get("hs_orders")
+    assert orders.resolve_field("trader_id") == "trader_id"
+    assert orders.resolve_field("quantity") == "quantity"
 
 
 def test_resolve_field_semantic_alias():
-    trades = get_registry().get("trades")
-    assert trades.resolve_field("size", "hs_client_order") == "quantity"
-    assert trades.resolve_field("size", "hs_execution") == "exec_quantity"
-    assert trades.resolve_field("trader", "hs_execution") == "trader_id"
+    assert get_registry().get("hs_orders").resolve_field("size") == "quantity"
+    assert get_registry().get("hs_exec").resolve_field("size") == "exec_quantity"
+    assert get_registry().get("hs_exec").resolve_field("trader") == "participant_id"
 
 
 def test_resolve_field_multi_semantic_uses_first():
-    market = get_registry().get("market")
+    market = get_registry().get("market_ticks")
     assert market.resolve_field("price") in ("bid", "ask", "mid")
     first = market.semantic_map()["price"][0]
     assert market.resolve_field("price") == first
 
 
 def test_resolve_field_unknown():
-    assert get_registry().get("trades").resolve_field("does_not_exist", "hs_client_order") is None
-    assert get_registry().get("trades").resolve_field("", "hs_client_order") is None
+    assert get_registry().get("hs_orders").resolve_field("does_not_exist") is None
+    assert get_registry().get("hs_orders").resolve_field("") is None
 
-    signals = get_registry().get("signals")
-    assert signals.resolve_field("_signal_flag") == "_signal_flag"
-    assert signals.resolve_field("nope") is None
+    alerts = get_registry().get("hs_alerts")
+    assert alerts.resolve_field("alert_id") == "alert_id"
+    assert alerts.resolve_field("nope") is None
 
 
 # ---------------------------------------------------------------------------
@@ -112,18 +114,16 @@ def test_resolve_field_unknown():
 # ---------------------------------------------------------------------------
 
 def test_schema_hint_contains_column_names():
-    hint = get_registry().get("trades").schema_hint()
+    hint = get_registry().get("hs_orders").schema_hint()
     assert "trader_id" in hint
-    assert "hs_client_order" in hint
+    assert "hs_orders" in hint
     assert "quantity" in hint
-    assert "hs_execution" in hint
-    assert "exec_quantity" in hint
     assert "semantic: size" in hint
 
 
 def test_schema_hints_for_prompt_covers_all_sources():
     hints = get_registry().schema_hints_for_prompt()
-    for source_id in ("trades", "oracle", "comms", "market", "signals"):
+    for source_id in ("hs_alerts", "hs_orders", "hs_exec", "hs_trades", "market_ticks", "comms_messages"):
         assert source_id in hints
 
 

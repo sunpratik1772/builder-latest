@@ -262,10 +262,11 @@ class TestCopilot:
                     except json.JSONDecodeError:
                         continue
                     # Stop early on terminal event
-                    if events[-1].get("phase") in {"complete", "error"}:
+                    if events[-1].get("type") in {"done", "error"}:
                         break
-                    if len(events) >= 8:
+                    if len(events) >= 12:
                         break
         assert events, "no SSE events received"
-        phases = {e.get("phase") for e in events if e.get("phase")}
-        assert phases, "events missing 'phase' field"
+        types = {e.get("type") for e in events if e.get("type")}
+        assert types, "events missing 'type' field"
+        assert "thinking" in types or "workflow_created" in types or "done" in types

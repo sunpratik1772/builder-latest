@@ -331,21 +331,89 @@ def _validate_topology(
                         node_id=nid,
                     )
 
-    # Orphan detection — every node except ALERT_TRIGGER should have an
-    # upstream edge, and every non-terminal node should have a downstream
-    # edge. These are warnings rather than errors because transient
-    # orphans are legal while a user is mid-build.
+    # Orphan detection — every non-entry node must be linked from upstream.
     for nid, node in nodes_by_id.items():
         node_type = node.get("type")
-        if node_type in {"ALERT_TRIGGER", "MANUAL_TRIGGER", "WEBHOOK", "SCHEDULE_TRIGGER", "CHAT_TRIGGER"}:
+        if _is_entry_node_type(node_type):
             continue
         if incoming.get(nid, 0) == 0:
             result.add(
                 _VC.ORPHAN_NODE,
                 f"Node '{nid}' ({node_type}) has no incoming edge.",
-                severity="warning",
                 node_id=nid,
             )
+
+    # Reachability from root nodes: disconnected subgraphs are invalid.
+    roots = [nid for nid in nodes_by_id if incoming.get(nid, 0) == 0]
+    fwd: dict[str, list[str]] = {nid: [] for nid in nodes_by_id}
+    for e in edges:
+        try:
+            src, dst = _edge_endpoints(e)
+        except ValueError:
+            continue
+        if src in fwd:
+            fwd[src].append(dst)
+    reachable: set[str] = set()
+    stack = list(roots)
+    while stack:
+        cur = stack.pop()
+        if cur in reachable:
+            continue
+        reachable.add(cur)
+        stack.extend(fwd.get(cur, []))
+    for nid in nodes_by_id:
+        if nid not in reachable:
+            result.add(
+                _VC.UNREACHABLE_NODE,
+                f"Node '{nid}' is not reachable from any entry node.",
+                node_id=nid,
+            )
+
+
+# ---------------------------------------------------------------------------
+# Entry nodes + conditional params
+# ---------------------------------------------------------------------------
+_LEGACY_ENTRY_TYPES = frozenset({
+    "ALERT_TRIGGER",
+    "MANUAL_TRIGGER",
+    "WEBHOOK",
+    "SCHEDULE_TRIGGER",
+    "CHAT_TRIGGER",
+})
+
+
+def _is_entry_node_type(node_type: str | None) -> bool:
+    """Triggers / starters have no incoming edges."""
+    if not node_type:
+        return False
+    if node_type in _LEGACY_ENTRY_TYPES or node_type.endswith("_trigger"):
+        return True
+    spec = NODE_SPECS.get(node_type)
+    if spec is not None and not spec.input_ports:
+        return True
+    return False
+
+
+def _effective_config(config: dict, params: tuple) -> dict[str, Any]:
+    """Apply ParamSpec defaults so optional fields are not flagged missing."""
+    out = dict(config)
+    for param in params:
+        if param.name not in out and param.default is not None:
+            out[param.name] = param.default
+    return out
+
+
+def _param_visible(param, config: dict[str, Any]) -> bool:
+    if not param.visible_if:
+        return True
+    for key, expected in param.visible_if.items():
+        actual = config.get(key)
+        if isinstance(expected, list):
+            if actual not in expected:
+                return False
+        elif actual != expected:
+            return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -368,8 +436,12 @@ def _validate_node_config(node: dict, result: ValidationResult) -> None:
         )
         return
 
+    effective = _effective_config(config, spec.params)
+
     for param in spec.params:
-        value = config.get(param.name)
+        if not _param_visible(param, effective):
+            continue
+        value = effective.get(param.name)
         missing = value is None or (isinstance(value, str) and value == "")
         if missing:
             if param.required:
@@ -482,18 +554,19 @@ def _validate_runtime_compat(node: dict, result: ValidationResult) -> None:
         return
 
     if node_type == "CODE":
-        language = str(config.get("language", "")).strip().lower()
-        js_code = str(config.get("jsCode", config.get("js_code", "")) or "").strip()
         py_code = str(config.get("pythonCode", config.get("python_code", "")) or "").strip()
-        # Runtime executes Python for CODE nodes; JavaScript is only allowed as
-        # a bridge when jsCode starts with "py:" and contains Python content.
-        if language in {"javascript", "js"} and js_code and not js_code.startswith("py:"):
+        if any(key in config for key in ("jsCode", "js_code")):
             result.add(
                 _VC.BAD_PARAM_TYPE,
-                (
-                    f"Node '{node_id}' uses JavaScript CODE that is not runtime-compatible. "
-                    "Use language='python' with pythonCode, or jsCode prefixed with 'py:' containing Python."
-                ),
+                f"Node '{node_id}' uses removed JavaScript CODE fields. Use pythonCode only.",
+                node_id=node_id,
+                field="config.pythonCode",
+            )
+        language = str(config.get("language", "")).strip().lower()
+        if language in {"javascript", "js", "javascriptnative"}:
+            result.add(
+                _VC.BAD_PARAM_TYPE,
+                f"Node '{node_id}' uses removed JavaScript CODE language. Use pythonCode only.",
                 node_id=node_id,
                 field="config.language",
             )
@@ -593,6 +666,7 @@ def _validate_wiring(
     # Build adjacency: node_id → list of predecessor node_ids (transitively).
     preds: dict[str, set[str]] = {nid: set() for nid in nodes_by_id}
     immediate: dict[str, list[str]] = {nid: [] for nid in nodes_by_id}
+    downstream: dict[str, list[str]] = {nid: [] for nid in nodes_by_id}
     for e in edges:
         try:
             src, dst = _edge_endpoints(e)
@@ -600,6 +674,7 @@ def _validate_wiring(
             continue
         if src in immediate and dst in preds:
             immediate[dst].append(src)
+            downstream[src].append(dst)
 
     def expand(nid: str) -> set[str]:
         # BFS of ancestors
@@ -620,7 +695,44 @@ def _validate_wiring(
         config = node.get("config") or {}
         if not isinstance(config, dict):
             continue
+        node_type = node.get("type")
+        spec: NodeSpec | None = NODE_SPECS.get(node_type) if node_type else None
+        param_names = {p.name for p in (spec.params if spec else [])}
         input_name = config.get("input_name")
+        output_name = config.get("output_name")
+        has_input_param = "input_name" in param_names
+        has_output_param = "output_name" in param_names
+        has_upstream = bool(immediate.get(nid))
+        has_downstream = bool(downstream.get(nid))
+
+        if has_input_param and has_upstream and (
+            input_name is None or (isinstance(input_name, str) and not input_name.strip())
+        ):
+            result.add(
+                _VC.UNWIRED_INPUT,
+                (
+                    f"Node '{nid}' expects a non-empty config.input_name. "
+                    "Set it from upstream output_name (e.g. previous_node.output_name) "
+                    "or an explicit context binding."
+                ),
+                node_id=nid,
+                field="config.input_name",
+            )
+            continue
+
+        if has_output_param and has_downstream and (
+            output_name is None or (isinstance(output_name, str) and not output_name.strip())
+        ):
+            result.add(
+                _VC.MISSING_REQUIRED_PARAM,
+                (
+                    f"Node '{nid}' feeds downstream nodes but config.output_name is blank. "
+                    "Set output_name so downstream input_name can link to it."
+                ),
+                node_id=nid,
+                field="config.output_name",
+            )
+
         if not input_name:
             continue
 
@@ -643,7 +755,10 @@ def _validate_wiring(
         # Some upstream nodes pass through a dataset under the same
         # name — so also accept cases where the named dataset matches
         # *any* ancestor's output.
-        if input_name not in produced_names:
+        input_name_s = str(input_name).strip()
+        if input_name_s.startswith(("ctx.", "context.")):
+            continue
+        if input_name_s not in produced_names:
             hint = (
                 f" Upstream produces: {sorted(produced_names)}."
                 if produced_names
@@ -651,7 +766,7 @@ def _validate_wiring(
             )
             result.add(
                 _VC.UNWIRED_INPUT,
-                f"Node '{nid}' expects input_name='{input_name}' but no upstream node"
+                f"Node '{nid}' expects input_name='{input_name_s}' but no upstream node"
                 f" writes that dataset.{hint}",
                 node_id=nid,
                 field="config.input_name",

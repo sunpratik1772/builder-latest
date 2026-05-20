@@ -1,0 +1,51 @@
+type_id: ITEM_LISTS
+description: "Array/list operations"
+
+ui:
+  color: "#3B82F6"
+  icon: List
+  palette:
+    section:
+      id: transform
+      label: Transform
+      order: 15
+      color: "#6366F1"
+    node_order: 17
+
+input_ports:
+  - name: input
+    type: object
+    description: "Items to process"
+    optional: false
+
+output_ports:
+  - name: output
+    type: object
+    description: "Processed items"
+
+params:
+  - name: operation
+    type: string
+    description: "Array operation to perform"
+    enum: [split, sort_array, unique, remove_duplicates, flatten, reverse, shuffle]
+    default: split
+    required: true
+    
+  - name: field_name
+    type: string
+    description: "Field containing the array"
+    required: false
+    
+  - name: options
+    type: object
+    default: {}
+    required: false
+
+semantics:
+  requires: []
+  provides: []
+
+constraints:
+  - "split operation splits single item with array into multiple items"
+  - "Operations work on array fields within items"
+  - "Some operations like flatten work on nested arrays"

@@ -1,0 +1,77 @@
+{
+  "workflow_name": "Prompt Demo 2 - HTML Extraction and Chat Response",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "mock_html",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n  {\n    'data': '<div><h1>Launch Update</h1><a href=\"https://example.com/release\">Read</a><p>Release went live.</p></div>'\n  },\n  {\n    'data': '<div><h1>Incident Notice</h1><a href=\"https://example.com/status\">Status</a><p>Degraded API latency.</p></div>'\n  }\n]"
+      }
+    },
+    {
+      "id": "extract_html",
+      "type": "HTML",
+      "config": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "data",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": "h1",
+              "returnValue": "text",
+              "returnArray": false
+            },
+            {
+              "key": "link",
+              "cssSelector": "a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": false
+            },
+            {
+              "key": "body",
+              "cssSelector": "p",
+              "returnValue": "text",
+              "returnArray": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "chat_reply",
+      "type": "CHAT",
+      "config": {
+        "operation": "sendAndWait",
+        "message": "Extracted 2 announcements. Approve publishing this digest?",
+        "responseType": "approval",
+        "approvalType": "approveAndDisapprove",
+        "user_reply": "approve",
+        "memory_connection": true,
+        "session_id": "demo-html-digest"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "mock_html"
+    },
+    {
+      "from": "mock_html",
+      "to": "extract_html"
+    },
+    {
+      "from": "extract_html",
+      "to": "chat_reply"
+    }
+  ]
+}

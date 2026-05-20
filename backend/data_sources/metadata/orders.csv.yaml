@@ -1,0 +1,14 @@
+id: orders.csv
+description: Demo orders for join and revenue workflows
+columns:
+  - { name: order_id, type: string }
+  - { name: sku, type: string }
+  - { name: region, type: string }
+  - { name: quantity, type: number }
+  - { name: revenue, type: number }
+rows:
+  - { order_id: O-101, sku: SKU-100, region: EU, quantity: 3, revenue: 897 }
+  - { order_id: O-102, sku: SKU-200, region: US, quantity: 5, revenue: 745 }
+  - { order_id: O-103, sku: SKU-100, region: APAC, quantity: 2, revenue: 598 }
+  - { order_id: O-104, sku: SKU-300, region: US, quantity: 1, revenue: 199 }
+  - { order_id: O-105, sku: SKU-200, region: EU, quantity: 4, revenue: 596 }

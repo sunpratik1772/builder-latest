@@ -1,0 +1,67 @@
+type_id: WORKFLOW_CONTEXT
+description: Collect workflow-level scenario context and hydrate alert payloads.
+ui:
+  display_name: workflow_context
+  color: "#0EA5E9"
+  icon: ClipboardList
+  palette:
+    section:
+      id: triggers
+      label: Triggers
+      order: 5
+      color: "#0EA5E9"
+    node_order: 1
+input_ports: []
+output_ports:
+  - name: output
+    type: object
+    description: Hydrated workflow context payload
+params:
+  - name: scenario
+    type: string
+    description: Workflow scenario
+    enum: [fxfro]
+    default: fxfro
+    required: true
+  - name: alert_id
+    type: string
+    description: Alert id, for example ALERT-FR-001
+    default: ALERT-FR-001
+    required: true
+  - name: keyword
+    type: string
+    description: Alert keyword
+    required: false
+  - name: participant_id
+    type: string
+    description: Participant id
+    required: false
+  - name: trader_id
+    type: string
+    description: Trader id
+    required: false
+  - name: trader_name
+    type: string
+    description: Trader name
+    required: false
+  - name: currency_pair
+    type: string
+    description: Currency pair
+    required: false
+  - name: date
+    type: string
+    description: Alert date
+    required: false
+  - name: start_time
+    type: string
+    description: Start of surveillance window
+    required: false
+  - name: end_time
+    type: string
+    description: End of surveillance window
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+  - Hydrates missing fields from SQLite demo alerts when alert_id is provided.

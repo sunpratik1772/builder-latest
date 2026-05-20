@@ -25,7 +25,9 @@ import LoginPage from './pages/LoginPage'
 import AuthCallback from './pages/AuthCallback'
 import DocsPage from './pages/docs/DocsPage'
 import ProtectedRoute from './components/ProtectedRoute'
+import './styles/linear-tokens.css'
 import './styles/globals.css'
+import './styles/agent-animations.css'
 
 function AppRouter() {
   const location = useLocation()

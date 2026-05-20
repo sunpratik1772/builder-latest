@@ -19,6 +19,7 @@ copilot singleton) lives here. Nothing domain-specific.
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -33,6 +34,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .routers import agent as agent_routes
 from .routers import copilot as copilot_routes
+from .routers import library as library_routes
 from .routers import reports as reports_routes
 from .routers import run as run_routes
 from .routers import validate as validate_routes
@@ -40,7 +42,17 @@ from .routers import workflows as workflow_routes
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="dbSherpa API", version="1.1.0")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    from .mcp_lifecycle import ensure_mcp_bridge, stop_mcp_bridge
+
+    ensure_mcp_bridge()
+    yield
+    stop_mcp_bridge()
+
+
+app = FastAPI(title="dbSherpa API", version="1.1.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -63,3 +75,4 @@ app.include_router(reports_routes.router)
 app.include_router(copilot_routes.router)
 app.include_router(copilot_routes.contracts_router)
 app.include_router(agent_routes.router)
+app.include_router(library_routes.router)

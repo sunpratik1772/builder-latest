@@ -9,7 +9,17 @@
  * but only matters in the expanded mode.
  */
 import { useMemo, useRef, useState, type DragEvent } from 'react'
-import { Check, RefreshCw, Search, ChevronDown, Plus, Sidebar, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import {
+  ArcIcon,
+  Check,
+  RefreshCw,
+  Search,
+  ChevronDown,
+  Sidebar,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from '../../icons/arc'
+import NewWorkflowButton from '../shared/NewWorkflowButton'
 import { getNodeDisplayName, UNKNOWN_NODE_UI, useNodeRegistryStore, type NodeType } from '../../nodes'
 import { useWorkflowStore } from '../../store/workflowStore'
 import { PALETTE_DND_MIME } from '../WorkflowCanvas'
@@ -127,7 +137,7 @@ export default function NodePanel() {
           ;(e.currentTarget as HTMLElement).style.color = 'var(--text-3)'
         }}
       >
-        <Sidebar size={11} strokeWidth={2} />
+        <ArcIcon icon={Sidebar} size={11} />
       </button>
     )
   }
@@ -147,9 +157,9 @@ export default function NodePanel() {
         className={`shrink-0 ${isIcon ? 'px-2 pt-3 pb-2' : 'px-3 pt-3 pb-2'}`}
         style={{ borderBottom: '1px solid var(--border-soft)' }}
       >
-        <div className={`flex items-center ${isIcon ? 'flex-col gap-1' : 'gap-2'}`}>
+        <div className={`flex items-center ${isIcon ? 'flex-col gap-1' : 'justify-between gap-2 min-w-0'}`}>
           {!isIcon && (
-            <>
+            <div className="flex items-center gap-1.5 min-w-0">
               <span
                 className="display"
                 style={{
@@ -175,84 +185,88 @@ export default function NodePanel() {
               >
                 {nodeTypes.length}
               </span>
-              <div className="flex-1" />
-            </>
+            </div>
           )}
-          <button
-            onClick={() => setMode(NEXT_MODE[mode])}
-            title={MODE_TITLE[mode]}
-            aria-label={MODE_TITLE[mode]}
-            className="flex items-center justify-center"
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 5,
-              background: 'transparent',
-              color: 'var(--text-2)',
-              border: '1px solid transparent',
-              cursor: 'pointer',
-              transition: 'background 140ms, color 140ms, border-color 140ms',
-            }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-0)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-2)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'transparent'
-            }}
-          >
-            <ModeIcon size={12} strokeWidth={2} />
-          </button>
-          {!isIcon && (
+          <div className={`flex items-center ${isIcon ? '' : 'shrink-0'} gap-1`}>
             <button
-              onClick={() => {
-                void handleRefreshNodes()
-              }}
-              disabled={registryLoading}
-              title={
-                manifestError
-                  ? 'Refresh node catalog failed; retry'
-                  : lastLoadedAt
-                    ? 'Node catalog synced. Refresh.'
-                    : 'Refresh node catalog'
-              }
-              aria-label="Refresh node catalog"
+              onClick={() => setMode(NEXT_MODE[mode])}
+              title={MODE_TITLE[mode]}
+              aria-label={MODE_TITLE[mode]}
               className="flex items-center justify-center"
               style={{
                 width: 22,
                 height: 22,
                 borderRadius: 5,
-                background: syncFlash
-                  ? 'color-mix(in srgb, var(--success) 14%, transparent)'
-                  : 'transparent',
-                color: manifestError
-                  ? 'var(--danger)'
-                  : syncFlash
-                    ? 'var(--success)'
-                    : 'var(--text-2)',
+                background: 'transparent',
+                color: 'var(--text-2)',
                 border: '1px solid transparent',
-                cursor: registryLoading ? 'wait' : 'pointer',
-                transition: 'background 180ms, color 180ms, border-color 180ms',
+                cursor: 'pointer',
+                transition: 'background 140ms, color 140ms, border-color 140ms',
               }}
               onMouseEnter={(e) => {
-                if (!syncFlash && !manifestError) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
+                ;(e.currentTarget as HTMLElement).style.color = 'var(--text-0)'
+                ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
               }}
               onMouseLeave={(e) => {
-                if (!syncFlash && !manifestError) (e.currentTarget as HTMLElement).style.borderColor = 'transparent'
+                ;(e.currentTarget as HTMLElement).style.color = 'var(--text-2)'
+                ;(e.currentTarget as HTMLElement).style.borderColor = 'transparent'
               }}
             >
-              {syncFlash ? (
-                <Check size={12} strokeWidth={2.4} />
-              ) : (
-                <RefreshCw
-                  size={12}
-                  strokeWidth={2}
-                  className={registryLoading ? 'animate-spin' : undefined}
-                />
-              )}
+              <ArcIcon icon={ModeIcon} size={12} />
             </button>
-          )}
+            {!isIcon && (
+              <>
+                <button
+                  onClick={() => {
+                    void handleRefreshNodes()
+                  }}
+                  disabled={registryLoading}
+                  title={
+                    manifestError
+                      ? 'Refresh node catalog failed; retry'
+                      : lastLoadedAt
+                        ? 'Node catalog synced. Refresh.'
+                        : 'Refresh node catalog'
+                  }
+                  aria-label="Refresh node catalog"
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 5,
+                    background: syncFlash
+                      ? 'color-mix(in srgb, var(--success) 14%, transparent)'
+                      : 'transparent',
+                    color: manifestError
+                      ? 'var(--danger)'
+                      : syncFlash
+                        ? 'var(--success)'
+                        : 'var(--text-2)',
+                    border: '1px solid transparent',
+                    cursor: registryLoading ? 'wait' : 'pointer',
+                    transition: 'background 180ms, color 180ms, border-color 180ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!syncFlash && !manifestError) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!syncFlash && !manifestError) (e.currentTarget as HTMLElement).style.borderColor = 'transparent'
+                  }}
+                >
+                  {syncFlash ? (
+                    <ArcIcon icon={Check} size={12} strokeWidth={2.4} />
+                  ) : (
+                    <ArcIcon
+                      icon={RefreshCw}
+                      size={12}
+                      className={registryLoading ? 'animate-spin' : undefined}
+                    />
+                  )}
+                </button>
+                <NewWorkflowButton variant="icon" />
+              </>
+            )}
+          </div>
         </div>
         {!isIcon && manifestError && (
           <div className="mt-2" style={{ fontSize: 10, color: 'var(--text-3)' }}>
@@ -275,7 +289,7 @@ export default function NodePanel() {
               transition: 'border-color 140ms',
             }}
           >
-            <Search size={12} strokeWidth={2} style={{ color: 'var(--text-3)' }} />
+            <ArcIcon icon={Search} size={12} style={{ color: 'var(--text-3)' }} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -393,7 +407,6 @@ export default function NodePanel() {
                       {cat.types.length}
                     </span>
                     <div className="flex-1" />
-                    <Plus size={11} strokeWidth={2} style={{ color: 'var(--text-3)', opacity: 0.5 }} />
                   </button>
                   {!isCollapsed && (
                     <div className="px-2 pb-2" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

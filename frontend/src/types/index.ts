@@ -78,6 +78,8 @@ export interface RunLogEntry {
     executive_summary_chars?: number
     report_path?: string
     agent_response?: string
+    /** Full orchestrator-style node output (rows, rowCount, …) when available. */
+    node_output?: Record<string, unknown>
   }
   error?: string
   trace?: string
@@ -149,25 +151,30 @@ export interface CopilotErrorHint {
   message: string
 }
 
-export interface CopilotStreamEvent {
+/** Orchestrator-style Copilot generate/stream SSE events. */
+export type CopilotStreamEvent =
+  | { type: 'thinking'; step: string }
+  | { type: 'text_start' }
+  | { type: 'text_chunk'; chunk: string }
+  | { type: 'text_end' }
+  | {
+      type: 'workflow_created'
+      workflowId: string
+      name: string
+      nodeCount: number
+      workflow?: Workflow
+      draft_filename?: string
+    }
+  | { type: 'done'; success?: boolean; compiler_mode?: string }
+  | { type: 'error'; message: string }
+
+/** @deprecated Legacy phase timeline — kept for type compatibility only. */
+export interface CopilotPhaseStreamEvent {
   phase: CopilotPhase
   label: string
   status: 'running' | 'done' | 'error'
   detail?: string
   workflow?: Workflow
-  raw?: string
-  skills?: string[]
-  matched?: string[]
-  approved?: boolean
-  draft_summary?: { name?: string; node_count?: number; edge_count?: number; node_types?: string[] }
-  summary?: { name?: string; node_count?: number; edge_count?: number; node_types?: string[] }
-  /** 1..iterations on `critiquing` frames produced by the validator-driven repair loop. */
-  attempt?: number
-  /** Structured validator errors the repair loop is trying to fix. */
-  validation_errors?: ValidationIssue[]
-  /** Final validator verdict — present on the terminal `complete` frame. */
   validation?: ValidationResult
-  /** Human-readable list of deterministic auto-fixes applied (on `auto_fixing` frames). */
-  applied?: string[]
 }
 

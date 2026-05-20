@@ -24,8 +24,8 @@ interface NodeData {
 }
 
 function formatMs(ms?: number): string {
-  if (ms == null) return '—'
-  if (ms < 1000) return `${Math.round(ms)} ms`
+  if (ms == null) return '0.0 s'
+  if (ms < 1000) return `${(ms / 1000).toFixed(1)} s`
   return `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)} s`
 }
 
@@ -63,15 +63,12 @@ export const CustomNode = memo(({ id, data }: NodeProps<NodeData>) => {
     ? meta.color
     : 'var(--border)'
 
-  const shadow = isRunning
-    ? `0 0 0 2px color-mix(in srgb, var(--running) 28%, transparent), 0 16px 36px -14px color-mix(in srgb, var(--running) 55%, transparent)`
-    : isOk
-    ? `0 10px 28px -14px color-mix(in srgb, var(--success) 40%, transparent)`
-    : isError
-    ? `0 10px 28px -14px color-mix(in srgb, var(--danger) 45%, transparent)`
+  // Flat cards — state via border only (no drop shadow).
+  const boxShadow = isRunning
+    ? '0 0 0 2px color-mix(in srgb, var(--running) 40%, transparent)'
     : isSelected
-    ? `0 0 0 2px ${meta.color}2E, 0 18px 40px -16px rgba(0,0,0,0.35)`
-    : '0 6px 18px -10px rgba(0,0,0,0.35)'
+      ? `0 0 0 2px color-mix(in srgb, ${meta.color} 35%, transparent)`
+      : 'none'
 
   const elapsed = isRunning ? run.live_ms : run.duration_ms
 
@@ -83,13 +80,13 @@ export const CustomNode = memo(({ id, data }: NodeProps<NodeData>) => {
         selectNode(id)
         useWorkflowStore.getState().setRightPanelMode('config')
       }}
-      className={`relative cursor-pointer lift ${isRunning ? 'run-ring' : ''}`}
+      className="relative cursor-pointer"
       style={{
         width: 240,
         borderRadius: 10,
         background: 'var(--bg-node)',
         border: `1px solid ${borderColor}`,
-        boxShadow: shadow,
+        boxShadow,
         transition:
           'border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out), background 180ms var(--ease-out), opacity 180ms var(--ease-out)',
         zIndex: isRunning ? 10 : 1,
@@ -134,6 +131,20 @@ export const CustomNode = memo(({ id, data }: NodeProps<NodeData>) => {
           <IconComp size={14} strokeWidth={1.9} />
         </div>
         <div className="flex-1 min-w-0">
+          <div
+            className="truncate num"
+            style={{
+              color: 'var(--text-3)',
+              fontSize: 8.5,
+              fontWeight: 650,
+              lineHeight: 1.1,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+            title={`${data.nodeType} · ${id}`}
+          >
+            {data.nodeType}
+          </div>
           <div
             className="truncate display"
             style={{
@@ -198,15 +209,36 @@ export const CustomNode = memo(({ id, data }: NodeProps<NodeData>) => {
         </div>
       )}
 
-      {/* Node ID badge, bottom-right */}
+      {/* Runtime badge, bottom-right */}
       <div
         className="absolute num"
         style={{
           right: 8, bottom: 6,
           fontSize: 9,
+          color: isError ? 'var(--danger)' : isRunning ? 'var(--running)' : 'var(--text-3)',
+          letterSpacing: 0,
+          fontWeight: 650,
+        }}
+        title={`Runtime: ${formatMs(elapsed)}`}
+      >
+        {formatMs(elapsed)}
+      </div>
+
+      {/* Node id/name anchor, top-right */}
+      <div
+        className="absolute num"
+        style={{
+          right: 8,
+          top: 6,
+          maxWidth: 112,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontSize: 8.5,
           color: 'var(--text-3)',
           letterSpacing: 0,
         }}
+        title={id}
       >
         {id}
       </div>

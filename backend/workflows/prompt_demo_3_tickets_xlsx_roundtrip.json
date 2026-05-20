@@ -1,0 +1,73 @@
+{
+  "workflow_name": "Prompt Demo 3 - Ticket CSV to XLSX Roundtrip",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "read_tickets",
+      "type": "SPREADSHEET_FILE",
+      "config": {
+        "operation": "read",
+        "file_format": "csv",
+        "file_path": "demo_data/mock_support_tickets.csv"
+      }
+    },
+    {
+      "id": "prioritize",
+      "type": "SORT",
+      "config": {
+        "type": "simple",
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "severity",
+              "order": "ascending"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "write_xlsx",
+      "type": "SPREADSHEET_FILE",
+      "config": {
+        "operation": "write",
+        "file_format": "xlsx",
+        "file_path": "/Users/supratikdatta/sheep-latest/backend/tmp/prompt_demo_outputs/tickets_priority.xlsx",
+        "options": {
+          "sheet_name": "tickets"
+        }
+      }
+    },
+    {
+      "id": "read_back_xlsx",
+      "type": "SPREADSHEET_FILE",
+      "config": {
+        "operation": "read",
+        "file_format": "xlsx",
+        "file_path": "/Users/supratikdatta/sheep-latest/backend/tmp/prompt_demo_outputs/tickets_priority.xlsx"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "read_tickets"
+    },
+    {
+      "from": "read_tickets",
+      "to": "prioritize"
+    },
+    {
+      "from": "prioritize",
+      "to": "write_xlsx"
+    },
+    {
+      "from": "write_xlsx",
+      "to": "read_back_xlsx"
+    }
+  ]
+}

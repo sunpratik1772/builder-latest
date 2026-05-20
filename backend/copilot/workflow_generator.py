@@ -1,33 +1,55 @@
 """
-dbSherpa Copilot — adapter over the AgentRunner harness.
+dbSherpa Copilot — orchestrator-backend self-healing pipeline.
 
-Historically this module contained the whole generate/validate/repair
-loop. That logic now lives in `backend/agent/`, behind a proper harness
-with explicit state, a deterministic auto-fixer, and metrics.
+Workflow generation uses the 8-layer planner from
+https://github.com/sunpratik1772/orchestrator-backend (plan → validate →
+dry-run → repair). Free-form chat remains on GeminiAdapter.
 
-This file is kept as a stable seam for:
-  * the chat endpoint (multi-turn Gemini history that's unrelated to
-    workflow generation)
-  * the legacy public surface (`generate_with_critic`,
-    `generate_with_critic_stream`) consumed by the HTTP routers and
-    tests — we translate AgentEvents back to the loosely-typed dict
-    shape the frontend already renders.
-
-Nothing here does any agent reasoning; it's transport + a sprinkling of
-backward compatibility.
+Legacy AgentRunner harness is no longer used for generation.
 """
 from __future__ import annotations
 
+import json
+import queue
+import threading
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
-from agent.harness.runner import AgentRunner
-from agent.planner import Planner
-from agent.prompt_builder import PromptBuilder
-from agent.repair.auto_fixer import AutoFixer
-from agent.validator_adapter import ValidatorAdapter
-from .prompt_enhancer import PromptEnhancer
 from llm import GeminiAdapter, get_default_adapter
+
+from .orchestrator_pipeline import finalize_workflow, run_pipeline_sync
+from .sse_adapter import OrchestratorSseAdapter
+from agent.prompt_builder import PromptBuilder
+
+
+def _build_context_message(
+    user_request: str,
+    *,
+    current_workflow: dict | None,
+    recent_errors: list[dict] | None,
+    selected_node_id: str | None,
+) -> str:
+    parts = [user_request]
+    if current_workflow:
+        parts.append(
+            "\n\n<current_workflow>\n"
+            + json.dumps(current_workflow, indent=2)[:12000]
+            + "\n</current_workflow>\nEdit this workflow in place; preserve node ids unless replacement is required."
+        )
+    if recent_errors:
+        parts.append("\n\n<recent_errors>\n" + json.dumps(recent_errors, indent=2) + "\n</recent_errors>")
+    if selected_node_id:
+        parts.append(f"\n\nThe user selected canvas node id: {selected_node_id}")
+    return "".join(parts)
+
+
+def _existing_workflows(current_workflow: dict | None) -> list[dict]:
+    if not current_workflow:
+        return []
+    return [{
+        "name": current_workflow.get("name") or "Current workflow",
+        "description": current_workflow.get("description") or "",
+    }]
 
 
 class WorkflowCopilot:
@@ -39,45 +61,21 @@ class WorkflowCopilot:
     ) -> None:
         self.skills_dir = Path(skills_dir)
         self.contracts_path = Path(contracts_path)
-        # One adapter for the whole copilot — chat and planner share
-        # vendor config (API key, default model) but keep their own
-        # per-call params (temperature, json_mode).
         self._llm = llm or get_default_adapter()
-
         self._prompt_builder = PromptBuilder(
             skills_dir=self.skills_dir,
             contracts_path=self.contracts_path,
         )
-        self._planner = Planner()
-        self._runner = AgentRunner(
-            planner=self._planner,
-            prompt_builder=self._prompt_builder,
-            validator=ValidatorAdapter(),
-            auto_fixer=AutoFixer(),
-        )
-        self._prompt_enhancer = PromptEnhancer()
-        # Chat history is user/session state, not a process-global property.
-        # The HTTP layer may cache this WorkflowCopilot for expensive planner
-        # setup, so histories are keyed by explicit session_id. Calls without a
-        # session_id are intentionally stateless to avoid cross-user leakage.
         self._histories: dict[str, list[dict]] = {}
+        self._last_workflow: dict | None = None
+        self._last_validation: dict | None = None
 
-    # ── multi-turn chat (separate concern from workflow generation) ───────────
     def chat(self, user_message: str, *, session_id: str | None = None) -> str:
-        """Free-form chat used by the /copilot/chat endpoint.
-
-        Conversation state is only retained when the caller supplies a
-        `session_id`. Anonymous calls are single-turn by design: this backend
-        process is shared, and retaining a default/global history would leak
-        one user's chat context into another user's response.
-        """
         history = self._histories.setdefault(session_id, []) if session_id else []
         reply = self._llm.chat_turn(
             system_prompt=self._prompt_builder.system_prompt(),
             history=history,
             user_turn=user_message,
-            # Chat is free-form prose, not JSON. Small temperature
-            # lift keeps responses from feeling robotic.
             temperature=0.3,
             json_mode=False,
         )
@@ -92,7 +90,6 @@ class WorkflowCopilot:
         else:
             self._histories.clear()
 
-    # ── workflow generation — delegates to AgentRunner ────────────────────────
     def generate_with_critic(
         self,
         user_request: str,
@@ -100,60 +97,56 @@ class WorkflowCopilot:
         current_workflow: dict | None = None,
         recent_errors: list[dict] | None = None,
         selected_node_id: str | None = None,
-        compiler_mode: str = "classic",
+        compiler_mode: str = "orchestrator",
     ) -> dict:
-        """Run the harness to completion and translate final state to the
-        legacy response envelope.
-
-        When `current_workflow` is provided the planner switches to
-        edit-mode: it receives the DAG + any attached errors and is
-        asked to produce a targeted fix rather than a greenfield
-        workflow."""
-        enhanced = self._prompt_enhancer.enhance(user_request)
-        effective_request = enhanced.enhanced_prompt
-
-        state = self._runner.run(
-            effective_request,
-            max_attempts=iterations,
+        message = _build_context_message(
+            user_request,
             current_workflow=current_workflow,
             recent_errors=recent_errors,
             selected_node_id=selected_node_id,
         )
+        max_repair = max(0, int(iterations) - 1)
+        adapter = OrchestratorSseAdapter()
 
-        if state.workflow is None or not state.is_valid:
+        def emit(ev: dict) -> None:
+            if ev.get("type") == "workflow" and ev.get("workflow"):
+                ev = {**ev, "workflow": finalize_workflow(ev["workflow"])}
+                self._last_workflow = ev["workflow"]
+            adapter.convert(ev)
+
+        result = run_pipeline_sync(
+            message,
+            history=[],
+            existing=_existing_workflows(current_workflow),
+            emit=emit,
+            max_repair_attempts=max_repair,
+        )
+
+        if result.get("workflow"):
+            self._last_workflow = result["workflow"]
+        self._last_validation = result.get("validation")
+
+        if not result.get("success") and not result.get("workflow"):
             return {
                 "success": False,
-                "error": (state.validation or {}).get("summary", "No valid JSON produced"),
-                "raw": state.raw_text,
-                # The legacy response shape has a `history` slot, but the
-                # harness keeps repair-loop prompts private. Multi-turn
-                # conversational state lives in `chat()`.
+                "error": result.get("error", "Generation failed"),
                 "history": [],
-                "attempts": state.attempts,
-                "validation": state.validation,
-                "auto_fixes_applied": state.auto_fixes_applied,
-                "canonicalization_changed": bool(state.canonicalization_applied),
-                "canonicalization_applied": state.canonicalization_applied,
-                "runtime_smoke_passed": state.runtime_smoke_passed,
-                "runtime_smoke_error": state.runtime_smoke_error,
-                "compiler_mode": "classic",
+                "attempts": result.get("attempts", 0),
+                "validation": self._last_validation,
+                "compiler_mode": "orchestrator",
                 "compiler_mode_requested": compiler_mode,
-                "prompt_profile": enhanced.profile,
             }
+
         return {
-            "success": bool(state.is_valid),
-            "workflow": state.workflow,
-            "history": [],           # harness doesn't retain full history by design
-            "attempts": state.attempts,
-            "validation": state.validation,
-            "auto_fixes_applied": state.auto_fixes_applied,
-            "canonicalization_changed": bool(state.canonicalization_applied),
-            "canonicalization_applied": state.canonicalization_applied,
-            "runtime_smoke_passed": state.runtime_smoke_passed,
-            "runtime_smoke_error": state.runtime_smoke_error,
-            "compiler_mode": "classic",
+            "success": bool(result.get("success") or result.get("workflow")),
+            "workflow": result.get("workflow"),
+            "history": [],
+            "attempts": result.get("attempts", 0),
+            "validation": self._last_validation,
+            "healing_steps": result.get("healing_steps", []),
+            "compiler_mode": "orchestrator",
             "compiler_mode_requested": compiler_mode,
-            "prompt_profile": enhanced.profile,
+            "answer": result.get("answer"),
         }
 
     def generate_with_critic_stream(
@@ -163,27 +156,58 @@ class WorkflowCopilot:
         current_workflow: dict | None = None,
         recent_errors: list[dict] | None = None,
         selected_node_id: str | None = None,
-        compiler_mode: str = "classic",
+        compiler_mode: str = "orchestrator",
     ) -> Iterator[dict]:
-        """Stream AgentEvents to the legacy dict shape the frontend already
-        consumes. See `generate_with_critic` for the edit-mode contract.
-
-        `AgentEvent.to_json()` is the wire shape consumed by
-        `/copilot/generate/stream`; keep frontend phase/status handling in
-        sync with `agent/harness/state.py`.
-        """
-        enhanced = self._prompt_enhancer.enhance(user_request)
-        effective_request = enhanced.enhanced_prompt
-
-        for event in self._runner.stream(
-            effective_request,
-            max_attempts=iterations,
+        message = _build_context_message(
+            user_request,
             current_workflow=current_workflow,
             recent_errors=recent_errors,
             selected_node_id=selected_node_id,
-        ):
-            payload = event.to_json()
-            payload["compiler_mode"] = "classic"
-            payload["compiler_mode_requested"] = compiler_mode
-            payload["prompt_profile"] = enhanced.profile
-            yield payload
+        )
+        max_repair = max(0, int(iterations) - 1)
+        adapter = OrchestratorSseAdapter()
+        event_q: queue.Queue[dict | None] = queue.Queue()
+        result_holder: dict[str, Any] = {}
+        pipeline_error: list[BaseException] = []
+
+        def emit(ev: dict) -> None:
+            if ev.get("type") == "workflow" and ev.get("workflow"):
+                ev = {**ev, "workflow": finalize_workflow(ev["workflow"])}
+                self._last_workflow = ev["workflow"]
+            for ui_ev in adapter.convert(ev):
+                event_q.put(ui_ev)
+
+        def _run_pipeline() -> None:
+            try:
+                result_holder["result"] = run_pipeline_sync(
+                    message,
+                    history=[],
+                    existing=_existing_workflows(current_workflow),
+                    emit=emit,
+                    max_repair_attempts=max_repair,
+                )
+            except Exception as exc:
+                pipeline_error.append(exc)
+                event_q.put({"type": "error", "message": str(exc)[:500]})
+            finally:
+                event_q.put(None)
+
+        yield {"type": "thinking", "step": "Drafting workflow…"}
+        worker = threading.Thread(target=_run_pipeline, daemon=True)
+        worker.start()
+
+        while True:
+            item = event_q.get()
+            if item is None:
+                break
+            yield item
+
+        worker.join(timeout=0.1)
+
+        result = result_holder.get("result") or {}
+
+        if result.get("workflow"):
+            self._last_workflow = result["workflow"]
+        self._last_validation = result.get("validation")
+
+        yield from adapter.finalize(result, compiler_mode=compiler_mode)

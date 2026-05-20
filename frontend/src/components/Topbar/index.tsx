@@ -4,9 +4,9 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArcIcon,
   Sun,
   Moon,
-  LayoutTemplate,
   Upload,
   Download,
   ShieldCheck,
@@ -14,15 +14,17 @@ import {
   Play,
   Loader2,
   Trash2,
-  Star,
-  MoreHorizontal,
   ChevronDown,
   LogOut,
-} from 'lucide-react'
-import { useWorkflowStore } from '../../store/workflowStore'
+  Pencil,
+  LayoutGrid,
+  Code2,
+} from '../../icons/arc'
+import { finalizeStuckRunLog, useWorkflowStore } from '../../store/workflowStore'
 import { useThemeStore } from '../../store/themeStore'
 import { useAuthStore, userInitials } from '../../store/authStore'
 import { api } from '../../services/api'
+import type { Workflow } from '../../types'
 
 const SAMPLE_PAYLOAD = {
   trader_id: 'T001',
@@ -32,26 +34,134 @@ const SAMPLE_PAYLOAD = {
   alert_id: 'ALT-001',
 }
 
+type WorkflowContextForm = {
+  scenario: string
+  alert_id: string
+  participant_id: string
+  trader_id: string
+  trader_name: string
+  keyword: string
+  currency_pair: string
+  date: string
+  alert_date: string
+  start_time: string
+  end_time: string
+}
+
+const DEFAULT_CONTEXT: WorkflowContextForm = {
+  scenario: 'fxfro',
+  alert_id: 'ALERT-FR-001',
+  participant_id: '',
+  trader_id: '',
+  trader_name: '',
+  keyword: '',
+  currency_pair: '',
+  date: '',
+  alert_date: '',
+  start_time: '',
+  end_time: '',
+}
+
+/** SQLite surveillance demo alerts — selecting one loads the full fxfro payload into context. */
+export const FXFRO_TEST_ALERT_PRESETS: WorkflowContextForm[] = [
+  {
+    scenario: 'fxfro',
+    alert_id: 'ALERT-FR-001',
+    participant_id: 'P-T001',
+    trader_id: 'T001',
+    trader_name: 'Avery Shah',
+    keyword: 'fixing',
+    currency_pair: 'EUR/USD',
+    date: '2024-01-01',
+    alert_date: '2024-01-01',
+    start_time: '2024-01-01T11:07:00',
+    end_time: '2024-01-01T11:52:00',
+  },
+  {
+    scenario: 'fxfro',
+    alert_id: 'ALERT-FR-002',
+    participant_id: 'P-T002',
+    trader_id: 'T002',
+    trader_name: 'Morgan Lee',
+    keyword: 'client flow',
+    currency_pair: 'GBP/USD',
+    date: '2024-01-02',
+    alert_date: '2024-01-02',
+    start_time: '2024-01-02T14:14:00',
+    end_time: '2024-01-02T14:59:00',
+  },
+  {
+    scenario: 'fxfro',
+    alert_id: 'ALERT-FR-003',
+    participant_id: 'P-T003',
+    trader_id: 'T003',
+    trader_name: 'Riley Chen',
+    keyword: 'large order',
+    currency_pair: 'USD/JPY',
+    date: '2024-01-03',
+    alert_date: '2024-01-03',
+    start_time: '2024-01-03T09:21:00',
+    end_time: '2024-01-03T10:06:00',
+  },
+  {
+    scenario: 'fxfro',
+    alert_id: 'ALERT-FR-004',
+    participant_id: 'P-T004',
+    trader_id: 'T004',
+    trader_name: 'Sam Patel',
+    keyword: 'pre hedge',
+    currency_pair: 'AUD/USD',
+    date: '2024-01-04',
+    alert_date: '2024-01-04',
+    start_time: '2024-01-04T12:28:00',
+    end_time: '2024-01-04T13:13:00',
+  },
+  {
+    scenario: 'fxfro',
+    alert_id: 'ALERT-FR-005',
+    participant_id: 'P-T005',
+    trader_id: 'T005',
+    trader_name: 'Jordan Blake',
+    keyword: 'risk transfer',
+    currency_pair: 'USD/CHF',
+    date: '2024-01-05',
+    alert_date: '2024-01-05',
+    start_time: '2024-01-05T15:35:00',
+    end_time: '2024-01-05T16:20:00',
+  },
+]
+
+function contextFromWorkflow(workflow: Workflow | null): WorkflowContextForm {
+  const node = workflow?.nodes.find((n) => n.type === 'WORKFLOW_CONTEXT')
+  const cfg = (node?.config ?? {}) as Partial<WorkflowContextForm>
+  return { ...DEFAULT_CONTEXT, ...cfg }
+}
+
+function workflowWithContext(workflow: Workflow, context: WorkflowContextForm): Workflow {
+  return {
+    ...workflow,
+    nodes: workflow.nodes.map((node) => (
+      node.type === 'WORKFLOW_CONTEXT'
+        ? { ...node, config: { ...node.config, ...context } }
+        : node
+    )),
+  }
+}
+
 function slugify(name: string | undefined | null): string {
   const s = (name || 'workflow').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
   return s || 'workflow'
 }
 
-type StudioTab = 'workflow' | 'skills' | 'tables' | 'nodes' | 'agents'
-
-const STUDIO_TABS: { id: StudioTab; label: string; disabled?: boolean }[] = [
-  { id: 'workflow', label: 'Workflow' },
-  { id: 'skills', label: 'Skills', disabled: true },
-  { id: 'tables', label: 'Tables', disabled: true },
-  { id: 'nodes', label: 'Node Library' },
-  { id: 'agents', label: 'Agents' },
-]
+function filenameStem(filename: string | null | undefined): string {
+  if (!filename) return ''
+  return filename.replace(/\.(yaml|yml|json)$/i, '').trim()
+}
 
 export default function Topbar() {
   const workflow = useWorkflowStore((s) => s.workflow)
   const sourceFilename = useWorkflowStore((s) => s.sourceFilename)
   const sourceKind = useWorkflowStore((s) => s.sourceKind)
-  const setDrawerOpen = useWorkflowStore((s) => s.setWorkflowDrawerOpen)
   const setRightPanelMode = useWorkflowStore((s) => s.setRightPanelMode)
   const isRunning = useWorkflowStore((s) => s.isRunning)
   const setRunning = useWorkflowStore((s) => s.setRunning)
@@ -62,10 +172,12 @@ export default function Topbar() {
   const setValidationIssues = useWorkflowStore((s) => s.setValidationIssues)
   const markSaved = useWorkflowStore((s) => s.markSaved)
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
+  const newBlankWorkflow = useWorkflowStore((s) => s.newBlankWorkflow)
   const runLog = useWorkflowStore((s) => s.runLog)
   const runResult = useWorkflowStore((s) => s.runResult)
   const runError = useWorkflowStore((s) => s.runError)
-  const resetRunStore = useWorkflowStore((s) => s.resetRun)
+  const workspaceView = useWorkflowStore((s) => s.workspaceView)
+  const setWorkspaceView = useWorkflowStore((s) => s.setWorkspaceView)
   const theme = useThemeStore((s) => s.theme)
   const toggleTheme = useThemeStore((s) => s.toggle)
   const [saving, setSaving] = useState(false)
@@ -73,44 +185,64 @@ export default function Topbar() {
   const [validating, setValidating] = useState(false)
   const [validatedSignature, setValidatedSignature] = useState<string | null>(null)
   const [lastValidationValid, setLastValidationValid] = useState<boolean | null>(null)
-  const [studioTab, setStudioTab] = useState<StudioTab>('workflow')
+  const [contextModalOpen, setContextModalOpen] = useState(false)
+  const [contextForm, setContextForm] = useState<WorkflowContextForm>(DEFAULT_CONTEXT)
+  const [saveAsDialogOpen, setSaveAsDialogOpen] = useState(false)
+  const [saveAsName, setSaveAsName] = useState('')
+  const [newWorkflowDialogOpen, setNewWorkflowDialogOpen] = useState(false)
+  const [pendingAfterSave, setPendingAfterSave] = useState<'new' | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const handleCreateNewWorkflowRef = useRef<() => void>(() => {})
 
   const nodeCount = workflow?.nodes.length ?? 0
   const edgeCount = workflow?.edges.length ?? 0
-  const title = workflow?.name || 'Untitled workflow'
-  const workflowSlug = useMemo(() => slugify(workflow?.name), [workflow?.name])
+  const displayWorkflowName = (workflow?.name || '').trim() || filenameStem(sourceFilename) || 'Untitled workflow'
+  const title = displayWorkflowName
   const workflowSignature = useMemo(() => (workflow ? JSON.stringify(workflow) : null), [workflow])
-
-  function onStudioTab(id: StudioTab) {
-    const spec = STUDIO_TABS.find((t) => t.id === id)
-    if (spec?.disabled) return
-    setStudioTab(id)
-    if (id === 'agents') setRightPanelMode('copilot')
-    if (id === 'nodes') setDrawerOpen(true)
-  }
 
   async function handleRun() {
     if (!workflow) return
+    if (workflow.nodes.some((n) => n.type === 'WORKFLOW_CONTEXT')) {
+      setContextForm(contextFromWorkflow(workflow))
+      setContextModalOpen(true)
+      return
+    }
+    await runWorkflowWithContext(workflow, SAMPLE_PAYLOAD)
+  }
+
+  async function runWorkflowWithContext(dag: Workflow, alertPayload: Record<string, string>) {
     setRunning(true)
     resetRun()
     setRunError(null)
-    setRightPanelMode('runlog')
+    setRightPanelMode('output')
     try {
-      await api.runWorkflowStream(workflow, SAMPLE_PAYLOAD, (ev) => applyRunEvent(ev))
+      await api.runWorkflowStream(dag, alertPayload, (ev) => applyRunEvent(ev))
     } catch (e) {
       setRunError((e as Error).message)
     } finally {
+      finalizeStuckRunLog()
       setRunning(false)
     }
   }
 
-  async function handleSave() {
+  async function submitContextRun() {
+    if (!workflow) return
+    setContextModalOpen(false)
+    await runWorkflowWithContext(workflowWithContext(workflow, contextForm), {})
+  }
+
+  function openSaveAsDialog(afterSave: 'new' | null = null) {
     if (!workflow) return
     const suggested = sourceKind === 'saved' ? workflow.name : workflow.name || 'New workflow'
-    const rawName = window.prompt('Save workflow as…', suggested)
-    if (!rawName || !rawName.trim()) return
-    const name = rawName.trim()
+    setSaveAsName(suggested)
+    setPendingAfterSave(afterSave)
+    setSaveAsDialogOpen(true)
+  }
+
+  async function commitSaveAs(nameRaw: string) {
+    if (!workflow) return
+    const name = nameRaw.trim()
+    if (!name) return
     const targetFilename =
       sourceKind === 'saved' && name === workflow.name
         ? (sourceFilename ?? `${slugify(name)}.yaml`)
@@ -126,10 +258,31 @@ export default function Topbar() {
       }
       useWorkflowStore.setState({ workflow: updated })
       markSaved(targetFilename)
+      setSaveAsDialogOpen(false)
+      if (pendingAfterSave === 'new') {
+        newBlankWorkflow()
+        setPendingAfterSave(null)
+      }
     } finally {
       setSaving(false)
     }
   }
+
+  function handleCreateNewWorkflow() {
+    if (!workflow) {
+      newBlankWorkflow()
+      return
+    }
+    setNewWorkflowDialogOpen(true)
+  }
+
+  handleCreateNewWorkflowRef.current = handleCreateNewWorkflow
+
+  useEffect(() => {
+    const handler = () => handleCreateNewWorkflowRef.current()
+    window.addEventListener('sheep:request-new-workflow', handler)
+    return () => window.removeEventListener('sheep:request-new-workflow', handler)
+  }, [])
 
   async function handleExport() {
     if (!workflow) return
@@ -208,19 +361,38 @@ export default function Topbar() {
         borderBottom: '1px solid var(--border)',
       }}
     >
-      {/* Left — breadcrumbs only (brand moved to LeftNav) */}
-      <div className="flex items-center shrink-0" style={{ gap: 4 }}>
-        <BreadcrumbPill label="Main" />
-        <span style={{ color: 'var(--text-3)', fontSize: 13, margin: '0 1px' }} aria-hidden>
-          ›
+      {/* Left — View / Workflow name + rename action */}
+      <div className="flex items-center shrink min-w-0 flex-1" style={{ gap: 6, maxWidth: 'calc(100vw - 300px)' }}>
+        <ViewModeToggle
+          value={workspaceView}
+          onChange={setWorkspaceView}
+        />
+        <span className="font-mono" style={{ color: 'var(--text-3)', fontSize: 11, margin: '0 1px' }} aria-hidden>
+          /
         </span>
-        <BreadcrumbPill label={workflowSlug} mono />
-        <IconGhost title="Star" onMouseAccent="warning">
-          <Star size={12} strokeWidth={1.4} />
-        </IconGhost>
-        <IconGhost title="More">
-          <MoreHorizontal size={12} strokeWidth={1.8} />
-        </IconGhost>
+        <div className="flex items-center min-w-0" style={{ gap: 6, flex: 1 }}>
+          <span
+            className="font-mono"
+            style={{
+              color: 'var(--text-1)',
+              fontSize: 12.5,
+              lineHeight: 1.25,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'block',
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {displayWorkflowName}
+          </span>
+          <div className="flex shrink-0" style={{ gap: 1 }}>
+            <IconGhost title="Rename and Save As" onClick={() => openSaveAsDialog()}>
+              <ArcIcon icon={Pencil} size={11.5} />
+            </IconGhost>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 min-w-[12px]" />
@@ -240,7 +412,7 @@ export default function Topbar() {
           onClick={() => importInputRef.current?.click()}
           title="Import workflow"
         >
-          <Upload size={14} strokeWidth={1.85} />
+          <ArcIcon icon={Upload} size={14} />
         </IconAction>
         <input
           ref={importInputRef}
@@ -260,7 +432,7 @@ export default function Topbar() {
           disabled={!workflow || exporting}
           title="Export workflow"
         >
-          {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={1.85} />}
+          {exporting ? <ArcIcon icon={Loader2} size={14} className="animate-spin" /> : <ArcIcon icon={Download} size={14} />}
         </IconAction>
         <StatusIconButton
           onClick={() => {
@@ -271,33 +443,75 @@ export default function Topbar() {
           status={validationClean ? 'ok' : validateBadge && isCurrentValidation ? 'error' : 'idle'}
           badge={validateBadge && isCurrentValidation ? validationIssues!.length : undefined}
         >
-          {validating ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} strokeWidth={1.85} />}
+          {validating ? <ArcIcon icon={Loader2} size={14} className="animate-spin" /> : <ArcIcon icon={ShieldCheck} size={14} />}
         </StatusIconButton>
         <IconAction
           onClick={resetRun}
           disabled={isRunning || (!workflow && runLog.length === 0 && !runResult && !runError)}
           title="Clear canvas / run state"
         >
-          <Trash2 size={14} strokeWidth={1.85} />
+          <ArcIcon icon={Trash2} size={14} />
         </IconAction>
         <IconAction
           onClick={() => {
-            void handleSave()
+            openSaveAsDialog()
           }}
           disabled={!workflow || saving}
           title="Save workflow"
         >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} strokeWidth={1.85} />}
+          {saving ? <ArcIcon icon={Loader2} size={14} className="animate-spin" /> : <ArcIcon icon={Save} size={14} />}
         </IconAction>
         <RunButton onClick={handleRun} disabled={!workflow || isRunning} running={isRunning} />
 
         <span className="w-px h-[18px] shrink-0" style={{ background: borderHi, marginLeft: 2, marginRight: 2 }} />
 
         <IconAction onClick={toggleTheme} title="Toggle theme">
-          {theme === 'dark' ? <Sun size={14} strokeWidth={1.85} /> : <Moon size={14} strokeWidth={1.85} />}
+          {theme === 'dark' ? <ArcIcon icon={Sun} size={14} /> : <ArcIcon icon={Moon} size={14} />}
         </IconAction>
         <UserAvatar />
       </div>
+
+      {contextModalOpen && workflow && (
+        <WorkflowContextRunModal
+          value={contextForm}
+          running={isRunning}
+          onChange={(patch) => setContextForm((prev) => ({ ...prev, ...patch }))}
+          onApplyFullContext={(full) => {
+            setContextForm(full)
+            setWorkflow(workflowWithContext(workflow, full))
+          }}
+          onCancel={() => setContextModalOpen(false)}
+          onRun={() => {
+            void submitContextRun()
+          }}
+        />
+      )}
+
+      {saveAsDialogOpen && workflow && (
+        <SaveAsDialog
+          value={saveAsName}
+          saving={saving}
+          onChange={setSaveAsName}
+          onCancel={() => setSaveAsDialogOpen(false)}
+          onSave={() => {
+            void commitSaveAs(saveAsName)
+          }}
+        />
+      )}
+
+      {newWorkflowDialogOpen && (
+        <NewWorkflowDialog
+          onCancel={() => setNewWorkflowDialogOpen(false)}
+          onExitWithoutSaving={() => {
+            setNewWorkflowDialogOpen(false)
+            newBlankWorkflow()
+          }}
+          onSaveAndNew={() => {
+            setNewWorkflowDialogOpen(false)
+            openSaveAsDialog('new')
+          }}
+        />
+      )}
 
       {/* Title tooltip strip — workflow name (secondary to breadcrumbs) */}
       <span className="sr-only">{title}</span>
@@ -353,6 +567,214 @@ function IconAction({
   )
 }
 
+function findMatchingPresetId(v: WorkflowContextForm): string {
+  return FXFRO_TEST_ALERT_PRESETS.find((p) => p.alert_id === v.alert_id)?.alert_id ?? ''
+}
+
+function WorkflowContextRunModal({
+  value,
+  running,
+  onChange,
+  onApplyFullContext,
+  onCancel,
+  onRun,
+}: {
+  value: WorkflowContextForm
+  running: boolean
+  onChange: (patch: Partial<WorkflowContextForm>) => void
+  onApplyFullContext: (full: WorkflowContextForm) => void
+  onCancel: () => void
+  onRun: () => void
+}) {
+  const [presetChoice, setPresetChoice] = useState(() => findMatchingPresetId(value))
+
+  useEffect(() => {
+    setPresetChoice(findMatchingPresetId(value))
+  }, [value])
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.48)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Workflow context"
+    >
+      <div
+        className="panel-glass"
+        style={{
+          width: 620,
+          maxWidth: 'calc(100vw - 32px)',
+          borderRadius: 14,
+          border: '1px solid var(--border)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
+          overflow: 'hidden',
+        }}
+      >
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-soft)' }}>
+          <div className="display" style={{ fontSize: 16, fontWeight: 650, color: 'var(--text-0)' }}>
+            Run Workflow Context
+          </div>
+          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
+            Select the scenario and fill alert context. If you enter only `alert_id`, backend hydrates the remaining FXFRO
+            fields.
+          </div>
+        </div>
+
+        <div className="px-5 py-4" style={{ display: 'grid', gap: 14 }}>
+          <ContextSection title="Test alerts (SQLite demo)">
+            <label style={{ display: 'grid', gap: 4 }}>
+              <span className="num" style={{ fontSize: 10.5, color: 'var(--text-2)' }}>
+                Load preset
+              </span>
+              <select
+                data-testid="workflow-context-test-alert-select"
+                value={presetChoice}
+                onChange={(e) => {
+                  const id = e.target.value
+                  setPresetChoice(id)
+                  if (!id) return
+                  const preset = FXFRO_TEST_ALERT_PRESETS.find((p) => p.alert_id === id)
+                  if (preset) onApplyFullContext(preset)
+                }}
+                style={modalInputStyle}
+              >
+                <option value="">Custom (manual)</option>
+                {FXFRO_TEST_ALERT_PRESETS.map((p) => (
+                  <option key={p.alert_id} value={p.alert_id}>
+                    {p.alert_id} · {p.trader_name} · {p.currency_pair}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div style={{ fontSize: 10.5, color: 'var(--text-3)', lineHeight: 1.4 }}>
+              Pick an id to fill participant, trader, keyword, pair, and window times for that alert.
+            </div>
+          </ContextSection>
+
+          <ContextSection title="Scenario">
+            <ContextField label="scenario">
+              <select
+                value={value.scenario}
+                onChange={(e) => onChange({ scenario: e.target.value })}
+                style={modalInputStyle}
+              >
+                <option value="fxfro">fxfro</option>
+              </select>
+            </ContextField>
+          </ContextSection>
+
+          <ContextSection title="Alert">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <ContextField label="alert_id">
+                <ContextInput value={value.alert_id} onChange={(alert_id) => onChange({ alert_id })} placeholder="ALERT-FR-001" />
+              </ContextField>
+              <ContextField label="keyword">
+                <ContextInput value={value.keyword} onChange={(keyword) => onChange({ keyword })} placeholder="fixing" />
+              </ContextField>
+            </div>
+          </ContextSection>
+
+          <ContextSection title="Trader">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <ContextField label="participant_id">
+                <ContextInput value={value.participant_id} onChange={(participant_id) => onChange({ participant_id })} placeholder="P-T001" />
+              </ContextField>
+              <ContextField label="trader_id">
+                <ContextInput value={value.trader_id} onChange={(trader_id) => onChange({ trader_id })} placeholder="T001" />
+              </ContextField>
+              <ContextField label="trader_name">
+                <ContextInput value={value.trader_name} onChange={(trader_name) => onChange({ trader_name })} placeholder="Avery Shah" />
+              </ContextField>
+            </div>
+          </ContextSection>
+
+          <ContextSection title="Market And Time">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <ContextField label="currency_pair">
+                <ContextInput value={value.currency_pair} onChange={(currency_pair) => onChange({ currency_pair })} placeholder="EUR/USD" />
+              </ContextField>
+              <ContextField label="date">
+                <ContextInput value={value.date} onChange={(date) => onChange({ date, alert_date: date })} placeholder="2024-01-01" />
+              </ContextField>
+              <ContextField label="start_time">
+                <ContextInput value={value.start_time} onChange={(start_time) => onChange({ start_time })} placeholder="2024-01-01T11:07:00" />
+              </ContextField>
+              <ContextField label="end_time">
+                <ContextInput value={value.end_time} onChange={(end_time) => onChange({ end_time })} placeholder="2024-01-01T11:52:00" />
+              </ContextField>
+            </div>
+          </ContextSection>
+        </div>
+
+        <div
+          className="px-5 py-4 flex items-center justify-end gap-2"
+          style={{ borderTop: '1px solid var(--border-soft)' }}
+        >
+          <GhostButton onClick={onCancel} disabled={running}>Cancel</GhostButton>
+          <GhostButton onClick={onRun} disabled={running || !value.alert_id.trim()}>
+            {running ? 'Running...' : 'Run with context'}
+          </GhostButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const modalInputStyle: React.CSSProperties = {
+  width: '100%',
+  height: 34,
+  borderRadius: 8,
+  border: '1px solid var(--border)',
+  background: 'var(--bg-0)',
+  color: 'var(--text-0)',
+  padding: '6px 9px',
+  fontSize: 12,
+  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+}
+
+function ContextSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div
+        className="font-mono"
+        style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-3)', marginBottom: 8 }}
+      >
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ContextField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: 'grid', gap: 4 }}>
+      <span className="num" style={{ fontSize: 10.5, color: 'var(--text-2)' }}>{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function ContextInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={modalInputStyle}
+    />
+  )
+}
+
 function BreadcrumbPill({ label, mono }: { label: string; mono?: boolean }) {
   return (
     <button
@@ -373,8 +795,203 @@ function BreadcrumbPill({ label, mono }: { label: string; mono?: boolean }) {
       }}
     >
       {label}
-      <ChevronDown size={10} strokeWidth={1.4} style={{ color: 'var(--text-2)', opacity: 0.85 }} />
+      <ArcIcon icon={ChevronDown} size={10} strokeWidth={1.4} style={{ color: 'var(--text-2)', opacity: 0.85 }} />
     </button>
+  )
+}
+
+/** Icon-only Canvas / Code toggle — compact Arc-style segmented control. */
+function ViewModeToggle({
+  value,
+  onChange,
+}: {
+  value: 'canvas' | 'code'
+  onChange: (next: 'canvas' | 'code') => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Workspace view"
+      className="flex items-center"
+      style={{
+        gap: 2,
+        padding: 2,
+        borderRadius: 10,
+        background: 'var(--bg-3)',
+        border: '1px solid var(--border-soft)',
+      }}
+    >
+      <ViewModeIconBtn
+        active={value === 'canvas'}
+        onClick={() => onChange('canvas')}
+        title="Canvas"
+        testId="view-mode-canvas"
+      >
+        <ArcIcon icon={LayoutGrid} size={17} />
+      </ViewModeIconBtn>
+      <ViewModeIconBtn
+        active={value === 'code'}
+        onClick={() => onChange('code')}
+        title="Code editor"
+        testId="view-mode-code"
+      >
+        <ArcIcon icon={Code2} size={17} />
+      </ViewModeIconBtn>
+    </div>
+  )
+}
+
+function ViewModeIconBtn({
+  active,
+  onClick,
+  title,
+  testId,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  title: string
+  testId?: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      aria-pressed={active}
+      data-testid={testId}
+      className="flex items-center justify-center"
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        border: active ? '1px solid var(--border-strong)' : '1px solid transparent',
+        background: active ? 'var(--bg-2)' : 'transparent',
+        color: active ? 'var(--accent)' : 'var(--text-3)',
+        cursor: 'pointer',
+        boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+        transition: 'background 200ms var(--ease-out), color 200ms var(--ease-out), box-shadow 200ms var(--ease-out)',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function SaveAsDialog({
+  value,
+  saving,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  value: string
+  saving: boolean
+  onChange: (value: string) => void
+  onCancel: () => void
+  onSave: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center"
+      style={{
+        background: 'rgba(3,6,11,0.46)',
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Save workflow as"
+    >
+      <div
+        className="panel-glass"
+        style={{
+          width: 420,
+          maxWidth: 'calc(100vw - 24px)',
+          borderRadius: 12,
+          border: '1px solid var(--border)',
+          boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
+          padding: 14,
+          display: 'grid',
+          gap: 10,
+        }}
+      >
+        <div className="display" style={{ fontSize: 15, color: 'var(--text-0)', fontWeight: 620 }}>
+          Save workflow as
+        </div>
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              onSave()
+            }
+          }}
+          style={modalInputStyle}
+          placeholder="Workflow name"
+        />
+        <div className="flex items-center justify-end gap-2">
+          <GhostButton onClick={onCancel} disabled={saving}>Cancel</GhostButton>
+          <GhostButton onClick={onSave} disabled={saving || !value.trim()}>
+            {saving ? 'Saving...' : 'Save'}
+          </GhostButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NewWorkflowDialog({
+  onCancel,
+  onExitWithoutSaving,
+  onSaveAndNew,
+}: {
+  onCancel: () => void
+  onExitWithoutSaving: () => void
+  onSaveAndNew: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[111] flex items-center justify-center"
+      style={{
+        background: 'rgba(3,6,11,0.46)',
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create new workflow"
+    >
+      <div
+        className="panel-glass"
+        style={{
+          width: 460,
+          maxWidth: 'calc(100vw - 24px)',
+          borderRadius: 12,
+          border: '1px solid var(--border)',
+          boxShadow: '0 24px 70px rgba(0,0,0,0.45)',
+          padding: 14,
+          display: 'grid',
+          gap: 10,
+        }}
+      >
+        <div className="display" style={{ fontSize: 15, color: 'var(--text-0)', fontWeight: 620 }}>
+          Create new workflow
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.5 }}>
+          You already have a workflow open. Save it first, or exit without saving and start with an empty canvas.
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <GhostButton onClick={onCancel}>Cancel</GhostButton>
+          <GhostButton onClick={onExitWithoutSaving}>Exit Without Saving</GhostButton>
+          <GhostButton onClick={onSaveAndNew}>Save And New</GhostButton>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -382,15 +999,18 @@ function IconGhost({
   children,
   title,
   onMouseAccent,
+  onClick,
 }: {
   children: React.ReactNode
   title: string
   onMouseAccent?: 'warning'
+  onClick?: () => void
 }) {
   return (
     <button
       type="button"
       title={title}
+      onClick={onClick}
       className="flex items-center justify-center border-0 rounded-[5px] cursor-pointer bg-transparent"
       style={{ padding: 4, color: 'var(--text-3)' }}
       onMouseEnter={(e) => {
@@ -625,18 +1245,15 @@ function RunButton({ onClick, disabled, running }: { onClick: () => void; disabl
         width: 28,
         height: 28,
         borderRadius: 6,
-        background:
-          disabled && !running
-            ? 'var(--bg-3)'
-            : 'var(--text-0)',
-        color: disabled && !running ? 'var(--text-3)' : 'var(--bg-base)',
-        border: `1px solid ${disabled && !running ? 'var(--border-soft)' : 'var(--text-0)'}`,
+        background: disabled && !running ? 'var(--bg-3)' : 'var(--bg-2)',
+        color: disabled && !running ? 'var(--text-3)' : 'var(--accent)',
+        border: `1px solid ${disabled && !running ? 'var(--border-soft)' : 'color-mix(in srgb, var(--accent) 40%, var(--border))'}`,
         opacity: disabled && !running ? 0.55 : 1,
         cursor: disabled ? (running ? 'progress' : 'not-allowed') : 'pointer',
         fontFamily: 'inherit',
       }}
     >
-      {running ? <Loader2 size={12} className="animate-spin" /> : <Play size={11} strokeWidth={2.4} fill="currentColor" />}
+      {running ? <ArcIcon icon={Loader2} size={12} className="animate-spin" /> : <ArcIcon icon={Play} size={11} strokeWidth={2.4} />}
     </button>
   )
 }
@@ -687,8 +1304,8 @@ function UserAvatar() {
           width: 26,
           height: 26,
           borderRadius: '50%',
-          background: user ? 'var(--text-0)' : 'var(--bg-3)',
-          color: user ? 'var(--bg-base)' : 'var(--text-1)',
+          background: user ? 'var(--bg-3)' : 'var(--bg-3)',
+          color: user ? 'var(--text-0)' : 'var(--text-1)',
           border: '1px solid var(--border-strong)',
           fontSize: 10.5,
           fontWeight: 600,
@@ -766,7 +1383,7 @@ function UserAvatar() {
               ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-1)'
             }}
           >
-            <LogOut size={12} strokeWidth={1.85} />
+            <ArcIcon icon={LogOut} size={12} />
             <span>Sign out</span>
           </button>
         </div>

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from engine.validator import validate_dag
+from engine.copilot_validate import validate_dag_for_api
 
 from .run import _resolve_workflow_mock_csv_paths
 from ..schemas import ValidateWorkflowRequest
@@ -27,4 +27,4 @@ def validate(req: ValidateWorkflowRequest) -> dict:
     self-correction loop.
     """
     dag = _resolve_workflow_mock_csv_paths(req.dag)
-    return validate_dag(dag).to_json()
+    return validate_dag_for_api(dag).to_json()

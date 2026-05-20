@@ -26,6 +26,17 @@ export default defineConfig({
       protocol: 'wss',
     },
     proxy: {
+      // Streamed runs must not be buffered by the dev proxy or nodes stay
+      // "Running" until the whole workflow finishes (e.g. slow Agent steps).
+      '/api/run/stream': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('Accept-Encoding', 'identity')
+          })
+        },
+      },
       // In dev: requests to /api/* hit local FastAPI on 8001.
       // In Kubernetes preview: ingress already routes /api/* → backend:8001
       // so this proxy block is a no-op for the deployed preview URL.

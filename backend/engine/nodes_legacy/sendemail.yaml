@@ -1,0 +1,149 @@
+type_id: SEND_EMAIL
+description: The Send Email node sends emails using an SMTP email server.
+ui:
+  display_name: Send Email
+  color: '#6B7280'
+  icon: Box
+  palette:
+    section:
+      id: io
+      label: I/O and Integrations
+      order: 20
+      color: '#10B981'
+    node_order: 55
+  config_tags:
+  - n8n
+  - docs-derived
+  - deep-research
+input_ports:
+- name: input
+  type: object
+  description: Input items
+  optional: false
+output_ports:
+- name: output
+  type: object
+  description: Output items
+  optional: false
+params:
+- name: operation
+  type: string
+  description: Email operation.
+  required: false
+  default: send
+  constraints:
+    enum: [send]
+- name: provider
+  type: string
+  description: Delivery provider (smtp or outlook/msgraph).
+  required: false
+  default: smtp
+- name: channel
+  type: string
+  description: Alias for provider.
+  required: false
+- name: from_email
+  type: string
+  description: Sender address.
+  required: false
+- name: from
+  type: string
+  description: Alias for from_email.
+  required: false
+- name: to_email
+  type: string
+  description: Recipient addresses (comma-separated).
+  required: false
+- name: to
+  type: string
+  description: Alias for to_email.
+  required: false
+- name: subject
+  type: string
+  description: Subject line.
+  required: false
+- name: text
+  type: string
+  description: Plain-text body.
+  required: false
+- name: message
+  type: string
+  description: Alias for text.
+  required: false
+- name: html
+  type: string
+  description: HTML body.
+  required: false
+- name: cc
+  type: string
+  description: CC recipients (comma-separated).
+  required: false
+- name: bcc
+  type: string
+  description: BCC recipients (comma-separated).
+  required: false
+- name: attachments
+  type: array
+  description: Microsoft Graph attachment objects for Outlook mode.
+  required: false
+  default: []
+- name: smtp_host
+  type: string
+  description: SMTP host.
+  required: false
+  default: localhost
+- name: smtp_port
+  type: integer
+  description: SMTP port.
+  required: false
+  default: 25
+- name: smtp_user
+  type: string
+  description: SMTP username.
+  required: false
+- name: smtp_pass
+  type: string
+  description: SMTP password.
+  required: false
+- name: use_tls
+  type: boolean
+  description: Use SMTPS/TLS.
+  required: false
+  default: false
+- name: dry_run
+  type: boolean
+  description: When true, do not send and return queued metadata.
+  required: false
+  default: true
+- name: access_token
+  type: string
+  description: OAuth bearer token for Microsoft Graph sendMail.
+  required: false
+- name: outlook_access_token
+  type: string
+  description: Alias for access_token.
+  required: false
+- name: graph_user_id
+  type: string
+  description: User id or mailbox for Graph path; default me.
+  required: false
+  default: me
+- name: mailbox
+  type: string
+  description: Alias for graph_user_id.
+  required: false
+- name: graph_base_url
+  type: string
+  description: Microsoft Graph API base URL.
+  required: false
+  default: https://graph.microsoft.com/v1.0
+semantics:
+  requires: []
+  provides: []
+constraints:
+- Generated from official n8n docs markdown via deep parser.
+- 'Source: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/'
+extras:
+  docs_slug: n8n-nodes-base.sendemail
+  docs_url: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/
+  scrape_mode: deep_all_sections

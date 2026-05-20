@@ -17,7 +17,7 @@ export default {
         'text-secondary': '#8b8b94',
         'text-tertiary': '#5d5d66',
         primary: '#ededee',
-        accent: '#7c83ff',
+        accent: '#2d9fc4',
 
         'port-dataframe': '#f59e0b',
         'port-object': '#38bdf8',

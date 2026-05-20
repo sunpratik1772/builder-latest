@@ -32,7 +32,12 @@ export interface NodeRunInfo {
  * the rest of the canvas stays still.
  */
 export function useNodeRunStatus(nodeId: string): NodeRunInfo {
-  const entry = useWorkflowStore((s) => s.runLog.find((e) => e.node_id === nodeId))
+  const entry = useWorkflowStore((s) => {
+    for (let i = s.runLog.length - 1; i >= 0; i--) {
+      if (s.runLog[i].node_id === nodeId) return s.runLog[i]
+    }
+    return undefined
+  })
   const [tick, setTick] = useState(0)
 
   const isRunning = entry?.status === 'running'
@@ -67,7 +72,13 @@ export function useNodeRunStatus(nodeId: string): NodeRunInfo {
 /** Quick edge helper: status of the target node of an edge. */
 export function useEdgeStatus(targetNodeId: string): NodeRunStatus {
   return useWorkflowStore((s) => {
-    const entry = s.runLog.find((e) => e.node_id === targetNodeId)
+    let entry: (typeof s.runLog)[number] | undefined
+    for (let i = s.runLog.length - 1; i >= 0; i--) {
+      if (s.runLog[i].node_id === targetNodeId) {
+        entry = s.runLog[i]
+        break
+      }
+    }
     return (entry?.status ?? 'idle') as NodeRunStatus
   })
 }

@@ -80,3 +80,40 @@ class TestAutoFixerIsSafe:
         wf = {"schema_version": "1.0", "nodes": [], "edges": []}
         report = AutoFixer().fix(wf, [_err("SOMETHING_BRAND_NEW")])
         assert not report.changed
+
+
+class TestAutoLinkInputOutput:
+    def test_blank_output_name_auto_filled_when_consumed(self):
+        wf = {
+            "schema_version": "1.0",
+            "nodes": [
+                {"id": "n01", "type": "MANUAL_TRIGGER", "label": "Start", "config": {}},
+                {"id": "n02", "type": "DB_SOLR_CONNECTOR", "label": "Fetch", "config": {"table": "hs_alerts"}},
+                {"id": "n03", "type": "SUMMARIZE", "label": "Use", "config": {"input_name": "tmp"}},
+            ],
+            "edges": [{"from": "n01", "to": "n02"}, {"from": "n02", "to": "n03"}],
+        }
+        report = AutoFixer().fix(wf, [])
+        assert report.changed
+        assert wf["nodes"][1]["config"]["output_name"] == "n02_output"
+
+    def test_blank_input_name_links_from_last_predecessor_output(self):
+        wf = {
+            "schema_version": "1.0",
+            "nodes": [
+                {"id": "n01", "type": "MANUAL_TRIGGER", "label": "Start", "config": {}},
+                {"id": "n10", "type": "DB_SOLR_CONNECTOR", "label": "A", "config": {"table": "hs_alerts", "output_name": "alerts_a"}},
+                {"id": "n20", "type": "DB_SOLR_CONNECTOR", "label": "B", "config": {"table": "hs_orders", "output_name": "orders_b"}},
+                {"id": "n30", "type": "SUMMARIZE", "label": "Use", "config": {"input_name": ""}},
+            ],
+            # n20 is the last predecessor edge into n30; it should win.
+            "edges": [
+                {"from": "n01", "to": "n10"},
+                {"from": "n01", "to": "n20"},
+                {"from": "n10", "to": "n30"},
+                {"from": "n20", "to": "n30"},
+            ],
+        }
+        report = AutoFixer().fix(wf, [])
+        assert report.changed
+        assert wf["nodes"][3]["config"]["input_name"] == "orders_b"

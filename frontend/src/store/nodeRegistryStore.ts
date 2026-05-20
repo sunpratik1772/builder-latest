@@ -27,6 +27,13 @@ import { resolveLucideIcon } from '../nodes/lucideIconMap'
 
 const BASE = '/api'
 
+const LEGACY_CONFIG_TAGS = new Set(['legacy', 'deprecated'])
+
+function isStudioActiveNode(n: NodeManifestNode): boolean {
+  const tags = n.config_tags ?? []
+  return !tags.some((t) => LEGACY_CONFIG_TAGS.has(String(t).trim().toLowerCase()))
+}
+
 interface NodeManifestNode {
   type_id: string
   description: string
@@ -50,6 +57,7 @@ interface NodeManifestNode {
 
 interface NodeManifestPayload {
   version: number
+  manifest_revision?: string
   palette_sections: PaletteSection[]
   nodes: NodeManifestNode[]
 }
@@ -125,7 +133,8 @@ interface NodeRegistryState {
   loading: boolean
   error: string | null
   lastLoadedAt: number | null
-  refreshFromBackend: () => Promise<void>
+  manifestRevision: string | null
+  refreshFromBackend: (opts?: { silent?: boolean; force?: boolean }) => Promise<void>
 }
 
 export const useNodeRegistryStore = create<NodeRegistryState>((set) => ({
@@ -137,16 +146,25 @@ export const useNodeRegistryStore = create<NodeRegistryState>((set) => ({
   loading: false,
   error: null,
   lastLoadedAt: null,
-  refreshFromBackend: async () => {
-    set({ loading: true, error: null })
+  manifestRevision: null,
+  refreshFromBackend: async (opts) => {
+    const silent = Boolean(opts?.silent)
+    if (!silent) set({ loading: true, error: null })
     try {
       const manifest = await fetchNodeManifest()
+      const incomingRevision = manifest.manifest_revision ?? null
+      const currentRevision = useNodeRegistryStore.getState().manifestRevision
+      if (!opts?.force && incomingRevision && currentRevision === incomingRevision) {
+        set({ loading: false, error: null, lastLoadedAt: Date.now() })
+        return
+      }
       const nodeUI: RegistryRecord<NodeUIMeta> = {}
       const nodeContracts: RegistryRecord<NodeContract> = {}
       const nodeTyped: RegistryRecord<NodeTypedSpec> = {}
       const nodeTypes: string[] = []
 
       for (const n of manifest.nodes) {
+        if (!isStudioActiveNode(n)) continue
         nodeTypes.push(n.type_id)
         nodeUI[n.type_id] = normalizeUI(n)
         nodeContracts[n.type_id] = normalizeContract(n.contract)
@@ -162,6 +180,7 @@ export const useNodeRegistryStore = create<NodeRegistryState>((set) => ({
         loading: false,
         error: null,
         lastLoadedAt: Date.now(),
+        manifestRevision: incomingRevision,
       })
     } catch (e) {
       set({ loading: false, error: (e as Error).message })

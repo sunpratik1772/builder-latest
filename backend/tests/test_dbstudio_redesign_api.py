@@ -115,7 +115,7 @@ class TestNodeManifest:
         data = r.json()
         assert "palette_sections" in data, f"Missing palette_sections; keys={list(data.keys())}"
         assert "nodes" in data, f"Missing nodes; keys={list(data.keys())}"
-        assert len(data["palette_sections"]) >= 8
+        assert len(data["palette_sections"]) >= 5
         assert len(data["nodes"]) >= 32
         sample = data["nodes"][0]
         for key in ("type_id", "icon", "color"):

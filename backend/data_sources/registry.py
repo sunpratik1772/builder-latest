@@ -66,6 +66,7 @@ class ColumnSpec:
     description: str = ""
     semantic: str | None = None   # e.g. "trader", "size", "price", "time"
     optional: bool = False
+    include_in_tab: bool = True  # If false, prefer for joins/context — omit from spreadsheet-style tabs unless selected.
 
     def to_json(self) -> dict:
         return {
@@ -74,6 +75,7 @@ class ColumnSpec:
             "description": self.description,
             "semantic": self.semantic,
             "optional": self.optional,
+            "include_in_tab": self.include_in_tab,
         }
 
 
@@ -252,6 +254,7 @@ def _parse_column(raw: dict) -> ColumnSpec:
         description=raw.get("description", ""),
         semantic=raw.get("semantic"),
         optional=bool(raw.get("optional", False)),
+        include_in_tab=bool(raw.get("include_in_tab", True)),
     )
 
 
@@ -314,6 +317,52 @@ def get_registry() -> DataSourceRegistry:
     return _REGISTRY
 
 
+# --- orchestrator-backend compatibility (csv_extract / db_query / pdf_extract) ---
+PDF_MOCK: dict[str, dict] = {
+    "default": {
+        "pages": 4,
+        "text": (
+            "Executive Summary\n\nThis document outlines the Q1 2026 performance metrics. "
+            "Total revenue reached $2.4M, up 34% YoY."
+        ),
+    },
+    "contract.pdf": {
+        "pages": 8,
+        "text": "SERVICE AGREEMENT\n\nProvider agrees to deliver workflow automation services.",
+    },
+    "report.pdf": {
+        "pages": 12,
+        "text": "MARKET RESEARCH REPORT 2026\n\nThe automation market is projected to grow rapidly.",
+    },
+}
+
+
+def dataset_names() -> list[str]:
+    """Dataset ids for orchestrator ``db_query`` node dropdowns."""
+    return sorted(s.id for s in _REGISTRY.all())
+
+
+def get_rows(name: str) -> list[dict]:
+    """Return demo rows for orchestrator data nodes (best-effort from registry metadata)."""
+    source = _REGISTRY.get(name)
+    if source is None:
+        return []
+    path = METADATA_DIR / f"{name}.yaml"
+    if path.is_file():
+        raw = yaml.safe_load(path.read_text()) or {}
+        rows = raw.get("rows")
+        if isinstance(rows, list):
+            return [dict(r) for r in rows]
+        for src in source.sources:
+            if isinstance(src, str) and src.startswith("sqlite:"):
+                table = src.split(":", 1)[1].strip()
+                if table.isidentifier():
+                    from data_sources.sqlite_demo import _rows
+
+                    return _rows(f"SELECT * FROM {table}")
+    return []
+
+
 __all__ = [
     "ColumnSpec",
     "DataSource",
@@ -321,4 +370,7 @@ __all__ = [
     "SourceSchema",
     "get_registry",
     "split_source_ref",
+    "dataset_names",
+    "get_rows",
+    "PDF_MOCK",
 ]

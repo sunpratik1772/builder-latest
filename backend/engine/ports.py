@@ -40,6 +40,7 @@ class PortType(str, Enum):
     SCALAR = "scalar"         # int/float/str stored in ctx.values
     OBJECT = "object"         # dict / nested structure (e.g. sections)
     TEXT = "text"             # free-form string (e.g. executive_summary)
+    ANY = "any"               # orchestrator-backend passthrough port
 
 
 class ParamType(str, Enum):
@@ -55,6 +56,10 @@ class ParamType(str, Enum):
     ARRAY = "array"           # JSON array (list of objects or mixed)
     INPUT_REF = "input_ref"   # references an upstream output_name
     CODE = "code"             # inline Python snippet
+    EXPRESSION = "expression"  # row-level JS-style predicate
+    JSON = "json"
+    COLUMN_REF = "column_ref"
+    COLUMN_LIST = "column_list"
 
 
 class Widget(str, Enum):
@@ -65,11 +70,14 @@ class Widget(str, Enum):
     TEXTAREA = "textarea"
     NUMBER = "number"
     CHECKBOX = "checkbox"
+    SWITCH = "switch"
     SELECT = "select"
     CHIPS = "chips"           # string_list as removable chips
     JSON = "json"             # object as monaco-json
     INPUT_REF = "input_ref"   # dropdown of upstream output_names
     CODE = "code"             # monaco-python
+    STARLARK = "starlark"     # highlighted Starlark editor (Python-like, sandboxed)
+    PASSWORD = "password"     # masked secret (API tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +139,8 @@ class ParamSpec:
     # — type mismatches become warnings, not errors — because the
     # guess may be wrong until the node is migrated.
     inferred: bool = False
+    # When set, param is only validated if every key matches config (or list membership).
+    visible_if: dict[str, Any] | None = None
 
     def effective_widget(self) -> Widget:
         if self.widget is not None:
@@ -149,6 +159,8 @@ class ParamSpec:
             out["default"] = self.default
         if self.enum:
             out["enum"] = list(self.enum)
+        if self.visible_if:
+            out["visible_if"] = dict(self.visible_if)
         return out
 
 

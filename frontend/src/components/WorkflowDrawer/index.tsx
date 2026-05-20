@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ArcIcon,
   X as XIcon,
   Search,
   FilePlus2,
@@ -16,7 +17,7 @@ import {
   FileClock,
   Trash2,
   Loader2,
-} from 'lucide-react'
+} from '../../icons/arc'
 import { useWorkflowStore } from '../../store/workflowStore'
 import { api, type StoredWorkflow } from '../../services/api'
 
@@ -190,7 +191,7 @@ export default function WorkflowDrawer() {
               ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-3)'
             }}
           >
-            <XIcon size={15} strokeWidth={2.5} />
+            <ArcIcon icon={XIcon} size={15} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -226,7 +227,7 @@ export default function WorkflowDrawer() {
               ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
             }}
           >
-            <FilePlus2 size={14} strokeWidth={2.5} />
+            <ArcIcon icon={FilePlus2} size={14} strokeWidth={2.5} />
             <span>New workflow</span>
           </button>
 
@@ -248,7 +249,7 @@ export default function WorkflowDrawer() {
               e.currentTarget.style.background = 'var(--bg-2)'
             }}
           >
-            <Search size={13} strokeWidth={2} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+            <ArcIcon icon={Search} size={13} strokeWidth={2} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -278,14 +279,14 @@ export default function WorkflowDrawer() {
         >
           <TabButton
             label="Saved"
-            icon={<FileJson2 size={12} strokeWidth={2.5} />}
+            icon={<ArcIcon icon={FileJson2} size={12} strokeWidth={2.5} />}
             active={tab === 'saved'}
             count={savedCount}
             onClick={() => setTab('saved')}
           />
           <TabButton
             label="Drafts"
-            icon={<FileClock size={12} strokeWidth={2.5} />}
+            icon={<ArcIcon icon={FileClock} size={12} strokeWidth={2.5} />}
             active={tab === 'drafts'}
             count={draftsCount}
             onClick={() => setTab('drafts')}
@@ -299,7 +300,7 @@ export default function WorkflowDrawer() {
               className="flex items-center justify-center gap-2 py-10"
               style={{ color: 'var(--text-2)', fontSize: 12 }}
             >
-              <Loader2 size={13} className="animate-spin" strokeWidth={2} />
+              <ArcIcon icon={Loader2} size={13} className="animate-spin" strokeWidth={2} />
               Loading…
             </div>
           )}
@@ -327,7 +328,7 @@ export default function WorkflowDrawer() {
                 ? `No ${tab} match your search.`
                 : tab === 'saved'
                   ? 'No saved workflows yet. Build one, then use Save-as in the topbar.'
-                  : 'No drafts yet. The Copilot and manual builds drop here automatically.'}
+                  : 'No drafts yet. sherpa and manual builds drop here automatically.'}
             </div>
           )}
 
@@ -601,9 +602,9 @@ function DrawerItem({
         }}
       >
         {deleting ? (
-          <Loader2 size={12} strokeWidth={2.5} className="animate-spin" />
+          <ArcIcon icon={Loader2} size={12} strokeWidth={2.5} className="animate-spin" />
         ) : (
-          <Trash2 size={12} strokeWidth={2.5} />
+          <ArcIcon icon={Trash2} size={12} strokeWidth={2.5} />
         )}
       </button>
 

@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ArcIcon,
   Lightbulb,
   Database,
   Activity,
@@ -21,9 +22,10 @@ import {
   ExternalLink,
   RefreshCw,
   Shield,
-} from 'lucide-react'
+} from '../icons/arc'
 import SectionDrawer from './SectionDrawer'
 import { BASE } from '../services/api'
+import { useNodeRegistryStore } from '../store/nodeRegistryStore'
 
 const BACKEND_COLOR: Record<string, string> = {
   Solr: 'var(--text-1)',
@@ -127,7 +129,7 @@ export function SkillsDrawer({ open, onClose }: { open: boolean; onClose: () => 
           style={{ borderRight: '1px solid var(--border-soft)', maxWidth: 320 }}
         >
           {loading && <PanelLoading />}
-          {!loading && skills?.length === 0 && <PanelEmpty icon={<Lightbulb size={18} />}>No skills bundled.</PanelEmpty>}
+          {!loading && skills?.length === 0 && <PanelEmpty icon={<ArcIcon icon={Lightbulb} size={18} />}>No skills bundled.</PanelEmpty>}
           {skills?.map((s) => (
             <button
               key={s.id}
@@ -143,7 +145,7 @@ export function SkillsDrawer({ open, onClose }: { open: boolean; onClose: () => 
                 fontFamily: 'inherit',
               }}
             >
-              <Lightbulb size={13} strokeWidth={1.85} style={{ marginTop: 2, color: 'var(--text-2)' }} />
+              <ArcIcon icon={Lightbulb} size={13} strokeWidth={1.85} style={{ marginTop: 2, color: 'var(--text-2)' }} />
               <div className="min-w-0 flex-1">
                 <div
                   className="display truncate"
@@ -169,12 +171,12 @@ export function SkillsDrawer({ open, onClose }: { open: boolean; onClose: () => 
                   </span>
                 </div>
               </div>
-              <ChevronRight size={11} strokeWidth={2} style={{ color: 'var(--text-3)', marginTop: 5 }} />
+              <ArcIcon icon={ChevronRight} size={11} strokeWidth={2} style={{ color: 'var(--text-3)', marginTop: 5 }} />
             </button>
           ))}
         </div>
         <div className="flex-1 min-w-0 overflow-y-auto" style={{ padding: '20px 24px' }}>
-          {!active && <PanelEmpty icon={<Lightbulb size={18} />}>Select a skill</PanelEmpty>}
+          {!active && <PanelEmpty icon={<ArcIcon icon={Lightbulb} size={18} />}>Select a skill</PanelEmpty>}
           {active && (
             <div>
               <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 10 }}>
@@ -311,7 +313,7 @@ export function DataSourcesDrawer({ open, onClose }: { open: boolean; onClose: (
                 fontFamily: 'inherit',
               }}
             >
-              <Database size={13} strokeWidth={1.85} style={{ marginTop: 2, color: 'var(--text-2)' }} />
+              <ArcIcon icon={Database} size={13} strokeWidth={1.85} style={{ marginTop: 2, color: 'var(--text-2)' }} />
               <div className="min-w-0 flex-1">
                 <div
                   className="display truncate"
@@ -341,7 +343,7 @@ export function DataSourcesDrawer({ open, onClose }: { open: boolean; onClose: (
           ))}
         </div>
         <div className="flex-1 min-w-0 overflow-y-auto" style={{ padding: '20px 24px' }}>
-          {!active && <PanelEmpty icon={<Database size={18} />}>Select a data source</PanelEmpty>}
+          {!active && <PanelEmpty icon={<ArcIcon icon={Database} size={18} />}>Select a data source</PanelEmpty>}
           {active && (
             <div>
               <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 8 }}>
@@ -511,10 +513,10 @@ export function RunHistoryDrawer({ open, onClose }: { open: boolean; onClose: ()
       width={920}
       toolbar={
         <div className="flex items-center gap-1.5">
-          <ToolbarButton onClick={load} icon={<RefreshCw size={11} strokeWidth={2} className={loading ? 'animate-spin' : undefined} />}>
+          <ToolbarButton onClick={load} icon={<ArcIcon icon={RefreshCw} size={11} strokeWidth={2} className={loading ? 'animate-spin' : undefined} />}>
             Refresh
           </ToolbarButton>
-          <ToolbarButton onClick={clear} icon={<Trash2 size={11} strokeWidth={2} />}>
+          <ToolbarButton onClick={clear} icon={<ArcIcon icon={Trash2} size={11} strokeWidth={2} />}>
             Clear {tab === 'runs' ? 'runs' : 'audit'}
           </ToolbarButton>
         </div>
@@ -531,14 +533,14 @@ export function RunHistoryDrawer({ open, onClose }: { open: boolean; onClose: ()
       >
         <LogsTabButton
           label="Run logs"
-          icon={<Activity size={12} strokeWidth={2} />}
+          icon={<ArcIcon icon={Activity} size={12} strokeWidth={2} />}
           active={tab === 'runs'}
           count={runs?.length ?? null}
           onClick={() => setTab('runs')}
         />
         <LogsTabButton
           label="Audit"
-          icon={<Shield size={12} strokeWidth={2} />}
+          icon={<ArcIcon icon={Shield} size={12} strokeWidth={2} />}
           active={tab === 'audit'}
           count={audit?.length ?? null}
           onClick={() => setTab('audit')}
@@ -575,10 +577,10 @@ export function RunHistoryDrawer({ open, onClose }: { open: boolean; onClose: ()
           {loading && (tab === 'runs' ? !runs : !audit) && <PanelLoading />}
 
           {tab === 'runs' && runs && runs.length === 0 && (
-            <PanelEmpty icon={<Activity size={18} />}>No runs yet. Hit Run on a workflow.</PanelEmpty>
+            <PanelEmpty icon={<ArcIcon icon={Activity} size={18} />}>No runs yet. Hit Run on a workflow.</PanelEmpty>
           )}
           {tab === 'audit' && audit && audit.length === 0 && (
-            <PanelEmpty icon={<Shield size={18} />}>No audit events recorded yet.</PanelEmpty>
+            <PanelEmpty icon={<ArcIcon icon={Shield} size={18} />}>No audit events recorded yet.</PanelEmpty>
           )}
 
           {tab === 'runs' &&
@@ -641,9 +643,9 @@ export function RunHistoryDrawer({ open, onClose }: { open: boolean; onClose: ()
                   }}
                 >
                   {errored ? (
-                    <XCircle size={11} strokeWidth={2} style={{ color: 'var(--danger)', marginTop: 2 }} />
+                    <ArcIcon icon={XCircle} size={11} strokeWidth={2} style={{ color: 'var(--danger)', marginTop: 2 }} />
                   ) : (
-                    <CheckCircle2 size={11} strokeWidth={2} style={{ color: tone, marginTop: 2 }} />
+                    <ArcIcon icon={CheckCircle2} size={11} strokeWidth={2} style={{ color: tone, marginTop: 2 }} />
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -677,8 +679,8 @@ export function RunHistoryDrawer({ open, onClose }: { open: boolean; onClose: ()
         </div>
 
         <div className="flex-1 min-w-0 overflow-y-auto" style={{ padding: '20px 24px' }}>
-          {tab === 'runs' && !activeRun && <PanelEmpty icon={<Activity size={18} />}>Select a run</PanelEmpty>}
-          {tab === 'audit' && !activeAudit && <PanelEmpty icon={<Shield size={18} />}>Select an event</PanelEmpty>}
+          {tab === 'runs' && !activeRun && <PanelEmpty icon={<ArcIcon icon={Activity} size={18} />}>Select a run</PanelEmpty>}
+          {tab === 'audit' && !activeAudit && <PanelEmpty icon={<ArcIcon icon={Shield} size={18} />}>Select an event</PanelEmpty>}
 
           {tab === 'runs' && activeRun && (
             <div>
@@ -770,9 +772,9 @@ export function RunHistoryDrawer({ open, onClose }: { open: boolean; onClose: ()
                     border: '1px solid var(--border-soft)',
                   }}
                 >
-                  <Download size={11} strokeWidth={2} />
+                  <ArcIcon icon={Download} size={11} strokeWidth={2} />
                   Download report
-                  <ExternalLink size={10} strokeWidth={2} style={{ opacity: 0.6 }} />
+                  <ArcIcon icon={ExternalLink} size={10} strokeWidth={2} style={{ opacity: 0.6 }} />
                 </a>
               )}
             </div>
@@ -920,7 +922,7 @@ function LogsTabButton({
 function PanelLoading() {
   return (
     <div className="flex items-center justify-center" style={{ padding: 32, color: 'var(--text-3)' }}>
-      <Loader2 size={14} className="animate-spin" />
+      <ArcIcon icon={Loader2} size={14} className="animate-spin" />
     </div>
   )
 }
@@ -1057,12 +1059,12 @@ function KV({ label, value, mono }: { label: string; value: string; mono?: boole
 function StatusIcon({ status, large }: { status: string; large?: boolean }) {
   const size = large ? 14 : 11
   if (status === 'success')
-    return <CheckCircle2 size={size} strokeWidth={2} style={{ color: 'var(--success)', marginTop: 2 }} />
-  if (status === 'error') return <XCircle size={size} strokeWidth={2} style={{ color: 'var(--danger)', marginTop: 2 }} />
-  if (status === 'warning') return <AlertTriangle size={size} strokeWidth={2} style={{ color: 'var(--warning)', marginTop: 2 }} />
+    return <ArcIcon icon={CheckCircle2} size={size} strokeWidth={2} style={{ color: 'var(--success)', marginTop: 2 }} />
+  if (status === 'error') return <ArcIcon icon={XCircle} size={size} strokeWidth={2} style={{ color: 'var(--danger)', marginTop: 2 }} />
+  if (status === 'warning') return <ArcIcon icon={AlertTriangle} size={size} strokeWidth={2} style={{ color: 'var(--warning)', marginTop: 2 }} />
   if (status === 'running')
-    return <Loader2 size={size} className="animate-spin" style={{ color: 'var(--running)', marginTop: 2 }} />
-  return <CircleDashed size={size} strokeWidth={2} style={{ color: 'var(--text-3)', marginTop: 2 }} />
+    return <ArcIcon icon={Loader2} size={size} className="animate-spin" style={{ color: 'var(--running)', marginTop: 2 }} />
+  return <ArcIcon icon={CircleDashed} size={size} strokeWidth={2} style={{ color: 'var(--text-3)', marginTop: 2 }} />
 }
 
 function statusColor(status: string): string {
@@ -1100,6 +1102,10 @@ function formatDur(ms?: number | null): string {
 // Nodes Library
 // ---------------------------------------------------------------------------
 export function NodesDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const nodeUI = useNodeRegistryStore((s) => s.nodeUI)
+  const nodeContracts = useNodeRegistryStore((s) => s.nodeContracts)
+  const paletteSections = useNodeRegistryStore((s) => s.paletteSections)
+  const refreshNodeRegistry = useNodeRegistryStore((s) => s.refreshFromBackend)
   const [nodes, setNodes] = useState<any[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -1107,22 +1113,22 @@ export function NodesDrawer({ open, onClose }: { open: boolean; onClose: () => v
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    // Use the node registry store to get nodes
-    import('../store/nodeRegistryStore').then(({ useNodeRegistryStore }) => {
-      const store = useNodeRegistryStore.getState()
-      const nodeTypes = Object.keys(store.nodeUI)
-      const nodeData = nodeTypes.map(type => ({
-        type,
-        ...store.nodeUI[type],
-        contract: store.nodeContracts[type]
-      }))
-      setNodes(nodeData)
-      setLoading(false)
-    })
-  }, [open])
+    void refreshNodeRegistry({ silent: true }).finally(() => setLoading(false))
+  }, [open, refreshNodeRegistry])
+
+  useEffect(() => {
+    if (!open) return
+    const nodeTypes = Object.keys(nodeUI)
+    const nodeData = nodeTypes.map((type) => ({
+      type,
+      ...nodeUI[type],
+      contract: nodeContracts[type],
+    }))
+    setNodes(nodeData)
+  }, [open, nodeUI, nodeContracts])
 
   // Group nodes by palette category
-  const nodesByCategory = useMemo(() => {
+  const nodesByCategory = useMemo<Record<string, any[]>>(() => {
     if (!nodes) return {}
     const grouped: Record<string, any[]> = {}
     nodes.forEach(node => {
@@ -1133,7 +1139,31 @@ export function NodesDrawer({ open, onClose }: { open: boolean; onClose: () => v
     return grouped
   }, [nodes])
 
-  const categories = Object.keys(nodesByCategory).sort()
+  const sectionMeta = useMemo(() => {
+    const out: Record<string, { label: string; order: number }> = {}
+    for (const sec of paletteSections) {
+      out[sec.id] = { label: sec.label, order: sec.order }
+    }
+    return out
+  }, [paletteSections])
+
+  const categories = useMemo(() => {
+    return Object.keys(nodesByCategory).sort((a, b) => {
+      const ao = sectionMeta[a]?.order ?? 999
+      const bo = sectionMeta[b]?.order ?? 999
+      if (ao !== bo) return ao - bo
+      return a.localeCompare(b)
+    })
+  }, [nodesByCategory, sectionMeta])
+  useEffect(() => {
+    if (!categories.length) {
+      setSelectedCategory(null)
+      return
+    }
+    if (!selectedCategory || !categories.includes(selectedCategory)) {
+      setSelectedCategory(categories[0])
+    }
+  }, [categories, selectedCategory])
   const activeCategory = selectedCategory || categories[0]
   const displayNodes = activeCategory ? nodesByCategory[activeCategory] || [] : []
 
@@ -1170,10 +1200,10 @@ export function NodesDrawer({ open, onClose }: { open: boolean; onClose: () => v
             >
               <div className="min-w-0 flex-1">
                 <div
-                  className="display capitalize"
+                  className="display"
                   style={{ fontSize: 12.5, fontWeight: 530, color: 'var(--text-0)', letterSpacing: '-0.005em' }}
                 >
-                  {cat}
+                  {sectionMeta[cat]?.label ?? cat}
                 </div>
                 <div
                   className="font-mono"
@@ -1190,7 +1220,7 @@ export function NodesDrawer({ open, onClose }: { open: boolean; onClose: () => v
         <div className="flex-1 min-w-0 overflow-y-auto" style={{ padding: '20px 24px' }}>
           {loading && <PanelLoading />}
           {!loading && displayNodes.length === 0 && (
-            <PanelEmpty icon={<Lightbulb size={18} />}>No nodes in this category</PanelEmpty>
+            <PanelEmpty icon={<ArcIcon icon={Lightbulb} size={18} />}>No nodes in this category</PanelEmpty>
           )}
           <div
             style={{
@@ -1228,11 +1258,11 @@ export function NodesDrawer({ open, onClose }: { open: boolean; onClose: () => v
                         width: 32,
                         height: 32,
                         borderRadius: 6,
-                        background: node.color || 'var(--bg-3)',
-                        opacity: 0.15,
+                        background: `color-mix(in srgb, ${node.color || 'var(--accent)'} 14%, var(--bg-3))`,
+                        color: node.color || 'var(--accent)',
                       }}
                     >
-                      {Icon && <Icon size={16} style={{ color: node.color || 'var(--text-0)' }} />}
+                      {Icon && <Icon size={16} />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3

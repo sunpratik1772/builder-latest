@@ -52,6 +52,32 @@ def test_sort_simple_and_random_modes() -> None:
     assert sorted(x["n"] for x in out) == [1, 2, 3]
 
 
+def test_sort_code_mode_python_expression_and_nested_field() -> None:
+    ctx1 = RunContext()
+    node1 = {
+        "id": "s3",
+        "config": {
+            "type": "code",
+            "code": "py: (item.get('priority', 0), item.get('name', ''))",
+        },
+    }
+    ctx1.set("s3_input", [{"name": "b", "priority": 1}, {"name": "a", "priority": 1}, {"name": "x", "priority": 0}])
+    handle_sort(node1, ctx1)
+    assert [x["name"] for x in ctx1.get("s3_output", [])] == ["x", "a", "b"]
+
+    ctx2 = RunContext()
+    node2 = {
+        "id": "s4",
+        "config": {
+            "type": "simple",
+            "sortFieldsUi": {"sortField": [{"fieldName": "meta.score", "order": "descending"}]},
+        },
+    }
+    ctx2.set("s4_input", [{"meta": {"score": 2}}, {"meta": {"score": 4}}, {"meta": {"score": 1}}])
+    handle_sort(node2, ctx2)
+    assert [x["meta"]["score"] for x in ctx2.get("s4_output", [])] == [4, 2, 1]
+
+
 def test_splitout_include_modes_and_destination() -> None:
     ctx = RunContext()
     node = {
@@ -67,6 +93,22 @@ def test_splitout_include_modes_and_destination() -> None:
     handle_splitout(node, ctx)
     out = ctx.get("sp1_output", [])
     assert out == [{"id": "x", "value": 10}, {"id": "x", "value": 20}]
+
+    ctx2 = RunContext()
+    node2 = {
+        "id": "sp2",
+        "config": {
+            "field_to_split_out": "rows",
+            "include": "noOtherFields",
+            "include_binary": True,
+        },
+    }
+    ctx2.set("sp2_input", [{"rows": [{"a": 1}, {"a": 2}], "binary": {"data": b"abc"}}])
+    handle_splitout(node2, ctx2)
+    out2 = ctx2.get("sp2_output", [])
+    assert out2[0]["a"] == 1
+    assert out2[1]["a"] == 2
+    assert out2[0]["binary"]["data"] == b"abc"
 
 
 def test_merge_append_position_and_matching_fields() -> None:

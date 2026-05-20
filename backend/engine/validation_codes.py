@@ -96,7 +96,10 @@ class ValidationErrorCode(str, Enum):
     """DAG has a cycle — topological sort would fail."""
 
     ORPHAN_NODE = "ORPHAN_NODE"
-    """Node has no incoming / outgoing edges and isn't entry/exit."""
+    """Non-entry node has no incoming edge — not wired from upstream."""
+
+    UNREACHABLE_NODE = "UNREACHABLE_NODE"
+    """Node is not reachable from any entry (root) via forward edges."""
 
     UNWIRED_INPUT = "UNWIRED_INPUT"
     """Node declares an input_name that no upstream output produces."""

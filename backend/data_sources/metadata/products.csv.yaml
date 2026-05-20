@@ -1,0 +1,11 @@
+id: products.csv
+description: Demo product catalog for join workflows
+columns:
+  - { name: sku, type: string }
+  - { name: name, type: string }
+  - { name: category, type: string }
+  - { name: unit_price, type: number }
+rows:
+  - { sku: SKU-100, name: Workflow Pro, category: platform, unit_price: 299 }
+  - { sku: SKU-200, name: MCP Bridge, category: integration, unit_price: 149 }
+  - { sku: SKU-300, name: Agent Pack, category: ai, unit_price: 199 }

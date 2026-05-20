@@ -6,7 +6,7 @@
  * `workflowStore.applyRunEvent` turns those frames into `runLog` rows. Keeping
  * that flow centralized makes Config, Canvas, Output, and Run Log agree.
  */
-import { Activity, Check, X as XIcon } from 'lucide-react'
+import { ArcIcon, Activity, Check, X as XIcon } from '../../icons/arc'
 import { useWorkflowStore } from '../../store/workflowStore'
 import { useNodeRegistryStore, UNKNOWN_NODE_UI, type NodeType } from '../../nodes'
 import type { RunLogEntry } from '../../types'
@@ -39,9 +39,9 @@ function StatusDot({ status }: { status: RunLogEntry['status'] }) {
       {status === 'running' ? (
         <span className="live-blink" style={{ width: 6, height: 6, borderRadius: 999, background: color }} />
       ) : status === 'error' ? (
-        <XIcon size={10} strokeWidth={3} />
+        <ArcIcon icon={XIcon} size={10} strokeWidth={3} />
       ) : (
-        <Check size={10} strokeWidth={3} />
+        <ArcIcon icon={Check} size={10} strokeWidth={3} />
       )}
     </div>
   )
@@ -171,7 +171,7 @@ export default function RunLogView() {
       <div className="px-2 pt-2 pb-3 space-y-0.5">
         {runLog.length === 0 ? (
           <Empty>
-            <Activity size={20} strokeWidth={1.6} style={{ color: 'var(--text-3)', marginBottom: 8 }} />
+            <ArcIcon icon={Activity} size={20} style={{ color: 'var(--text-3)', marginBottom: 8 }} />
             <div style={{ color: 'var(--text-1)', fontWeight: 500, marginBottom: 4 }}>No run yet</div>
             <div>Press <span className="num" style={{ color: 'var(--text-1)' }}>Run</span> to stream per-node execution here.</div>
           </Empty>

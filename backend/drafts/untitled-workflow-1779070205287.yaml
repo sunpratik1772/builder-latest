@@ -1,0 +1,13 @@
+workflow_id: untitled
+name: Untitled workflow
+version: 0.1.0
+description: ''
+nodes:
+- id: n01
+  type: ERROR_TRIGGER
+  label: Error Trigger
+  config: {}
+  position:
+    x: 524
+    y: 274
+edges: []

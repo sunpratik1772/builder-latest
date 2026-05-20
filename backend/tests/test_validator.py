@@ -87,11 +87,86 @@ class TestStructural:
         # Missing label shouldn't block execution.
         assert any(i.code == "MISSING_LABEL" and i.severity == "warning" for i in result.issues)
 
+    def test_manual_trigger_is_not_orphan(self):
+        """Studio entry nodes use snake_case ids (manual_trigger), not MANUAL_TRIGGER."""
+        result = validate_dag(
+            {
+                "schema_version": "1.0",
+                "nodes": [
+                    {"id": "n1", "type": "manual_trigger", "label": "Start", "config": {}},
+                    {
+                        "id": "n2",
+                        "type": "csv_extract",
+                        "label": "Trades",
+                        "config": {"source": "transactions.csv"},
+                    },
+                ],
+                "edges": [{"from": "n1", "to": "n2"}],
+            }
+        )
+        assert not any(
+            i.code == "ORPHAN_NODE" and i.node_id == "n1" for i in result.issues
+        ), result.issues
+
 
 # ---------------------------------------------------------------------------
 # parameter validation
 # ---------------------------------------------------------------------------
 class TestParams:
+    def test_agent_per_row_defaults_when_enabled(self):
+        """perRow=true applies YAML defaults for outputColumn and maxRows."""
+        result = validate_dag(
+            {
+                "schema_version": "1.0",
+                "nodes": [
+                    {"id": "n1", "type": "manual_trigger", "label": "Start", "config": {}},
+                    {
+                        "id": "n2",
+                        "type": "csv_extract",
+                        "label": "Data",
+                        "config": {"source": "transactions.csv"},
+                    },
+                    {
+                        "id": "n3",
+                        "type": "agent",
+                        "label": "Score",
+                        "config": {
+                            "prompt": "Analyst",
+                            "task": "Score row",
+                            "perRow": True,
+                        },
+                    },
+                ],
+                "edges": [{"from": "n1", "to": "n2"}, {"from": "n2", "to": "n3"}],
+            }
+        )
+        assert not any(
+            i.code == "MISSING_REQUIRED_PARAM" and i.node_id == "n3" for i in result.errors
+        ), result.errors
+
+    def test_agent_aggregate_skips_per_row_fields(self):
+        result = validate_dag(
+            {
+                "schema_version": "1.0",
+                "nodes": [
+                    {"id": "n1", "type": "manual_trigger", "label": "Start", "config": {}},
+                    {
+                        "id": "n3",
+                        "type": "agent",
+                        "label": "Summarize",
+                        "config": {"prompt": "Analyst", "task": "Summarize"},
+                    },
+                ],
+                "edges": [{"from": "n1", "to": "n3"}],
+            }
+        )
+        assert not any(
+            i.code == "MISSING_REQUIRED_PARAM"
+            and i.node_id == "n3"
+            and i.field in {"config.perRow", "config.outputColumn", "config.maxRows"}
+            for i in result.errors
+        ), result.errors
+
     def test_missing_required_param(self):
         result = validate_dag(
             {

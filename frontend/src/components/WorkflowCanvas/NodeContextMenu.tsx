@@ -6,7 +6,7 @@
  * the next click / Esc to dismiss.
  */
 import { useEffect, useRef } from 'react'
-import { Copy, Files, Trash2, Power, Link2Off, type LucideIcon } from 'lucide-react'
+import { ArcIcon, Copy, Files, Trash2, Power, Link2Off, type LucideIcon } from '../../icons/arc'
 import { useWorkflowStore } from '../../store/workflowStore'
 
 export interface ContextMenuState {
@@ -95,7 +95,7 @@ export default function NodeContextMenu({ menu, onClose, onCopy }: Props) {
         ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
       }}
     >
-      <Icon size={13} strokeWidth={2} />
+      <ArcIcon icon={Icon} size={13} />
       <span className="flex-1">{label}</span>
       {shortcut && (
         <span className="num" style={{ color: 'var(--text-3)', fontSize: 10.5 }}>

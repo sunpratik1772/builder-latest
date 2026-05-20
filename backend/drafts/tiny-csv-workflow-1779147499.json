@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "copilot-1779147499",
+  "name": "Tiny CSV Workflow",
+  "version": "1.0",
+  "description": "Extracts data from orders.csv and outputs it to a new CSV.",
+  "nodes": [
+    {
+      "id": "n1",
+      "type": "manual_trigger",
+      "label": "Start Workflow",
+      "config": {},
+      "position": {
+        "x": 60,
+        "y": 280
+      }
+    },
+    {
+      "id": "n2",
+      "type": "csv_extract",
+      "label": "Extract Orders",
+      "config": {
+        "source": "orders.csv"
+      },
+      "position": {
+        "x": 320,
+        "y": 280
+      }
+    },
+    {
+      "id": "n3",
+      "type": "csv_output",
+      "label": "Output CSV",
+      "config": {
+        "filename": "output.csv"
+      },
+      "position": {
+        "x": 600,
+        "y": 280
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n1",
+      "to": "n2"
+    },
+    {
+      "from": "n2",
+      "to": "n3"
+    }
+  ]
+}

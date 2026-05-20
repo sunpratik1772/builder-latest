@@ -1,0 +1,62 @@
+{
+  "workflow_name": "Prompt Demo 4 - Batches and CSV Export",
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "MANUAL_TRIGGER",
+      "config": {}
+    },
+    {
+      "id": "gen_rows",
+      "type": "CODE",
+      "config": {
+        "language": "python",
+        "mode": "runOnceForAllItems",
+        "pythonCode": "result = [\n  {'txn_id': f'TXN-{i:03d}', 'amount': 100 + i * 11, 'bucket': 'A' if i % 2 == 0 else 'B'}\n  for i in range(1, 13)\n]"
+      }
+    },
+    {
+      "id": "batcher",
+      "type": "SPLIT_IN_BATCHES",
+      "config": {
+        "batch_size": 4
+      }
+    },
+    {
+      "id": "to_csv",
+      "type": "CONVERT_TO_FILE",
+      "config": {
+        "operation": "csv",
+        "put_output_file_in_field": "data",
+        "file_name": "batch_output"
+      }
+    },
+    {
+      "id": "write_csv",
+      "type": "READ_WRITE_FILES_FROM_DISK",
+      "config": {
+        "operation": "write",
+        "file_path_and_name": "/Users/supratikdatta/sheep-latest/backend/tmp/prompt_demo_outputs/batch_output.csv",
+        "input_binary_field": "data"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "trigger",
+      "to": "gen_rows"
+    },
+    {
+      "from": "gen_rows",
+      "to": "batcher"
+    },
+    {
+      "from": "batcher",
+      "to": "to_csv"
+    },
+    {
+      "from": "to_csv",
+      "to": "write_csv"
+    }
+  ]
+}

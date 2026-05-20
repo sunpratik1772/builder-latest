@@ -18,6 +18,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from engine.registry import NODE_SPECS
 from engine.validation_codes import ValidationErrorCode
 
 
@@ -283,6 +284,97 @@ def _normalize_filter_legacy_conditions(workflow: dict, report: AutoFixReport) -
     return changed
 
 
+def _node_type_has_param(node_type: Any, param_name: str) -> bool:
+    if not isinstance(node_type, str):
+        return False
+    spec = NODE_SPECS.get(node_type)
+    if not spec:
+        return False
+    return any(p.name == param_name for p in spec.params)
+
+
+def _autolink_input_output_names(workflow: dict, report: AutoFixReport) -> bool:
+    """Fill blank input_name/output_name using local topology heuristics.
+
+    Rules:
+    - If a node has `output_name` param, has downstream consumers, and output_name
+      is blank, set a deterministic default `<node_id>_output`.
+    - If a node has `input_name` param and input_name is blank, pull from the
+      *last immediate predecessor* with a non-blank `output_name`.
+    """
+    nodes = workflow.get("nodes") or []
+    edges = workflow.get("edges") or []
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        return False
+
+    id_to_node: dict[str, dict] = {}
+    for n in nodes:
+        if isinstance(n, dict) and isinstance(n.get("id"), str):
+            id_to_node[n["id"]] = n
+
+    incoming: dict[str, list[str]] = {nid: [] for nid in id_to_node}
+    outgoing: dict[str, list[str]] = {nid: [] for nid in id_to_node}
+    for e in edges:
+        if not isinstance(e, dict):
+            continue
+        src = e.get("from")
+        dst = e.get("to")
+        if isinstance(src, str) and isinstance(dst, str) and src in id_to_node and dst in id_to_node:
+            incoming[dst].append(src)
+            outgoing[src].append(dst)
+
+    changed = False
+
+    # Pass 1: ensure producers with downstream consumers expose non-blank output_name.
+    for nid, node in id_to_node.items():
+        cfg = node.get("config")
+        if not isinstance(cfg, dict):
+            cfg = {}
+            node["config"] = cfg
+        has_output_name = _node_type_has_param(node.get("type"), "output_name") or "output_name" in cfg
+        if not has_output_name:
+            continue
+        if not outgoing.get(nid):
+            continue
+        out = cfg.get("output_name")
+        if isinstance(out, str) and out.strip():
+            continue
+        auto_name = f"{nid}_output"
+        cfg["output_name"] = auto_name
+        report.applied.append(f"{nid}.output_name: auto-filled '{auto_name}' (consumed downstream)")
+        changed = True
+
+    # Pass 2: wire consumers from immediate predecessors (prefer the last edge).
+    for nid, node in id_to_node.items():
+        cfg = node.get("config")
+        if not isinstance(cfg, dict):
+            continue
+        has_input_name = _node_type_has_param(node.get("type"), "input_name") or "input_name" in cfg
+        if not has_input_name:
+            continue
+        inn = cfg.get("input_name")
+        if isinstance(inn, str) and inn.strip():
+            continue
+        preds = incoming.get(nid) or []
+        if not preds:
+            continue
+        chosen: str | None = None
+        for pid in reversed(preds):
+            pcfg = id_to_node[pid].get("config")
+            if not isinstance(pcfg, dict):
+                continue
+            pout = pcfg.get("output_name")
+            if isinstance(pout, str) and pout.strip():
+                chosen = pout.strip()
+                break
+        if chosen:
+            cfg["input_name"] = chosen
+            report.applied.append(f"{nid}.input_name: auto-linked from predecessor output '{chosen}'")
+            changed = True
+
+    return changed
+
+
 def _fix_bad_param_type_empty_array(workflow: dict, error: dict, report: AutoFixReport) -> bool:
     """When an ARRAY param is missing / wrong-typed and the validator flagged
     it, fall back to an empty list. Only applies to params whose field path
@@ -373,6 +465,7 @@ class AutoFixer:
         _normalize_convert_to_file_ops(workflow, report)
         _normalize_switch_legacy_conditions(workflow, report)
         _normalize_filter_legacy_conditions(workflow, report)
+        _autolink_input_output_names(workflow, report)
 
         # Apply per-error rules. Each rule is idempotent so re-entry is
         # safe if the caller calls fix() multiple times.

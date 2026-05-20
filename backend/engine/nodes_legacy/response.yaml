@@ -1,0 +1,99 @@
+type_id: RESPONSE
+description: Build a structured response object from upstream rows and run context.
+ui:
+  display_name: Response
+  color: "#0EA5E9"
+  icon: MessageSquare
+  palette:
+    section:
+      id: flow
+      label: Flow Control
+      order: 10
+      color: "#F59E0B"
+    node_order: 90
+  config_tags:
+  - dbs-native
+input_ports:
+  - name: input
+    type: object
+    description: Upstream items (optional context rows)
+    optional: false
+output_ports:
+  - name: output
+    type: object
+    description: Structured response payload
+    optional: false
+params:
+  - name: envelope_key
+    type: string
+    description: Top-level output key that wraps the payload
+    default: response
+    required: false
+  - name: summary_input_key
+    type: string
+    description: Context key containing LLM summary rows
+    default: llm_summary_output
+    required: false
+  - name: summary_tab_field
+    type: string
+    description: Field name used as tab identifier in summary rows
+    default: tab_name
+    required: false
+  - name: summary_text_field
+    type: string
+    description: Field name containing summary text
+    default: summary
+    required: false
+  - name: order_tab_prefix
+    type: string
+    description: Prefix used to identify order-summary tabs
+    default: "order summary_"
+    required: false
+  - name: overall_tab_name
+    type: string
+    description: Tab name used for overall conclusion
+    default: overall summary
+    required: false
+  - name: artifact_path
+    type: string
+    description: Optional explicit artifact path override
+    required: false
+  - name: alert_id
+    type: string
+    description: Optional explicit alert id override
+    required: false
+  - name: artifact_key
+    type: string
+    description: Payload key name for artifact path
+    default: artifact
+    required: false
+  - name: alert_id_key
+    type: string
+    description: Payload key name for alert id
+    default: alert_id
+    required: false
+  - name: order_summary_key
+    type: string
+    description: Payload key name for order summaries map
+    default: order_summary
+    required: false
+  - name: overall_summary_key
+    type: string
+    description: Payload key name for overall summary text
+    default: overall_summary
+    required: false
+  - name: llm_summary_key
+    type: string
+    description: Payload key name for full tab-to-summary map
+    default: llm_summary
+    required: false
+  - name: static_fields
+    type: object
+    description: Additional static key-value pairs to merge into response payload
+    default: {}
+    required: false
+semantics:
+  requires: []
+  provides: []
+constraints:
+  - Expects summaries in ctx.values[summary_input_key] (default llm_summary_output).

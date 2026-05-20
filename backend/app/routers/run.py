@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from engine import RunContext
 from engine.jobs import get_default_runner
-from engine.validator import validate_dag
+from engine.copilot_validate import validate_dag_for_api
 from engine.workflow_format import workflow_from_yaml
 
 from ..deps import WORKFLOWS_DIR
@@ -115,7 +115,7 @@ def run(req: RunWorkflowRequest) -> dict:
     edge_count = len(req.dag.get("edges", []) or [])
 
     dag = _resolve_workflow_mock_csv_paths(req.dag)
-    validation = validate_dag(dag)
+    validation = validate_dag_for_api(dag)
     if not validation.valid:
         run_log_entry = {
             "run_id": f"v_{int(started.timestamp() * 1000)}",
@@ -207,7 +207,7 @@ def run_stream(req: RunWorkflowRequest) -> StreamingResponse:
     edge_count = len(req.dag.get("edges", []) or [])
 
     dag = _resolve_workflow_mock_csv_paths(req.dag)
-    validation = validate_dag(dag)
+    validation = validate_dag_for_api(dag)
 
     def event_source():
         if not validation.valid:
@@ -342,7 +342,7 @@ def run_demo(req: Optional[RunDemoRequest] = None):
     dag = _resolve_workflow_mock_csv_paths(_load_bundled_workflow(req.workflow_filename))
     alert = req.alert_payload or dict(_DEMO_ALERT_PAYLOAD)
 
-    validation = validate_dag(dag)
+    validation = validate_dag_for_api(dag)
     if not validation.valid:
         raise HTTPException(status_code=422, detail=validation.to_json())
 

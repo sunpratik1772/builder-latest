@@ -7,18 +7,18 @@
  *   • hover      — 52px rail that expands to 220px on hover
  *
  * Each item routes the workspace: clicking "Templates" opens the
- * WorkflowDrawer, clicking "Agents" opens the Copilot panel, etc.
+ * WorkflowDrawer, section drawers, and sherpa panel, etc.
  * "Workflow" is the canvas and is always selected by default.
  */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  ArcIcon,
   LayoutGrid,
   LayoutTemplate,
   Boxes,
   Lightbulb,
   Database,
-  Bot,
   Activity,
   Settings,
   ChevronsLeft,
@@ -26,10 +26,11 @@ import {
   PanelLeft,
   ArrowUpRight,
   BookOpen,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+  type LucideIcon,
+} from '../icons/arc'
 import { useWorkflowStore } from '../store/workflowStore'
 import { useStudioSectionStore, type StudioSection } from '../store/studioSectionStore'
+import BrandMark from './BrandMark'
 
 type NavMode = 'expanded' | 'collapsed' | 'hover'
 
@@ -177,27 +178,7 @@ export default function LeftNav() {
           gap: 10,
         }}
       >
-        <div
-          className="flex items-center justify-center shrink-0"
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 6,
-            background: 'var(--bg-3)',
-            border: '1px solid var(--border-strong)',
-            color: 'var(--text-0)',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M11.5 4.5 C11.5 3.4 10.6 2.5 9.5 2.5 H6.5 C5.4 2.5 4.5 3.4 4.5 4.5 V5 C4.5 6.1 5.4 7 6.5 7 H9.5 C10.6 7 11.5 7.9 11.5 9 V11.5 C11.5 12.6 10.6 13.5 9.5 13.5 H6.5 C5.4 13.5 4.5 12.6 4.5 11.5"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
-        </div>
+        <BrandMark size={26} />
         {showLabels && (
           <div className="flex items-baseline gap-2 min-w-0">
             <span
@@ -308,9 +289,9 @@ export default function LeftNav() {
             e.currentTarget.style.color = 'var(--text-2)'
           }}
         >
-          <BookOpen size={16} style={{ flexShrink: 0 }} />
+          <ArcIcon icon={BookOpen} size={16} style={{ flexShrink: 0 }} />
           {showLabels && <span className="flex-1 min-w-0">Docs</span>}
-          {showLabels && <ArrowUpRight size={14} style={{ flexShrink: 0, opacity: 0.5 }} />}
+          {showLabels && <ArcIcon icon={ArrowUpRight} size={14} style={{ flexShrink: 0, opacity: 0.5 }} />}
         </Link>
       </nav>
 
@@ -384,11 +365,11 @@ export default function LeftNav() {
             }}
           >
             {mode === 'collapsed' ? (
-              <ChevronsRight size={13} strokeWidth={2} />
+              <ArcIcon icon={ChevronsRight} size={13} />
             ) : mode === 'hover' ? (
-              <PanelLeft size={13} strokeWidth={2} />
+              <ArcIcon icon={PanelLeft} size={13} />
             ) : (
-              <ChevronsLeft size={13} strokeWidth={2} />
+              <ArcIcon icon={ChevronsLeft} size={13} />
             )}
           </button>
         )}
@@ -442,7 +423,7 @@ function NavRow({
         ;(e.currentTarget as HTMLElement).style.color = 'var(--text-1)'
       }}
     >
-      <Icon size={15} strokeWidth={1.85} className="shrink-0" />
+      <ArcIcon icon={Icon} size={15} className="shrink-0" />
       {showLabels && (
         <span
           className="display truncate"

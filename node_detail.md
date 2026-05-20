@@ -7,834 +7,96 @@ This file documents every node: what it does, inputs, outputs, static UI metadat
 
 | Node | Display | Section | Use |
 | --- | --- | --- | --- |
-| `AGGREGATE` | Aggregate | `transform` | Group items and perform aggregations |
-| `CODE` | Code | `transform` | Execute custom Python code |
-| `EXECUTE_WORKFLOW` | Execute Workflow | `control` | Execute another workflow as sub-workflow |
-| `FILTER` | Filter | `transform` | Keep only items that match conditions |
-| `HTML_EXTRACT` | Html Extract | `integration` | Extract data from HTML |
-| `HTTP_REQUEST` | Http Request | `integration` | Make HTTP API requests |
-| `IF` | If | `control` | Route workflow conditionally based on comparison operations. Evaluates conditions and sends data to 'true' or 'false' output. |
-| `ITEM_LISTS` | Item Lists | `transform` | Array/list operations |
-| `JSON` | Json | `transform` | Parse and manipulate JSON data |
-| `LIMIT` | Limit | `transform` | Limit the number of items |
-| `LOOP_OVER_ITEMS` | Loop Over Items | `control` | Execute once for each item in input |
-| `MERGE` | Merge | `control` | Combine data from multiple inputs using various merge strategies |
-| `SCHEDULE_TRIGGER` | Schedule Trigger | `trigger` | Trigger workflow on schedule |
-| `SET` | Set | `transform` | Add, remove, or modify fields in items |
-| `SORT` | Sort | `transform` | Sort items by field values |
-| `SPLIT_IN_BATCHES` | Split In Batches | `control` | Split items into batches for processing |
-| `SPREADSHEET_FILE` | Spreadsheet File | `integration` | Read/write Excel and CSV files |
-| `SWITCH` | Switch | `control` | Route items to different outputs based on rules |
-| `WAIT` | Wait | `control` | Wait/delay execution |
-| `WEBHOOK` | Webhook | `trigger` | Receive data via webhook |
-| `XML` | Xml | `transform` | Parse and manipulate XML data |
+| `agent` | AI Agent | `ai` | Call Gemini with rows + prompt (requires GEMINI_API_KEY in backend/.env). |
+| `api_trigger` | API Trigger | `triggers` | Trigger via HTTP webhook (returns the request payload). |
+| `code` | Transform (Starlark) | `logic` | Run sandboxed Starlark on the incoming rows. Assign the transformed table to `output` (preferred) or `result`. No imports, while loops, or filesystem/network access — safe for AI-generated logic. |
+| `condition` | Condition | `logic` | Branch rows into true / false outputs by an expression. |
+| `csv_extract` | CSV Extract | `data` | Read rows from a CSV dataset (mock by default). |
+| `csv_output` | CSV Output | `transform` | Serialize rows to a CSV string. |
+| `data_merge` | Merge | `transform` | Concatenate or union multiple datasets. |
+| `db_query` | DB Query | `data` | Run a SELECT against a mock dataset (Postgres-style). |
+| `deduplicate` | Deduplicate | `transform` | Remove duplicate rows by a key column. |
+| `evaluator` | Evaluator | `ai` | Evaluate rows against criteria; reports pass / fail rate. |
+| `excel_output` | Excel Export | `output` | Write multi-tab Excel from each upstream dataset. |
+| `filter` | Filter | `transform` | Filter rows by an expression (row.column accessible). |
+| `function` | Function | `logic` | Run Python code with access to input and previous output. |
+| `github` | GitHub | `integrations` | GitHub API actions (list/create/push). Reads GITHUB_TOKEN. |
+| `gmail` | Gmail | `integrations` | Send email via Gmail (stub when GMAIL_CLIENT_SECRET is missing). |
+| `group_by` | Group By | `transform` | Aggregate rows by a column. |
+| `http` | HTTP Request | `data` | Fetch data from any HTTP URL. |
+| `join` | Join | `transform` | Join two upstream datasets on key columns. |
+| `loop` | Loop | `logic` | Iterate over rows (pass-through; surfaces iteration metadata). |
+| `manual_trigger` | Manual Trigger | `triggers` | Start workflow manually. |
+| `map_transform` | Map / Transform | `transform` | Rename columns or compute new ones from row expressions. |
+| `mcp` | MCP Tool | `integrations` | Call an MCP integration tool. Pick a server preset, paste tokens in the inspector, then run. |
+| `note` | Note | `output` | Canvas comment / annotation. Pass-through with text. |
+| `notion` | Notion | `integrations` | Read or write to a Notion database (requires NOTION_API_KEY). |
+| `pause` | Pause | `logic` | Wait for a number of milliseconds before continuing. |
+| `pdf_extract` | PDF Extract | `data` | Extract text from a PDF (mock content by default). |
+| `response` | Response | `output` | Return a final workflow response. |
+| `router` | Router | `logic` | Route rows to labelled branches by an expression returning a label. |
+| `schedule` | Schedule | `triggers` | Run on a cron schedule. |
+| `select_columns` | Select Columns | `transform` | Pick a specific subset of columns. |
+| `slack` | Slack | `integrations` | Send a Slack message via Bot Token (chat.postMessage) or incoming webhook. |
+| `sort` | Sort | `transform` | Sort rows by a column. |
+| `telegram` | Telegram | `integrations` | Send a Telegram message via Bot API (sendMessage). |
+| `webhook_trigger` | Webhook | `triggers` | Listen for incoming webhooks. |
 
-## `AGGREGATE` — Aggregate
+## `agent` — AI Agent
 
-**Use:** Group items and perform aggregations
+**Use:** Call Gemini with rows + prompt (requires GEMINI_API_KEY in backend/.env).
 
 **Static metadata**
 
 | Field | Value |
 | --- | --- |
-| Type | `AGGREGATE` |
-| Display name | Aggregate |
-| UI section | `transform` |
-| Palette order | `16` |
-| Color | `#7C3AED` |
-| Icon | `Layers` |
+| Type | `agent` |
+| Display name | AI Agent |
+| UI section | `ai` |
+| Palette order | `0` |
+| Color | `#8b5cf6` |
+| Icon | `Bot` |
 | Config tags |  |
 
 **Inputs**
 
 | Name | Type | Required | Description | Requirements |
 | --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to aggregate |  |
+| `rows` | `dataframe` | no |  |  |
 
 **Outputs**
 
 | Name | Type | Optional | Stored at | Description | Requirements |
 | --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Aggregated results |  |
+| `response` | `text` | no | `` |  |  |
 
 **Config parameters**
 
 | Name | Type | Required | Widget | Default | Enum/options | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| `group_by` | `array` | no | `json` | `[]` |  | Fields to group by |
-| `aggregations` | `array` | yes | `json` | `[]` |  | Aggregation operations |
+| `prompt` | `string` | no | `textarea` |  |  |  |
+| `task` | `string` | no | `textarea` |  |  |  |
+| `perRow` | `boolean` | no | `switch` | `False` |  |  |
+| `rowTemplate` | `string` | no | `textarea` |  |  |  |
+| `outputColumn` | `string` | no | `text` | `_ai_response` |  |  |
+| `maxRows` | `number` | no | `number` | `5` |  | Cap rows for per-row AI calls. Keep low (≤10) for snappy demos. |
+| `model` | `string` | no | `text` | `gemini-2.5-flash` |  |  |
+| `emitPublishRow` | `boolean` | no | `switch` | `False` |  | Replace output rows with one Confluence-ready {title, body_markdown} row. |
+| `pageTitle` | `string` | no | `text` |  |  |  |
 
-**Constraints**
+## `api_trigger` — API Trigger
 
-- group_by empty means aggregate all items together
-- Each aggregation creates one output field
-- count operation doesn't require a field name
-
-## `CODE` — Code
-
-**Use:** Execute custom Python code
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `CODE` |
-| Display name | Code |
-| UI section | `transform` |
-| Palette order | `15` |
-| Color | `#8B5CF6` |
-| Icon | `Code2` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | no | Items to process |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Processed items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `code` | `code` | yes | `code` | `# Access input items<br># items = input['items']<br># Process and return<br>return items` |  | Python code to execute. Access items via 'items' variable |
-| `mode` | `string` | no | `text` | `run_once_for_all` | `run_once_for_all`, `run_once_for_each` | Execution mode |
-
-**Constraints**
-
-- Code must return items list or dict
-- run_once_for_all processes all items together
-- run_once_for_each runs code for each item separately
-
-## `EXECUTE_WORKFLOW` — Execute Workflow
-
-**Use:** Execute another workflow as sub-workflow
+**Use:** Trigger via HTTP webhook (returns the request payload).
 
 **Static metadata**
 
 | Field | Value |
 | --- | --- |
-| Type | `EXECUTE_WORKFLOW` |
-| Display name | Execute Workflow |
-| UI section | `control` |
-| Palette order | `7` |
-| Color | `#8B5CF6` |
-| Icon | `Workflow` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | no | Data to pass to sub-workflow |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Sub-workflow output |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `workflow_id` | `string` | yes | `text` |  |  | ID of workflow to execute |
-| `wait_for_completion` | `boolean` | no | `checkbox` | `True` |  | Wait for sub-workflow to complete |
-
-**Constraints**
-
-- Executes specified workflow with input data
-- Returns output from sub-workflow
-- Can be used to modularize complex workflows
-
-## `FILTER` — Filter
-
-**Use:** Keep only items that match conditions
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `FILTER` |
-| Display name | Filter |
-| UI section | `transform` |
-| Palette order | `12` |
-| Color | `#FF6D5A` |
-| Icon | `Filter` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to filter |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Filtered items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `conditions` | `array` | yes | `json` | `[]` |  | Filter conditions |
-| `combine_operation` | `string` | no | `text` | `AND` | `AND`, `OR` | How to combine multiple conditions |
-
-**Constraints**
-
-- Only items matching the conditions are kept
-- Empty conditions means keep all items
-
-## `HTML_EXTRACT` — Html Extract
-
-**Use:** Extract data from HTML
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `HTML_EXTRACT` |
-| Display name | Html Extract |
-| UI section | `integration` |
-| Palette order | `22` |
-| Color | `#F59E0B` |
-| Icon | `FileCode` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items containing HTML |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Extracted data |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `source_field` | `string` | no | `text` | `html` |  | Field containing HTML |
-| `extraction_values` | `array` | yes | `json` | `[]` |  | Values to extract |
-
-**Constraints**
-
-- Uses CSS selectors to extract data from HTML
-- Returns extracted values as new fields
-- Useful for web scraping
-
-## `HTTP_REQUEST` — Http Request
-
-**Use:** Make HTTP API requests
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `HTTP_REQUEST` |
-| Display name | Http Request |
-| UI section | `integration` |
-| Palette order | `20` |
-| Color | `#10B981` |
-| Icon | `Globe` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | no | Items to process |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | HTTP response data |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `method` | `string` | yes | `text` | `GET` | `GET`, `POST`, `PUT`, `DELETE`, `PATCH` | HTTP method |
-| `url` | `string` | yes | `text` |  |  | URL to request |
-| `headers` | `object` | no | `json` | `{}` |  | HTTP headers |
-| `body` | `object` | no | `json` | `{}` |  | Request body (for POST/PUT/PATCH) |
-| `options` | `object` | no | `json` | `{}` |  |  |
-
-**Constraints**
-
-- Executes HTTP request for each input item
-- Use {{field}} syntax to interpolate values from items
-- Returns response as items
-
-## `IF` — If
-
-**Use:** Route workflow conditionally based on comparison operations. Evaluates conditions and sends data to 'true' or 'false' output.
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `IF` |
-| Display name | If |
-| UI section | `control` |
-| Palette order | `1` |
-| Color | `#FF6D5A` |
-| Icon | `GitBranch` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Input items to evaluate against conditions |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `True` | `object` | no | `` | Items that match the conditions |  |
-| `False` | `object` | no | `` | Items that do not match the conditions |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `conditions` | `array` | yes | `json` | `[]` |  | List of comparison conditions to evaluate |
-| `combine_operation` | `string` | no | `text` | `AND` | `AND`, `OR` | How to combine multiple conditions |
-| `options` | `object` | no | `json` | `{}` |  | Additional options |
-
-**Constraints**
-
-- At least one condition must be defined
-- Items matching all/any conditions go to 'true' output, others to 'false' output
-- Empty input results in empty outputs on both branches
-
-## `ITEM_LISTS` — Item Lists
-
-**Use:** Array/list operations
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `ITEM_LISTS` |
-| Display name | Item Lists |
-| UI section | `transform` |
-| Palette order | `17` |
-| Color | `#3B82F6` |
-| Icon | `List` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to process |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Processed items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `operation` | `string` | yes | `text` | `split` | `split`, `sort_array`, `unique`, `remove_duplicates`, `flatten`, `reverse`, `shuffle` | Array operation to perform |
-| `field_name` | `string` | no | `text` |  |  | Field containing the array |
-| `options` | `object` | no | `json` | `{}` |  |  |
-
-**Constraints**
-
-- split operation splits single item with array into multiple items
-- Operations work on array fields within items
-- Some operations like flatten work on nested arrays
-
-## `JSON` — Json
-
-**Use:** Parse and manipulate JSON data
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `JSON` |
-| Display name | Json |
-| UI section | `transform` |
-| Palette order | `18` |
-| Color | `#F59E0B` |
-| Icon | `Braces` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to process |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Processed JSON data |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `operation` | `string` | yes | `text` | `parse` | `parse`, `stringify`, `extract` | JSON operation |
-| `field_name` | `string` | no | `text` |  |  | Field containing JSON string (for parse) |
-| `json_path` | `string` | no | `text` |  |  | Path to extract (dot notation) |
-
-**Constraints**
-
-- parse converts JSON strings to objects
-- stringify converts objects to JSON strings
-- extract pulls specific values from JSON
-
-## `LIMIT` — Limit
-
-**Use:** Limit the number of items
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `LIMIT` |
-| Display name | Limit |
-| UI section | `transform` |
-| Palette order | `14` |
-| Color | `#F59E0B` |
-| Icon | `Scissors` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to limit |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Limited items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `max_items` | `integer` | yes | `number` | `1` |  | Maximum number of items to output |
-| `keep` | `string` | no | `text` | `first` | `first`, `last` | Which items to keep |
-
-**Constraints**
-
-- Returns at most max_items items
-- If input has fewer items than max_items, returns all
-
-## `LOOP_OVER_ITEMS` — Loop Over Items
-
-**Use:** Execute once for each item in input
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `LOOP_OVER_ITEMS` |
-| Display name | Loop Over Items |
-| UI section | `control` |
-| Palette order | `5` |
-| Color | `#10B981` |
-| Icon | `Repeat` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to loop over |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Current item |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `batch_size` | `integer` | no | `number` | `1` |  | Number of items to process together |
-
-**Constraints**
-
-- Executes downstream nodes once per item
-- batch_size > 1 processes multiple items together
-- Use with care - can cause many executions
-
-## `MERGE` — Merge
-
-**Use:** Combine data from multiple inputs using various merge strategies
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `MERGE` |
-| Display name | Merge |
-| UI section | `control` |
-| Palette order | `3` |
-| Color | `#FF6D5A` |
-| Icon | `Combine` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input1` | `object` | yes | First input data stream |  |
-| `input2` | `object` | yes | Second input data stream |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Merged data |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `mode` | `string` | yes | `text` | `append` | `append`, `combine`, `choose_branch` | How to merge the data |
-| `combine_by` | `string` | no | `text` | `matching_fields` | `matching_fields`, `position`, `all_combinations` | How to combine when mode=combine |
-| `fields_to_match` | `array` | no | `json` | `[]` |  | Field names to match on (for matching_fields mode) |
-| `output_type` | `string` | no | `text` | `keep_matches` | `keep_matches`, `keep_non_matches`, `keep_everything`, `enrich_input1`, `enrich_input2` | What to keep when combining |
-| `clash_handling` | `string` | no | `text` | `prefer_input2` | `prefer_input1`, `prefer_input2`, `add_input_number` | Which input to prioritize on field clash |
-
-**Constraints**
-
-- Append mode concatenates all items from both inputs
-- Combine mode merges items based on combine_by setting
-- Choose branch mode outputs data from one input only
-
-## `SCHEDULE_TRIGGER` — Schedule Trigger
-
-**Use:** Trigger workflow on schedule
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `SCHEDULE_TRIGGER` |
-| Display name | Schedule Trigger |
-| UI section | `trigger` |
-| Palette order | `1` |
-| Color | `#EF4444` |
-| Icon | `Calendar` |
-| Config tags |  |
-
-**Inputs**
-
-No declared inputs.
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Trigger data with timestamp |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `mode` | `string` | yes | `text` | `interval` | `interval`, `cron` | Schedule mode |
-| `interval` | `integer` | no | `number` | `60` |  | Interval in minutes (interval mode) |
-| `cron_expression` | `string` | no | `text` |  |  | Cron expression (cron mode) |
-
-**Constraints**
-
-- Triggers workflow at specified intervals or cron schedule
-- interval mode runs every N minutes
-- cron mode uses standard cron syntax
-
-## `SET` — Set
-
-**Use:** Add, remove, or modify fields in items
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `SET` |
-| Display name | Set |
-| UI section | `transform` |
-| Palette order | `10` |
-| Color | `#0EA5E9` |
-| Icon | `PenTool` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to transform |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Transformed items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `mode` | `string` | yes | `text` | `manual` | `manual`, `json` | How to set fields |
-| `fields` | `array` | no | `json` | `[]` |  | Fields to set (manual mode) |
-| `json_data` | `object` | no | `json` | `{}` |  | JSON object to merge (json mode) |
-| `options` | `object` | no | `json` | `{}` |  | Additional options |
-
-**Constraints**
-
-- Manual mode sets individual fields one by one
-- JSON mode merges entire JSON object into each item
-- Dot notation allows setting nested fields like user.name
-
-## `SORT` — Sort
-
-**Use:** Sort items by field values
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `SORT` |
-| Display name | Sort |
-| UI section | `transform` |
-| Palette order | `13` |
-| Color | `#7C3AED` |
-| Icon | `ArrowUpDown` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to sort |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Sorted items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `sort_by` | `array` | yes | `json` | `[]` |  | Fields to sort by |
-| `options` | `object` | no | `json` | `{}` |  |  |
-
-**Constraints**
-
-- Items are sorted by first field, then second, etc.
-- Supports nested field access with dot notation
-
-## `SPLIT_IN_BATCHES` — Split In Batches
-
-**Use:** Split items into batches for processing
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `SPLIT_IN_BATCHES` |
-| Display name | Split In Batches |
-| UI section | `control` |
-| Palette order | `4` |
-| Color | `#F59E0B` |
-| Icon | `Package` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to batch |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Batch of items |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `batch_size` | `integer` | yes | `number` | `10` |  | Number of items per batch |
-| `options` | `object` | no | `json` | `{}` |  |  |
-
-**Constraints**
-
-- Splits input into batches of batch_size items
-- Last batch may have fewer items
-- Node executes multiple times until all batches are processed
-
-## `SPREADSHEET_FILE` — Spreadsheet File
-
-**Use:** Read/write Excel and CSV files
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `SPREADSHEET_FILE` |
-| Display name | Spreadsheet File |
-| UI section | `integration` |
-| Palette order | `21` |
-| Color | `#10B981` |
-| Icon | `FileSpreadsheet` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | no | Data to write (for write operation) |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | File data |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `operation` | `string` | yes | `text` | `read` | `read`, `write` | File operation |
-| `file_format` | `string` | yes | `text` | `csv` | `csv`, `xlsx`, `json` | File format |
-| `file_path` | `string` | no | `text` |  |  | Path to file |
-| `options` | `object` | no | `json` | `{}` |  |  |
-
-**Constraints**
-
-- read operation returns rows as items
-- write operation creates file from items
-- Supports CSV, Excel, and JSON formats
-
-## `SWITCH` — Switch
-
-**Use:** Route items to different outputs based on rules
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `SWITCH` |
-| Display name | Switch |
-| UI section | `control` |
-| Palette order | `2` |
-| Color | `#F59E0B` |
-| Icon | `GitBranch` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to route |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output0` | `object` | no | `` | Output 0 |  |
-| `output1` | `object` | no | `` | Output 1 |  |
-| `output2` | `object` | no | `` | Output 2 |  |
-| `output3` | `object` | no | `` | Output 3 |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `mode` | `string` | yes | `text` | `rules` | `rules`, `expression` | Routing mode |
-| `rules` | `array` | no | `json` | `[]` |  | Routing rules (rules mode) |
-| `fallback_output` | `integer` | no | `number` | `0` |  | Output index for items that don't match any rule |
-
-**Constraints**
-
-- Each item is routed to one output only
-- Rules are evaluated in order, first match wins
-- Items not matching any rule go to fallback output
-
-## `WAIT` — Wait
-
-**Use:** Wait/delay execution
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `WAIT` |
-| Display name | Wait |
-| UI section | `control` |
-| Palette order | `6` |
-| Color | `#6B7280` |
-| Icon | `Clock` |
-| Config tags |  |
-
-**Inputs**
-
-| Name | Type | Required | Description | Requirements |
-| --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to pass through after waiting |  |
-
-**Outputs**
-
-| Name | Type | Optional | Stored at | Description | Requirements |
-| --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Items (unchanged) |  |
-
-**Config parameters**
-
-| Name | Type | Required | Widget | Default | Enum/options | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| `amount` | `integer` | yes | `number` | `1` |  | Amount of time to wait |
-| `unit` | `string` | yes | `text` | `seconds` | `seconds`, `minutes`, `hours` | Time unit |
-
-**Constraints**
-
-- Pauses execution for specified duration
-- Items pass through unchanged
-- Useful for rate limiting or scheduling
-
-## `WEBHOOK` — Webhook
-
-**Use:** Receive data via webhook
-
-**Static metadata**
-
-| Field | Value |
-| --- | --- |
-| Type | `WEBHOOK` |
-| Display name | Webhook |
-| UI section | `trigger` |
-| Palette order | `2` |
-| Color | `#8B5CF6` |
+| Type | `api_trigger` |
+| Display name | API Trigger |
+| UI section | `triggers` |
+| Palette order | `0` |
+| Color | `#7c3aed` |
 | Icon | `Webhook` |
 | Config tags |  |
 
@@ -846,60 +108,1128 @@ No declared inputs.
 
 | Name | Type | Optional | Stored at | Description | Requirements |
 | --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Webhook payload |  |
+| `payload` | `object` | no | `` |  |  |
 
 **Config parameters**
 
 | Name | Type | Required | Widget | Default | Enum/options | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| `path` | `string` | no | `text` |  |  | Webhook path (auto-generated if empty) |
-| `method` | `string` | no | `text` | `POST` | `GET`, `POST`, `PUT`, `DELETE`, `ANY` | HTTP method to accept |
-| `response_mode` | `string` | no | `text` | `on_received` | `on_received`, `last_node`, `response_node` | How to respond to webhook |
+| `path` | `string` | no | `text` | `/webhook` |  | Webhook path |
 
-**Constraints**
+## `code` — Transform (Starlark)
 
-- Triggers workflow when webhook is called
-- Returns webhook body as items
-- Generates unique webhook URL
-
-## `XML` — Xml
-
-**Use:** Parse and manipulate XML data
+**Use:** Run sandboxed Starlark on the incoming rows. Assign the transformed table to `output` (preferred) or `result`. No imports, while loops, or filesystem/network access — safe for AI-generated logic.
 
 **Static metadata**
 
 | Field | Value |
 | --- | --- |
-| Type | `XML` |
-| Display name | Xml |
-| UI section | `transform` |
-| Palette order | `19` |
-| Color | `#F59E0B` |
-| Icon | `Code` |
+| Type | `code` |
+| Display name | Transform (Starlark) |
+| UI section | `logic` |
+| Palette order | `0` |
+| Color | `#06b6d4` |
+| Icon | `Code2` |
 | Config tags |  |
 
 **Inputs**
 
 | Name | Type | Required | Description | Requirements |
 | --- | --- | --- | --- | --- |
-| `input` | `object` | yes | Items to process |  |
+| `rows` | `dataframe` | yes | Table rows from the upstream node. |  |
 
 **Outputs**
 
 | Name | Type | Optional | Stored at | Description | Requirements |
 | --- | --- | --- | --- | --- | --- |
-| `output` | `object` | no | `` | Processed XML data |  |
+| `rows` | `dataframe` | no | `` | Transformed rows produced by your Starlark script. |  |
 
 **Config parameters**
 
 | Name | Type | Required | Widget | Default | Enum/options | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| `operation` | `string` | yes | `text` | `parse` | `parse`, `stringify`, `extract` | XML operation |
-| `field_name` | `string` | no | `text` |  |  | Field containing XML string |
-| `xpath` | `string` | no | `text` |  |  | XPath to extract |
+| `code_summary` | `string` | no | `textarea` |  |  | Plain-language explanation of what the Starlark script does (for non-technical readers). Usually filled by the AI when code is generated. |
+| `code` | `code` | yes | `starlark` |  |  |  |
 
 **Constraints**
 
-- parse converts XML strings to objects
-- stringify converts objects to XML strings
-- extract pulls specific values using XPath
+- Do not use import, while, or recursion in Starlark.
+- Prefer assigning `output`; `result` is accepted for older workflows.
+- Upstream rows are available as `input_data["rows"]` and as `rows`.
+
+## `condition` — Condition
+
+**Use:** Branch rows into true / false outputs by an expression.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `condition` |
+| Display name | Condition |
+| UI section | `logic` |
+| Palette order | `0` |
+| Color | `#06b6d4` |
+| Icon | `GitBranch` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `true_branch` | `dataframe` | no | `` |  |  |
+| `false_branch` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `expression` | `expression` | yes | `code` |  |  |  |
+
+## `csv_extract` — CSV Extract
+
+**Use:** Read rows from a CSV dataset (mock by default).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `csv_extract` |
+| Display name | CSV Extract |
+| UI section | `data` |
+| Palette order | `0` |
+| Color | `#0ea5e9` |
+| Icon | `Table2` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `datasets.<source>` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `source` | `enum` | yes | `select` |  | `leads.csv`, `products.csv`, `orders.csv`, `employees.csv`, `transactions.csv` | Dataset filename |
+| `limit` | `number` | no | `number` |  |  | Row limit (optional) |
+
+## `csv_output` — CSV Output
+
+**Use:** Serialize rows to a CSV string.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `csv_output` |
+| Display name | CSV Output |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Download` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `csv` | `text` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `filename` | `string` | yes | `text` | `output.csv` |  |  |
+
+## `data_merge` — Merge
+
+**Use:** Concatenate or union multiple datasets.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `data_merge` |
+| Display name | Merge |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Layers` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `strategy` | `enum` | yes | `select` | `concat` | `concat`, `union` |  |
+
+## `db_query` — DB Query
+
+**Use:** Run a SELECT against a mock dataset (Postgres-style).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `db_query` |
+| Display name | DB Query |
+| UI section | `data` |
+| Palette order | `0` |
+| Color | `#0ea5e9` |
+| Icon | `Database` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `query` | `string` | yes | `textarea` |  |  | SELECT * FROM leads |
+| `source` | `enum` | no | `select` |  | `leads.csv`, `products.csv`, `orders.csv`, `employees.csv`, `transactions.csv` | Source dataset (mock) |
+
+## `deduplicate` — Deduplicate
+
+**Use:** Remove duplicate rows by a key column.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `deduplicate` |
+| Display name | Deduplicate |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Copy` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `key` | `string` | yes | `text` |  |  |  |
+
+## `evaluator` — Evaluator
+
+**Use:** Evaluate rows against criteria; reports pass / fail rate.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `evaluator` |
+| Display name | Evaluator |
+| UI section | `ai` |
+| Palette order | `0` |
+| Color | `#8b5cf6` |
+| Icon | `CheckSquare` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `criteria` | `expression` | yes | `code` |  |  |  |
+| `label` | `string` | yes | `text` | `passed` |  |  |
+
+## `excel_output` — Excel Export
+
+**Use:** Write multi-tab Excel from each upstream dataset.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `excel_output` |
+| Display name | Excel Export |
+| UI section | `output` |
+| Palette order | `0` |
+| Color | `#16a34a` |
+| Icon | `FileSpreadsheet` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `file` | `object` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `filename` | `string` | yes | `text` | `output.xlsx` |  |  |
+| `tabNames` | `string` | no | `text` |  |  |  |
+
+## `filter` — Filter
+
+**Use:** Filter rows by an expression (row.column accessible).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `filter` |
+| Display name | Filter |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Filter` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `expression` | `expression` | yes | `code` |  |  |  |
+
+## `function` — Function
+
+**Use:** Run Python code with access to input and previous output.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `function` |
+| Display name | Function |
+| UI section | `logic` |
+| Palette order | `0` |
+| Color | `#06b6d4` |
+| Icon | `FunctionSquare` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `any` | `any` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `any` | `any` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `code` | `code` | yes | `code` |  |  |  |
+
+## `github` — GitHub
+
+**Use:** GitHub API actions (list/create/push). Reads GITHUB_TOKEN.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `github` |
+| Display name | GitHub |
+| UI section | `integrations` |
+| Palette order | `0` |
+| Color | `#24292e` |
+| Icon | `Github` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `action` | `enum` | yes | `select` | `list-repos` | `list-repos`, `list-issues`, `list-prs`, `list-commits`, `get-repo`, `create-issue`, `push-file` |  |
+| `repo` | `string` | yes | `text` |  |  |  |
+| `state` | `enum` | yes | `select` | `open` | `open`, `closed`, `all` |  |
+| `title` | `string` | yes | `text` |  |  |  |
+| `body` | `string` | yes | `textarea` |  |  |  |
+| `labels` | `string` | yes | `text` |  |  |  |
+| `filePath` | `string` | yes | `text` |  |  |  |
+| `fileContent` | `string` | yes | `textarea` |  |  |  |
+| `fileFormat` | `enum` | yes | `select` | `json` | `json`, `csv` |  |
+| `branch` | `string` | yes | `text` | `main` |  |  |
+| `commitMessage` | `string` | yes | `text` |  |  |  |
+
+## `gmail` — Gmail
+
+**Use:** Send email via Gmail (stub when GMAIL_CLIENT_SECRET is missing).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `gmail` |
+| Display name | Gmail |
+| UI section | `integrations` |
+| Palette order | `0` |
+| Color | `#ea4335` |
+| Icon | `Mail` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `result` | `object` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `to` | `string` | yes | `text` |  |  |  |
+| `subject` | `string` | yes | `text` |  |  |  |
+| `body` | `string` | yes | `textarea` |  |  |  |
+
+## `group_by` — Group By
+
+**Use:** Aggregate rows by a column.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `group_by` |
+| Display name | Group By |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `BarChart3` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `groupBy` | `string` | yes | `text` |  |  |  |
+| `aggregateCol` | `string` | yes | `text` |  |  |  |
+| `aggregateFn` | `enum` | yes | `select` | `sum` | `sum`, `avg`, `min`, `max`, `count` |  |
+| `alias` | `string` | no | `text` |  |  |  |
+
+## `http` — HTTP Request
+
+**Use:** Fetch data from any HTTP URL.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `http` |
+| Display name | HTTP Request |
+| UI section | `data` |
+| Palette order | `0` |
+| Color | `#0ea5e9` |
+| Icon | `Globe` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `url` | `string` | yes | `text` |  |  |  |
+| `method` | `enum` | yes | `select` | `GET` | `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |  |
+| `headers` | `json` | no | `json` |  |  |  |
+| `body` | `string` | no | `textarea` |  |  |  |
+
+## `join` — Join
+
+**Use:** Join two upstream datasets on key columns.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `join` |
+| Display name | Join |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Merge` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `left` | `dataframe` | yes |  |  |
+| `right` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `leftKey` | `string` | yes | `text` |  |  |  |
+| `rightKey` | `string` | yes | `text` |  |  |  |
+| `joinType` | `enum` | yes | `select` | `inner` | `inner`, `left`, `right`, `outer` |  |
+
+## `loop` — Loop
+
+**Use:** Iterate over rows (pass-through; surfaces iteration metadata).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `loop` |
+| Display name | Loop |
+| UI section | `logic` |
+| Palette order | `0` |
+| Color | `#06b6d4` |
+| Icon | `RefreshCw` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `maxIterations` | `number` | yes | `number` | `1000` |  |  |
+
+## `manual_trigger` — Manual Trigger
+
+**Use:** Start workflow manually.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `manual_trigger` |
+| Display name | Manual Trigger |
+| UI section | `triggers` |
+| Palette order | `0` |
+| Color | `#7c3aed` |
+| Icon | `Play` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `payload` | `object` | no | `alert_payload` |  |  |
+
+**Config parameters**
+
+No config parameters.
+
+## `map_transform` — Map / Transform
+
+**Use:** Rename columns or compute new ones from row expressions.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `map_transform` |
+| Display name | Map / Transform |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Wand2` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `mappings` | `json` | yes | `json` |  |  | [{ to: 'revenue', expression: 'row.qty * row.price' }, { from: 'old', to: 'new' }] |
+
+## `mcp` — MCP Tool
+
+**Use:** Call an MCP integration tool. Pick a server preset, paste tokens in the inspector, then run.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `mcp` |
+| Display name | MCP Tool |
+| UI section | `integrations` |
+| Palette order | `0` |
+| Color | `#0f766e` |
+| Icon | `Cpu` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `integration` | `enum` | yes | `select` | `studio_bridge` | `studio_bridge`, `atlassian`, `github` | MCP server preset (Hermes/OpenClaw-compatible integrations). |
+| `serverUrl` | `string` | no | `text` |  |  | Optional bridge URL override (default http://127.0.0.1:8765 or MCP_SERVER_URL). |
+| `atlassianSiteUrl` | `string` | no | `text` |  |  | Atlassian Cloud site URL. |
+| `atlassianEmail` | `string` | no | `text` |  |  | Atlassian account email (API token auth). |
+| `atlassianApiToken` | `string` | no | `password` |  |  | Atlassian API token (paste here or set ATLASSIAN_API_TOKEN in .env). |
+| `confluenceSpaceKey` | `string` | no | `text` |  |  | Confluence space key for new pages. |
+| `jiraProjectKey` | `string` | no | `text` |  |  | Jira project key for new issues. |
+| `githubToken` | `string` | no | `password` |  |  | GitHub PAT (paste here or set GITHUB_TOKEN in .env). |
+| `githubRepo` | `string` | no | `text` |  |  | Target repository for pushes and PRs. |
+| `tool` | `enum` | yes | `select` |  | `confluence_search_pages`, `confluence_extract_action_items`, `tasks_bulk_create`, `jira_create_issue`, `jira_list_issues`, `github_implement_fixes`, `confluence_publish_report`, `studio_publish_architecture_doc`, `jira_create_epics_from_confluence`, `github_fix_jira_and_update` | Tool to invoke on the selected integration. |
+| `params` | `json` | no | `json` |  |  | Tool arguments (JSON). Upstream rows are passed as params.data automatically. |
+
+## `note` — Note
+
+**Use:** Canvas comment / annotation. Pass-through with text.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `note` |
+| Display name | Note |
+| UI section | `output` |
+| Palette order | `0` |
+| Color | `#475569` |
+| Icon | `StickyNote` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+No declared outputs.
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `content` | `string` | yes | `textarea` | `""` |  |  |
+
+## `notion` — Notion
+
+**Use:** Read or write to a Notion database (requires NOTION_API_KEY).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `notion` |
+| Display name | Notion |
+| UI section | `integrations` |
+| Palette order | `0` |
+| Color | `#000000` |
+| Icon | `BookOpen` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `databaseId` | `string` | yes | `text` |  |  |  |
+| `action` | `enum` | yes | `select` | `query` | `query` |  |
+
+## `pause` — Pause
+
+**Use:** Wait for a number of milliseconds before continuing.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `pause` |
+| Display name | Pause |
+| UI section | `logic` |
+| Palette order | `0` |
+| Color | `#06b6d4` |
+| Icon | `PauseCircle` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `durationMs` | `number` | yes | `number` | `500` |  |  |
+
+## `pdf_extract` — PDF Extract
+
+**Use:** Extract text from a PDF (mock content by default).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `pdf_extract` |
+| Display name | PDF Extract |
+| UI section | `data` |
+| Palette order | `0` |
+| Color | `#0ea5e9` |
+| Icon | `FileText` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `source` | `string` | yes | `text` | `default` |  | PDF filename |
+
+## `response` — Response
+
+**Use:** Return a final workflow response.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `response` |
+| Display name | Response |
+| UI section | `output` |
+| Palette order | `0` |
+| Color | `#b45309` |
+| Icon | `ArrowRight` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `any` | `any` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `response` | `text` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `content` | `string` | no | `textarea` |  |  |  |
+
+## `router` — Router
+
+**Use:** Route rows to labelled branches by an expression returning a label.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `router` |
+| Display name | Router |
+| UI section | `logic` |
+| Palette order | `0` |
+| Color | `#06b6d4` |
+| Icon | `Share2` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `expression` | `expression` | yes | `code` |  |  |  |
+
+## `schedule` — Schedule
+
+**Use:** Run on a cron schedule.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `schedule` |
+| Display name | Schedule |
+| UI section | `triggers` |
+| Palette order | `0` |
+| Color | `#7c3aed` |
+| Icon | `Clock` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `payload` | `object` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `cron` | `string` | yes | `text` | `0 * * * *` |  | Cron expression |
+
+## `select_columns` — Select Columns
+
+**Use:** Pick a specific subset of columns.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `select_columns` |
+| Display name | Select Columns |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `Columns` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `columns` | `string` | yes | `text` |  |  |  |
+
+## `slack` — Slack
+
+**Use:** Send a Slack message via Bot Token (chat.postMessage) or incoming webhook.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `slack` |
+| Display name | Slack |
+| UI section | `integrations` |
+| Palette order | `0` |
+| Color | `#4a154b` |
+| Icon | `MessageSquare` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `result` | `object` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `channel` | `string` | yes | `text` | `#general` |  |  |
+| `message` | `string` | yes | `textarea` |  |  |  |
+| `webhookUrl` | `string` | no | `text` |  |  |  |
+
+## `sort` — Sort
+
+**Use:** Sort rows by a column.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `sort` |
+| Display name | Sort |
+| UI section | `transform` |
+| Palette order | `0` |
+| Color | `#f59e0b` |
+| Icon | `ArrowUpDown` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | yes |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `sortBy` | `string` | yes | `text` |  |  |  |
+| `order` | `enum` | yes | `select` | `asc` | `asc`, `desc` |  |
+
+## `telegram` — Telegram
+
+**Use:** Send a Telegram message via Bot API (sendMessage).
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `telegram` |
+| Display name | Telegram |
+| UI section | `integrations` |
+| Palette order | `0` |
+| Color | `#229ED9` |
+| Icon | `Send` |
+| Config tags |  |
+
+**Inputs**
+
+| Name | Type | Required | Description | Requirements |
+| --- | --- | --- | --- | --- |
+| `rows` | `dataframe` | no |  |  |
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `result` | `object` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `chatId` | `string` | no | `text` |  |  |  |
+| `message` | `string` | yes | `textarea` |  |  |  |
+| `parseMode` | `string` | yes | `text` | `Markdown` |  |  |
+| `botToken` | `string` | no | `text` |  |  |  |
+
+## `webhook_trigger` — Webhook
+
+**Use:** Listen for incoming webhooks.
+
+**Static metadata**
+
+| Field | Value |
+| --- | --- |
+| Type | `webhook_trigger` |
+| Display name | Webhook |
+| UI section | `triggers` |
+| Palette order | `0` |
+| Color | `#7c3aed` |
+| Icon | `Zap` |
+| Config tags |  |
+
+**Inputs**
+
+No declared inputs.
+
+**Outputs**
+
+| Name | Type | Optional | Stored at | Description | Requirements |
+| --- | --- | --- | --- | --- | --- |
+| `payload` | `object` | no | `` |  |  |
+
+**Config parameters**
+
+| Name | Type | Required | Widget | Default | Enum/options | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `secret` | `string` | no | `text` |  |  | Optional shared secret |
