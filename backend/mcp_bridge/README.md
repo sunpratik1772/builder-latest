@@ -1,5 +1,7 @@
 # MCP bridge for Studio workflows
 
+> **Full guide:** [docs/mcp-integrations.md](../../docs/mcp-integrations.md) — credentials, tools, live vs demo, Copilot patterns, and code paths.
+
 Studio's **MCP Tool** node calls `POST {MCP_SERVER_URL}/tools/{tool}/run`. Hermes Agent and OpenClaw instead spawn stdio MCP servers or connect to remote HTTP MCP endpoints. This bridge exposes Confluence → tasks, Confluence → Jira, and Jira → GitHub flows over the Studio HTTP contract.
 
 ## Studio MCP node (UI tokens)

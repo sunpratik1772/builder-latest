@@ -2,6 +2,8 @@
 
 These files appear in the **Workflows** drawer (saved list). Open one and click **Run** — no CLI scripts required.
 
+**Docs:** [docs/README.md](../../docs/README.md) (Starlark `code` node, node YAML/UI, MCP setup).
+
 ## Prerequisites
 
 1. Start backend + frontend (Studio UI).
