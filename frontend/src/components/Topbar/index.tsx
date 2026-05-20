@@ -730,7 +730,7 @@ const modalInputStyle: React.CSSProperties = {
   color: 'var(--text-0)',
   padding: '6px 9px',
   fontSize: 12,
-  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+  fontFamily: 'inherit',
 }
 
 function ContextSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -785,7 +785,7 @@ function BreadcrumbPill({ label, mono }: { label: string; mono?: boolean }) {
         color: 'var(--text-0)',
         fontSize: 13,
         fontWeight: 500,
-        fontFamily: mono ? 'IBM Plex Mono, ui-monospace, monospace' : 'inherit',
+        fontFamily: 'inherit',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--accent-soft)'

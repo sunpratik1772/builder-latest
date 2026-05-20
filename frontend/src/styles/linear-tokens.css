@@ -25,7 +25,7 @@
   --linear-danger: #dc2626;
   --linear-font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --linear-font-body: var(--linear-font-display);
-  --linear-font-mono: 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+  --linear-font-mono: var(--linear-font-body);
   --linear-radius-sm: 6px;
   --linear-radius-md: 8px;
   --linear-radius-lg: 12px;

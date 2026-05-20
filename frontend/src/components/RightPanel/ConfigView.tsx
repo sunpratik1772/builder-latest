@@ -310,7 +310,7 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 7,
   padding: '6px 8px',
-  fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+  fontFamily: 'inherit',
 }
 
 function ParamRow({
@@ -550,7 +550,7 @@ function ParamInput({ field, value, upstream, onChange }: {
             tabSize: 4,
             whiteSpace: 'pre',
             overflowWrap: 'normal',
-            fontFamily: 'IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+            fontFamily: 'inherit',
             fontSize: 12,
             color: '#e0f2fe',
             background: 'linear-gradient(180deg, #0c1929 0%, #071018 100%)',

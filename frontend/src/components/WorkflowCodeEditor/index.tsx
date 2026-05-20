@@ -145,7 +145,7 @@ export default function WorkflowCodeEditor() {
             padding: '12px 14px',
             fontSize: 12.5,
             lineHeight: 1.55,
-            fontFamily: 'IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+            fontFamily: 'inherit',
             opacity: loading ? 0.7 : 1,
             outline: 'none',
           }}

@@ -54,7 +54,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="relative h-screen overflow-hidden text-[var(--text-0)]">
+    <div className="relative h-screen overflow-hidden font-sans text-[var(--text-0)]">
       <div className="studio-backdrop" aria-hidden>
         <div className="studio-backdrop__wash" />
       </div>

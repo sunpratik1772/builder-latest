@@ -215,14 +215,32 @@
 /* -------------------------------------------------------------------------
    Body + utility classes
    ------------------------------------------------------------------------- */
+html,
+body,
+#root,
+button,
+input,
+textarea,
+select {
+  font-family: var(--linear-font-body);
+}
+
 body {
   background: var(--bg-base);
   color: var(--text-0);
-  font-family: var(--linear-font-body);
   font-feature-settings: 'cv01', 'ss03';
   font-weight: 400;
   letter-spacing: -0.01em;
   transition: background-color 200ms var(--ease-out);
+}
+
+.font-mono,
+.num,
+.chip,
+kbd,
+code,
+pre {
+  font-family: var(--linear-font-body);
 }
 
 .display {
@@ -245,7 +263,6 @@ body {
 }
 
 .num {
-  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -398,7 +415,6 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1.4;
-  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
 }
 .chip--idle    { background: color-mix(in srgb, var(--text-2) 8%, transparent);  color: var(--text-2); border: 1px solid var(--border); }
 .chip--running { background: color-mix(in srgb, var(--running) 11%, transparent); color: var(--running); border: 1px solid color-mix(in srgb, var(--running) 35%, transparent); }
@@ -515,7 +531,6 @@ button {
 
 /* Soft kbd hint */
 kbd {
-  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 4px;
